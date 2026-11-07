@@ -10,6 +10,7 @@ let currentRoomCode: string = '';
 let isHost: boolean = false;
 let currentPendingTileAction: any = null;
 let boardTilesData: any[] = [];
+let latestPlayersSnapshot: any[] = [];
 
 // DOM Elements
 const elLobbyView = document.getElementById('lobby-view')!;
@@ -75,16 +76,13 @@ function init() {
   const container = document.getElementById('canvas-container')!;
   boardScene = new BoardScene(container);
 
-  // Fetch Board Data
   fetch('/api/board')
     .then(res => res.json())
     .then(data => {
       boardTilesData = data.tiles;
       boardScene.initBoard(boardTilesData);
     })
-    .catch(() => {
-      // Fallback if needed
-    });
+    .catch(() => {});
 
   bindSocketEvents();
   bindUIEvents();
@@ -137,7 +135,6 @@ function bindUIEvents() {
       initialCash: 1500,
       turnTimeout: 20
     });
-    // Will automatically add 3 bots and auto-start on room:created
     (window as any)._autoFillBotsAndStart = true;
   });
 
@@ -256,9 +253,9 @@ function bindSocketEvents() {
     elGameHud.style.display = 'flex';
 
     boardTilesData = data.boardData;
+    latestPlayersSnapshot = data.snapshot.players;
     boardScene.initBoard(boardTilesData);
 
-    // Initialize Tokens
     data.snapshot.players.forEach((p: any, idx: number) => {
       boardScene.tokenManager.createToken(p.id, p.token, p.color, idx);
     });
@@ -272,22 +269,30 @@ function bindSocketEvents() {
     const isMe = data.userId === socketClient.socket.id;
     const player = data.snapshot.players.find((p: any) => p.id === data.userId);
     const slot = data.snapshot.players.findIndex((p: any) => p.id === data.userId);
+    latestPlayersSnapshot = data.snapshot.players;
 
-    // Roll 3D Dice physics
     boardScene.dicePhysics.roll(data.dice1, data.dice2, () => {
-      // After dice roll finishes, animate token moving step-by-step
-      boardScene.tokenManager.moveTokenSteps(data.userId, data.prevPosition, data.newPosition, slot, () => {
-        // If passed GO
-        if (data.passedGo) {
-          sounds.playCoin();
-        }
+      boardScene.tokenManager.moveTokenSteps(
+        data.userId,
+        data.prevPosition,
+        data.newPosition,
+        slot,
+        (_stepTile) => {},
+        () => {
+          const token = boardScene.tokenManager.tokens.get(data.userId);
+          const landingPos = token ? token.mesh.position : boardScene.getTileWorldPosition(data.newPosition);
 
-        // Handle Action Result
-        handleTileActionResult(data.actionResult, isMe, player);
-      });
+          if (data.passedGo) {
+            sounds.playCoin();
+            boardScene.vfxManager.spawnFloatingText('+200M (Lương)', landingPos, true);
+            boardScene.vfxManager.spawnStarBurst(landingPos, 20);
+          }
+
+          handleTileActionResult(data.actionResult, isMe, player, landingPos);
+        }
+      );
     });
 
-    // Update follow camera target to the moving token
     const token = boardScene.tokenManager.tokens.get(data.userId);
     if (token) {
       boardScene.cameraManager.setFollowTarget(token.mesh.position);
@@ -299,17 +304,22 @@ function bindSocketEvents() {
 
   socketClient.on('game:property_updated', (data: any) => {
     boardScene.updateBuilding(data.tileId, data.level);
+    const tilePos = boardScene.getTileWorldPosition(data.tileId);
+    boardScene.vfxManager.spawnShockwave(tilePos, '#00B894', 3.0);
+    latestPlayersSnapshot = data.snapshot.players;
     updateHudPlayers(data.snapshot);
     renderLogs(data.snapshot.logs);
   });
 
   socketClient.on('game:state_sync', (data: any) => {
+    latestPlayersSnapshot = data.snapshot.players;
     updateHudPlayers(data.snapshot);
     renderLogs(data.snapshot.logs);
     checkMyTurn(data.snapshot);
   });
 
   socketClient.on('game:turn_change', (data: any) => {
+    latestPlayersSnapshot = data.snapshot.players;
     updateHudPlayers(data.snapshot);
     renderLogs(data.snapshot.logs);
     checkMyTurn(data.snapshot);
@@ -442,7 +452,7 @@ function checkMyTurn(snapshot: any) {
   }
 }
 
-function handleTileActionResult(action: any, isMe: boolean, player: any) {
+function handleTileActionResult(action: any, isMe: boolean, player: any, pos: any) {
   if (!action) return;
 
   if (action.type === 'CAN_BUY' && isMe) {
@@ -463,7 +473,11 @@ function handleTileActionResult(action: any, isMe: boolean, player: any) {
     elPropertyModal.style.display = 'flex';
   } else if (action.type === 'PAY_RENT') {
     sounds.playCoin();
+    boardScene.vfxManager.spawnFloatingText(`-${action.amount}M`, pos, false);
     showToast(`${player.username} đã trả ${action.amount}M tiền thuê cho ${action.ownerName}!`);
+  } else if (action.type === 'TAX') {
+    sounds.playCoin();
+    boardScene.vfxManager.spawnFloatingText(`-${action.amount}M (Thuế)`, pos, false);
   } else if (action.type === 'CARD') {
     cardBadge.textContent = action.cardType === 'CHANCE' ? 'THẺ CƠ HỘI' : 'THẺ KHÍ VẬN';
     cardIcon.textContent = action.cardType === 'CHANCE' ? '⚡' : '🎁';
@@ -473,6 +487,8 @@ function handleTileActionResult(action: any, isMe: boolean, player: any) {
     sounds.playCoin();
   } else if (action.type === 'BANKRUPT') {
     sounds.playBankrupt();
+    boardScene.vfxManager.triggerCameraShake(0.5);
+    boardScene.vfxManager.spawnFloatingText(`PHÁ SẢN!`, pos, false);
     showToast(`💀 ${player.username} đã bị Phá Sản!`);
   }
 }
@@ -504,13 +520,11 @@ function showVictory(data: any) {
 
   elVictoryModal.style.display = 'flex';
 
-  // Confetti explosion
   confetti({
-    particleCount: 120,
-    spread: 80,
+    particleCount: 140,
+    spread: 85,
     origin: { y: 0.6 }
   });
 }
 
-// Start
 window.addEventListener('DOMContentLoaded', init);
