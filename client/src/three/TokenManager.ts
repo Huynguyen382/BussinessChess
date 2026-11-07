@@ -8,9 +8,14 @@ export interface TokenInstance {
   color: string;
   currentTile: number;
   mesh: THREE.Group;
+  innerModel: THREE.Group;
   shadowDisc: THREE.Mesh;
   isMoving: boolean;
   pathQueue: number[];
+  wheels?: THREE.Mesh[];
+  ears?: THREE.Mesh;
+  thrusterFlame?: THREE.Mesh;
+  blinkTimer?: number;
 }
 
 export class TokenManager {
@@ -18,6 +23,7 @@ export class TokenManager {
   public tokens: Map<string, TokenInstance> = new Map();
   private tilePositions: THREE.Vector3[] = [];
   private shadowTexture: THREE.CanvasTexture;
+  private animClock = 0;
 
   constructor() {
     this.group = new THREE.Group();
@@ -57,9 +63,12 @@ export class TokenManager {
 
   public createToken(userId: string, tokenType: TokenType, color: string, slot: number): THREE.Group {
     const tokenGroup = new THREE.Group();
+    const wheels: THREE.Mesh[] = [];
+    let earsMesh: THREE.Mesh | undefined;
+    let flameMesh: THREE.Mesh | undefined;
 
     if (tokenType === 'car') {
-      // 🚗 Red Classic Car - Glossy candy finish
+      // 🚗 Red Classic Car - Mềm mại bo cong với bánh xe quay
       const bodyMat = new THREE.MeshLambertMaterial({ color: color || '#FF3838' });
       const body = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.42, 0.52), bodyMat);
       body.position.y = 0.32;
@@ -71,51 +80,76 @@ export class TokenManager {
       );
       cabin.position.set(-0.08, 0.58, 0);
 
-      // Headlights
+      // Kính chắn gió mờ xanh nhạt
+      const windshield = new THREE.Mesh(
+        new THREE.PlaneGeometry(0.42, 0.26),
+        new THREE.MeshLambertMaterial({ color: '#74B9FF', transparent: true, opacity: 0.85 })
+      );
+      windshield.position.set(0.17, 0.56, 0);
+      windshield.rotation.y = Math.PI / 2;
+
+      // Headlights tròn ấm
       const lightGeo = new THREE.SphereGeometry(0.08, 8, 8);
-      const lightMat = new THREE.MeshLambertMaterial({ color: '#FFF275', emissive: '#FFF275', emissiveIntensity: 0.6 });
+      const lightMat = new THREE.MeshLambertMaterial({ color: '#FFF275', emissive: '#FFF275', emissiveIntensity: 0.65 });
       const hl1 = new THREE.Mesh(lightGeo, lightMat);
       hl1.position.set(0.43, 0.32, 0.16);
       const hl2 = new THREE.Mesh(lightGeo, lightMat);
       hl2.position.set(0.43, 0.32, -0.16);
 
-      // Wheels
-      const wheelGeo = new THREE.CylinderGeometry(0.14, 0.14, 0.1, 12);
+      // 4 Bánh xe quay độc lập
+      const wheelGeo = new THREE.CylinderGeometry(0.14, 0.14, 0.1, 14);
       const wheelMat = new THREE.MeshLambertMaterial({ color: '#2D3436' });
       wheelGeo.rotateZ(Math.PI / 2);
 
-      const w1 = new THREE.Mesh(wheelGeo, wheelMat);
-      w1.position.set(-0.25, 0.14, 0.28);
-      const w2 = new THREE.Mesh(wheelGeo, wheelMat);
-      w2.position.set(0.25, 0.14, 0.28);
-      const w3 = new THREE.Mesh(wheelGeo, wheelMat);
-      w3.position.set(-0.25, 0.14, -0.28);
-      const w4 = new THREE.Mesh(wheelGeo, wheelMat);
-      w4.position.set(0.25, 0.14, -0.28);
+      const hubcapGeo = new THREE.CylinderGeometry(0.06, 0.06, 0.11, 10);
+      const hubcapMat = new THREE.MeshLambertMaterial({ color: '#DFE6E9' });
+      hubcapGeo.rotateZ(Math.PI / 2);
 
-      tokenGroup.add(body, cabin, hl1, hl2, w1, w2, w3, w4);
+      const makeWheel = (x: number, z: number) => {
+        const wGroup = new THREE.Group();
+        wGroup.position.set(x, 0.14, z);
+        const tire = new THREE.Mesh(wheelGeo, wheelMat);
+        const hub = new THREE.Mesh(hubcapGeo, hubcapMat);
+        wGroup.add(tire, hub);
+        tokenGroup.add(wGroup);
+        wheels.push(tire);
+      };
+
+      makeWheel(-0.25, 0.28);
+      makeWheel(0.25, 0.28);
+      makeWheel(-0.25, -0.28);
+      makeWheel(0.25, -0.28);
+
+      tokenGroup.add(body, cabin, windshield, hl1, hl2);
     } else if (tokenType === 'hat') {
-      // 🎩 Golden Top Hat
+      // 🎩 Mũ Phớt Hoàng Kim lấp lánh sang trọng
       const hatMat = new THREE.MeshLambertMaterial({
         color: color || '#FDCB6E',
         emissive: '#FDCB6E',
-        emissiveIntensity: 0.15
+        emissiveIntensity: 0.2
       });
-      const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.58, 0.58, 0.08, 16), hatMat);
+      const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 0.08, 20), hatMat);
       brim.position.y = 0.08;
 
       const ribbon = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.36, 0.36, 0.14, 16),
+        new THREE.CylinderGeometry(0.36, 0.36, 0.15, 20),
         new THREE.MeshLambertMaterial({ color: '#6C5CE7' })
       );
       ribbon.position.y = 0.2;
 
-      const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.34, 0.68, 16), hatMat);
-      crown.position.y = 0.58;
+      const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.39, 0.34, 0.7, 20), hatMat);
+      crown.position.y = 0.6;
 
-      tokenGroup.add(brim, ribbon, crown);
+      // Kim băng vàng đính đá đỏ
+      const jewel = new THREE.Mesh(
+        new THREE.SphereGeometry(0.07, 8, 8),
+        new THREE.MeshLambertMaterial({ color: '#D63031', emissive: '#D63031', emissiveIntensity: 0.5 })
+      );
+      jewel.position.set(0.37, 0.2, 0);
+
+      tokenGroup.add(brim, ribbon, crown, jewel);
     } else if (tokenType === 'dog') {
-      // 🐕 Lucky Dog
+      // 🐕 Chú Cún May Mắn (Lucky Pug) với tai ve vẩy
       const dogMat = new THREE.MeshLambertMaterial({ color: color || '#E17055' });
       const body = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.52, 0.46), dogMat);
       body.position.y = 0.36;
@@ -123,27 +157,28 @@ export class TokenManager {
       const head = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.42, 0.42), dogMat);
       head.position.set(0.32, 0.62, 0);
 
-      const ears = new THREE.Mesh(
-        new THREE.BoxGeometry(0.12, 0.26, 0.48),
-        new THREE.MeshLambertMaterial({ color: '#636E72' })
-      );
-      ears.position.set(0.3, 0.76, 0);
+      // Tai mềm mại có thể ve vẩy
+      const earMat = new THREE.MeshLambertMaterial({ color: '#636E72' });
+      earsMesh = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.26, 0.48), earMat);
+      earsMesh.position.set(0.3, 0.76, 0);
 
+      // Mõm đen và mũi
       const snout = new THREE.Mesh(
         new THREE.BoxGeometry(0.16, 0.14, 0.2),
         new THREE.MeshLambertMaterial({ color: '#2D3436' })
       );
       snout.position.set(0.54, 0.58, 0);
 
+      // Chuông vàng trước ngực
       const bell = new THREE.Mesh(
         new THREE.SphereGeometry(0.09, 8, 8),
-        new THREE.MeshLambertMaterial({ color: '#FDCB6E', emissive: '#FDCB6E', emissiveIntensity: 0.5 })
+        new THREE.MeshLambertMaterial({ color: '#FDCB6E', emissive: '#FDCB6E', emissiveIntensity: 0.6 })
       );
       bell.position.set(0.48, 0.38, 0);
 
-      tokenGroup.add(body, head, ears, snout, bell);
+      tokenGroup.add(body, head, earsMesh, snout, bell);
     } else {
-      // 🚀 Space Rocket
+      // 🚀 Tên Lửa Không Gian với đuôi lửa phụt sáng
       const rocketMat = new THREE.MeshLambertMaterial({ color: color || '#0984E3' });
       const body = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.32, 0.85, 16), rocketMat);
       body.position.y = 0.52;
@@ -154,6 +189,7 @@ export class TokenManager {
       );
       nose.position.y = 1.1;
 
+      // Cánh thoi
       const finGeo = new THREE.BoxGeometry(0.06, 0.32, 0.65);
       const finMat = new THREE.MeshLambertMaterial({ color: '#74B9FF' });
       const fin1 = new THREE.Mesh(finGeo, finMat);
@@ -162,11 +198,25 @@ export class TokenManager {
       fin2.position.y = 0.32;
       fin2.rotation.y = Math.PI / 2;
 
-      tokenGroup.add(body, nose, fin1, fin2);
+      // Ngọn lửa đẩy phụt sáng ở đuôi
+      flameMesh = new THREE.Mesh(
+        new THREE.ConeGeometry(0.16, 0.35, 12),
+        new THREE.MeshLambertMaterial({
+          color: '#FFA502',
+          emissive: '#FF4757',
+          emissiveIntensity: 0.8,
+          transparent: true,
+          opacity: 0.9
+        })
+      );
+      flameMesh.position.y = 0.05;
+      flameMesh.rotation.x = Math.PI;
+
+      tokenGroup.add(body, nose, fin1, fin2, flameMesh);
     }
 
-    // Add Baked Contact Shadow Disc underneath token
-    const shadowGeo = new THREE.PlaneGeometry(1.2, 1.2);
+    // Đĩa bóng mềm dưới chân
+    const shadowGeo = new THREE.PlaneGeometry(1.25, 1.25);
     const shadowMat = new THREE.MeshBasicMaterial({
       map: this.shadowTexture,
       transparent: true,
@@ -189,9 +239,14 @@ export class TokenManager {
       color,
       currentTile: 0,
       mesh: wrapper,
+      innerModel: tokenGroup,
       shadowDisc,
       isMoving: false,
-      pathQueue: []
+      pathQueue: [],
+      wheels,
+      ears: earsMesh,
+      thrusterFlame: flameMesh,
+      blinkTimer: 0
     });
 
     return wrapper;
@@ -234,41 +289,47 @@ export class TokenManager {
       const endPos = this.getTilePosition(targetTile, slot);
       stepIndex++;
 
-      const duration = 190; // ms per tile
+      const duration = 185;
       const startTime = performance.now();
 
       const hopStep = (time: number) => {
         const elapsed = time - startTime;
         const t = Math.min(1, elapsed / duration);
 
-        // Parabolic jump curve
         const hopHeight = Math.sin(t * Math.PI) * 0.95;
         token.mesh.position.lerpVectors(startPos, endPos, t);
         token.mesh.position.y = startPos.y + hopHeight;
 
-        // Squash & Stretch dynamics
-        const tokenMeshGroup = token.mesh.children[1] as THREE.Group;
-        if (tokenMeshGroup) {
-          if (t < 0.7) {
-            // Stretch while in air
-            const stretch = 1 + Math.sin(t * Math.PI) * 0.18;
-            const squashXZ = 1 - Math.sin(t * Math.PI) * 0.09;
-            tokenMeshGroup.scale.set(squashXZ, stretch, squashXZ);
+        // Hoạt ảnh lăn bánh xe nếu là Xe hơi
+        if (token.wheels && token.wheels.length > 0) {
+          token.wheels.forEach(w => {
+            w.rotation.x += 0.22;
+          });
+        }
+
+        // Hoạt ảnh tai chó ve vẩy
+        if (token.ears) {
+          token.ears.rotation.x = Math.sin(t * Math.PI * 2) * 0.25;
+        }
+
+        // Squash & Stretch dynamics mềm mại
+        if (token.innerModel) {
+          if (t < 0.65) {
+            const stretch = 1 + Math.sin(t * Math.PI) * 0.16;
+            const squashXZ = 1 - Math.sin(t * Math.PI) * 0.08;
+            token.innerModel.scale.set(squashXZ, stretch, squashXZ);
           } else {
-            // Squash upon landing impact
-            const impactT = (t - 0.7) / 0.3;
-            const squashY = 1 - Math.sin(impactT * Math.PI) * 0.22;
-            const stretchXZ = 1 + Math.sin(impactT * Math.PI) * 0.12;
-            tokenMeshGroup.scale.set(stretchXZ, squashY, stretchXZ);
+            const impactT = (t - 0.65) / 0.35;
+            const squashY = 1 - Math.sin(impactT * Math.PI) * 0.2;
+            const stretchXZ = 1 + Math.sin(impactT * Math.PI) * 0.1;
+            token.innerModel.scale.set(stretchXZ, squashY, stretchXZ);
           }
         }
 
-        // Contact shadow scaling with height
-        const shadowScale = THREE.MathUtils.lerp(1.0, 0.45, hopHeight / 0.95);
+        const shadowScale = THREE.MathUtils.lerp(1.0, 0.42, hopHeight / 0.95);
         token.shadowDisc.scale.set(shadowScale, shadowScale, 1);
-        (token.shadowDisc.material as THREE.MeshBasicMaterial).opacity = THREE.MathUtils.lerp(0.85, 0.25, hopHeight / 0.95);
+        (token.shadowDisc.material as THREE.MeshBasicMaterial).opacity = THREE.MathUtils.lerp(0.85, 0.22, hopHeight / 0.95);
 
-        // Direction facing
         const dir = endPos.clone().sub(startPos).normalize();
         if (dir.lengthSq() > 0.001) {
           const angle = Math.atan2(dir.x, dir.z);
@@ -279,7 +340,7 @@ export class TokenManager {
           requestAnimationFrame(hopStep);
         } else {
           token.mesh.position.copy(endPos);
-          if (tokenMeshGroup) tokenMeshGroup.scale.set(1, 1, 1);
+          if (token.innerModel) token.innerModel.scale.set(1, 1, 1);
           token.shadowDisc.scale.set(1, 1, 1);
           if (onStepDone) onStepDone(targetTile);
           animateNextStep();
@@ -291,6 +352,24 @@ export class TokenManager {
 
     token.isMoving = true;
     animateNextStep();
+  }
+
+  // Nhịp thở Idle sống động cho các quân cờ khi đứng yên
+  public update(delta: number) {
+    this.animClock += delta;
+    for (const token of this.tokens.values()) {
+      if (!token.isMoving && token.innerModel) {
+        // Nhịp thở nhẹ nhàng (Subtle Idle Breathing)
+        const breathe = Math.sin(this.animClock * 2.5 + token.currentTile) * 0.02;
+        token.innerModel.position.y = breathe;
+
+        // Ngọn lửa tên lửa phập phồng
+        if (token.thrusterFlame) {
+          const fScale = 0.85 + Math.sin(this.animClock * 15) * 0.25;
+          token.thrusterFlame.scale.set(fScale, fScale, fScale);
+        }
+      }
+    }
   }
 
   public setTokenTileImmediate(userId: string, tileIndex: number, slot: number) {
