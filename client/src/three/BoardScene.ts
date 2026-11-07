@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { CameraManager } from './CameraManager';
 import { TokenManager } from './TokenManager';
 import { DicePhysics } from './DicePhysics';
@@ -29,9 +30,9 @@ export class BoardScene {
   constructor(container: HTMLElement) {
     this.scene = new THREE.Scene();
 
-    // Natural Morning Studio Ambient Color Palette
-    this.scene.background = new THREE.Color('#E3EAF2');
-    this.scene.fog = new THREE.FogExp2('#E3EAF2', 0.007);
+    // Natural Morning Studio Ambient Sky
+    this.scene.background = new THREE.Color('#DFE7F0');
+    this.scene.fog = new THREE.FogExp2('#DFE7F0', 0.007);
 
     this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
     this.renderer.setSize(window.innerWidth, window.innerHeight);
@@ -39,8 +40,9 @@ export class BoardScene {
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
+    // Cinematic Tone Mapping
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.14;
+    this.renderer.toneMappingExposure = 1.15;
 
     container.appendChild(this.renderer.domElement);
 
@@ -73,12 +75,13 @@ export class BoardScene {
   }
 
   private setupLighting() {
-    // Warm Natural Key Light (Morning Sunbeam)
-    const dirLight = new THREE.DirectionalLight('#FFF7EB', 1.45);
+    // Warm Key Light (Morning Sunbeam)
+    const dirLight = new THREE.DirectionalLight('#FFF7EB', 1.48);
     dirLight.position.set(24, 38, 22);
     dirLight.castShadow = true;
-    dirLight.shadow.mapSize.width = 1024;
-    dirLight.shadow.mapSize.height = 1024;
+    dirLight.shadow.mapSize.width = 2048;
+    dirLight.shadow.mapSize.height = 2048;
+    dirLight.shadow.radius = 2.0;
     dirLight.shadow.camera.near = 0.5;
     dirLight.shadow.camera.far = 120;
     const d = 26;
@@ -86,15 +89,15 @@ export class BoardScene {
     dirLight.shadow.camera.right = d;
     dirLight.shadow.camera.top = d;
     dirLight.shadow.camera.bottom = -d;
-    dirLight.shadow.bias = -0.0004;
+    dirLight.shadow.bias = -0.0003;
     this.scene.add(dirLight);
 
     // Warm Ambient Bounce from Oak Table and Walls
-    const hemiLight = new THREE.HemisphereLight('#FFF5E6', '#CBD5E1', 0.98);
+    const hemiLight = new THREE.HemisphereLight('#FFF6E8', '#CBD5E1', 0.98);
     this.scene.add(hemiLight);
 
     // Soft Blue Sky Secondary Bounce
-    const fillLight = new THREE.DirectionalLight('#E0F2FE', 0.38);
+    const fillLight = new THREE.DirectionalLight('#E0F2FE', 0.4);
     fillLight.position.set(-25, 20, -25);
     this.scene.add(fillLight);
   }
@@ -106,8 +109,10 @@ export class BoardScene {
     // Tabletop with Natural Wood Grain Texture
     const woodTexture = TextureGenerator.createWoodPlankTexture();
     const tableGeo = new THREE.BoxGeometry(110, 2, 110);
-    const tableMat = new THREE.MeshLambertMaterial({
+    const tableMat = new THREE.MeshStandardMaterial({
       map: woodTexture,
+      roughness: 0.45,
+      metalness: 0.05,
       color: '#F4ECE1'
     });
     const table = new THREE.Mesh(tableGeo, tableMat);
@@ -115,9 +120,9 @@ export class BoardScene {
     table.receiveShadow = true;
     envGroup.add(table);
 
-    // Premium Slate Blue Felt Playmat under the board
+    // Slate Blue Felt Playmat under the board
     const matGeo = new THREE.BoxGeometry(32.5, 0.05, 32.5);
-    const matMat = new THREE.MeshLambertMaterial({ color: '#3B4D61' });
+    const matMat = new THREE.MeshStandardMaterial({ color: '#3A4B5E', roughness: 0.7 });
     const feltMat = new THREE.Mesh(matGeo, matMat);
     feltMat.position.y = -0.58;
     feltMat.receiveShadow = true;
@@ -125,7 +130,7 @@ export class BoardScene {
 
     // Gold Stitching border around mat
     const stitchGeo = new THREE.BoxGeometry(32.9, 0.04, 32.9);
-    const stitchMat = new THREE.MeshLambertMaterial({ color: '#FDCB6E' });
+    const stitchMat = new THREE.MeshStandardMaterial({ color: '#FDCB6E', metalness: 0.8, roughness: 0.2 });
     const stitch = new THREE.Mesh(stitchGeo, stitchMat);
     stitch.position.y = -0.59;
     envGroup.add(stitch);
@@ -173,16 +178,16 @@ export class BoardScene {
     const plinthGroup = new THREE.Group();
 
     // Dark Walnut Wood Platform
-    const baseGeo = new THREE.BoxGeometry(25.6, 0.6, 25.6);
-    const baseMat = new THREE.MeshLambertMaterial({ color: '#2C3A47' });
+    const baseGeo = new RoundedBoxGeometry(25.8, 0.6, 25.8, 4, 0.12);
+    const baseMat = new THREE.MeshStandardMaterial({ color: '#253342', roughness: 0.4 });
     const plinth = new THREE.Mesh(baseGeo, baseMat);
     plinth.position.y = -0.3;
     plinth.receiveShadow = true;
     plinthGroup.add(plinth);
 
     // Gold Trim Inlay
-    const trimGeo = new THREE.BoxGeometry(25.8, 0.08, 25.8);
-    const trimMat = new THREE.MeshLambertMaterial({ color: '#FDCB6E', emissive: '#FDCB6E', emissiveIntensity: 0.22 });
+    const trimGeo = new THREE.BoxGeometry(26.0, 0.08, 26.0);
+    const trimMat = new THREE.MeshStandardMaterial({ color: '#FDCB6E', emissive: '#FDCB6E', emissiveIntensity: 0.25, metalness: 0.85, roughness: 0.2 });
     const trim = new THREE.Mesh(trimGeo, trimMat);
     trim.position.y = -0.02;
     plinthGroup.add(trim);
@@ -226,29 +231,27 @@ export class BoardScene {
       const lamp = new THREE.Group();
       lamp.position.set(lx, 0.3, lz);
 
-      // Cast iron pole
       const pole = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.06, 0.09, 1.2, 8),
-        new THREE.MeshLambertMaterial({ color: '#2D3436' })
+        new THREE.CylinderGeometry(0.06, 0.09, 1.2, 12),
+        new THREE.MeshStandardMaterial({ color: '#2D3436', metalness: 0.7, roughness: 0.3 })
       );
       pole.position.y = 0.6;
       pole.castShadow = true;
 
-      // Lantern head
       const lantern = new THREE.Mesh(
-        new THREE.BoxGeometry(0.24, 0.28, 0.24),
-        new THREE.MeshLambertMaterial({
+        new RoundedBoxGeometry(0.24, 0.28, 0.24, 2, 0.04),
+        new THREE.MeshStandardMaterial({
           color: '#FFEAA7',
           emissive: '#FFEAA7',
-          emissiveIntensity: 0.8
+          emissiveIntensity: 0.85,
+          roughness: 0.2
         })
       );
       lantern.position.y = 1.25;
 
-      // Cap
       const cap = new THREE.Mesh(
         new THREE.ConeGeometry(0.22, 0.16, 4),
-        new THREE.MeshLambertMaterial({ color: '#2D3436' })
+        new THREE.MeshStandardMaterial({ color: '#2D3436', metalness: 0.8 })
       );
       cap.position.y = 1.45;
       cap.rotation.y = Math.PI / 4;
@@ -269,28 +272,28 @@ export class BoardScene {
     mug.position.set(17, -0.55, -16);
 
     const mugBody = new THREE.Mesh(
-      new THREE.CylinderGeometry(1.0, 0.9, 1.8, 20),
-      new THREE.MeshLambertMaterial({ color: '#FF7675' })
+      new THREE.CylinderGeometry(1.0, 0.9, 1.8, 24),
+      new THREE.MeshStandardMaterial({ color: '#FF7675', roughness: 0.18 })
     );
     mugBody.position.y = 0.9;
     mugBody.castShadow = true;
 
     const coffee = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.85, 0.85, 0.1, 16),
-      new THREE.MeshLambertMaterial({ color: '#3A1F13' })
+      new THREE.CylinderGeometry(0.85, 0.85, 0.1, 20),
+      new THREE.MeshStandardMaterial({ color: '#3A1F13', roughness: 0.1 })
     );
     coffee.position.y = 1.65;
 
     const handle = new THREE.Mesh(
-      new THREE.TorusGeometry(0.55, 0.14, 8, 16, Math.PI),
-      new THREE.MeshLambertMaterial({ color: '#FF7675' })
+      new THREE.TorusGeometry(0.55, 0.14, 12, 20, Math.PI),
+      new THREE.MeshStandardMaterial({ color: '#FF7675', roughness: 0.18 })
     );
     handle.position.set(1.1, 0.9, 0);
     handle.rotation.z = -Math.PI / 2;
 
     mug.add(mugBody, coffee, handle);
 
-    // Steam particles rising from coffee
+    // Steam particles
     const steamCount = 20;
     const steamGeo = new THREE.BufferGeometry();
     const steamPositions = new Float32Array(steamCount * 3);
@@ -316,11 +319,13 @@ export class BoardScene {
     const coinGroup = new THREE.Group();
     coinGroup.position.set(16, -0.55, 15);
 
-    const coinGeo = new THREE.CylinderGeometry(0.65, 0.65, 0.14, 16);
-    const coinMat = new THREE.MeshLambertMaterial({
+    const coinGeo = new THREE.CylinderGeometry(0.65, 0.65, 0.14, 20);
+    const coinMat = new THREE.MeshStandardMaterial({
       color: '#FDCB6E',
       emissive: '#FDCB6E',
-      emissiveIntensity: 0.32
+      emissiveIntensity: 0.32,
+      metalness: 0.88,
+      roughness: 0.18
     });
 
     const stackOffsets = [
@@ -344,20 +349,20 @@ export class BoardScene {
     plant.position.set(-17, -0.55, -15);
 
     const pot = new THREE.Mesh(
-      new THREE.CylinderGeometry(1.1, 0.8, 1.4, 16),
-      new THREE.MeshLambertMaterial({ color: '#E17055' })
+      new THREE.CylinderGeometry(1.1, 0.8, 1.4, 20),
+      new THREE.MeshStandardMaterial({ color: '#E17055', roughness: 0.55 })
     );
     pot.position.y = 0.7;
     pot.castShadow = true;
 
     const soil = new THREE.Mesh(
       new THREE.CylinderGeometry(0.95, 0.95, 0.1, 16),
-      new THREE.MeshLambertMaterial({ color: '#2D3436' })
+      new THREE.MeshStandardMaterial({ color: '#2D3436', roughness: 0.8 })
     );
     soil.position.y = 1.35;
 
-    const leafGeo = new THREE.SphereGeometry(0.35, 8, 8);
-    const leafMat = new THREE.MeshLambertMaterial({ color: '#00B894' });
+    const leafGeo = new THREE.SphereGeometry(0.35, 10, 10);
+    const leafMat = new THREE.MeshStandardMaterial({ color: '#00B894', roughness: 0.3 });
     for (let l = 0; l < 8; l++) {
       const angle = (l / 8) * Math.PI * 2;
       const leaf = new THREE.Mesh(leafGeo, leafMat);
@@ -376,21 +381,21 @@ export class BoardScene {
     ledger.rotation.y = Math.PI / 6;
 
     const book = new THREE.Mesh(
-      new THREE.BoxGeometry(2.4, 0.35, 3.2),
-      new THREE.MeshLambertMaterial({ color: '#6C5CE7' })
+      new RoundedBoxGeometry(2.4, 0.35, 3.2, 4, 0.08),
+      new THREE.MeshStandardMaterial({ color: '#6C5CE7', roughness: 0.4 })
     );
     book.position.y = 0.175;
     book.castShadow = true;
 
     const pages = new THREE.Mesh(
-      new THREE.BoxGeometry(2.2, 0.28, 3.0),
-      new THREE.MeshLambertMaterial({ color: '#FFFDF7' })
+      new RoundedBoxGeometry(2.2, 0.28, 3.0, 2, 0.04),
+      new THREE.MeshStandardMaterial({ color: '#FFFDF7', roughness: 0.6 })
     );
     pages.position.set(0.1, 0.175, 0);
 
     const pen = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.06, 0.06, 2.5, 8),
-      new THREE.MeshLambertMaterial({ color: '#FDCB6E', emissive: '#FDCB6E', emissiveIntensity: 0.3 })
+      new THREE.CylinderGeometry(0.06, 0.06, 2.5, 12),
+      new THREE.MeshStandardMaterial({ color: '#FDCB6E', emissive: '#FDCB6E', emissiveIntensity: 0.3, metalness: 0.85, roughness: 0.18 })
     );
     pen.position.set(1.5, 0.08, 0);
     pen.rotation.z = Math.PI / 2;
@@ -406,42 +411,44 @@ export class BoardScene {
     const centerGroup = new THREE.Group();
 
     // Park Grass Base with Beveled Edge
-    const parkGeo = new THREE.CylinderGeometry(8.5, 8.8, 0.3, 32);
-    const parkMat = new THREE.MeshLambertMaterial({ color: '#55EFC4' });
+    const parkGeo = new THREE.CylinderGeometry(8.5, 8.8, 0.3, 36);
+    const parkMat = new THREE.MeshStandardMaterial({ color: '#55EFC4', roughness: 0.5 });
     const park = new THREE.Mesh(parkGeo, parkMat);
     park.position.y = 0.15;
     park.receiveShadow = true;
     centerGroup.add(park);
 
     // Garden Path Ring
-    const pathGeo = new THREE.RingGeometry(4.2, 5.4, 32);
-    const pathMat = new THREE.MeshLambertMaterial({ color: '#FFEAA7', side: THREE.DoubleSide });
+    const pathGeo = new THREE.RingGeometry(4.2, 5.4, 36);
+    const pathMat = new THREE.MeshStandardMaterial({ color: '#FFEAA7', roughness: 0.6, side: THREE.DoubleSide });
     const path = new THREE.Mesh(pathGeo, pathMat);
     path.rotation.x = -Math.PI / 2;
     path.position.y = 0.31;
     centerGroup.add(path);
 
-    // Fountain Basin
-    const basinGeo = new THREE.CylinderGeometry(3.5, 3.8, 0.45, 24);
-    const basinMat = new THREE.MeshLambertMaterial({ color: '#DFE6E9' });
+    // Fountain Basin with Rounded Lip
+    const basinGeo = new THREE.CylinderGeometry(3.5, 3.8, 0.45, 28);
+    const basinMat = new THREE.MeshStandardMaterial({ color: '#DFE6E9', roughness: 0.35 });
     const basin = new THREE.Mesh(basinGeo, basinMat);
     basin.position.y = 0.35;
     centerGroup.add(basin);
 
     // Translucent Water Surface
-    const waterGeo = new THREE.CylinderGeometry(3.2, 3.2, 0.1, 24);
-    const waterMat = new THREE.MeshLambertMaterial({
+    const waterGeo = new THREE.CylinderGeometry(3.2, 3.2, 0.1, 28);
+    const waterMat = new THREE.MeshStandardMaterial({
       color: '#0984E3',
       emissive: '#74B9FF',
       emissiveIntensity: 0.38,
       transparent: true,
-      opacity: 0.88
+      opacity: 0.88,
+      roughness: 0.08,
+      metalness: 0.1
     });
     this.fountainRipples = new THREE.Mesh(waterGeo, waterMat);
     this.fountainRipples.position.y = 0.55;
     centerGroup.add(this.fountainRipples);
 
-    // Fountain Spray Droplets
+    // Fountain Spray Droplets bubbling
     const sprayCount = 28;
     const sprayGeo = new THREE.BufferGeometry();
     const sprayPositions = new Float32Array(sprayCount * 3);
@@ -465,33 +472,32 @@ export class BoardScene {
     this.billionaireStatue = new THREE.Group();
 
     const pedestal = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.85, 1.05, 0.85, 16),
-      new THREE.MeshLambertMaterial({ color: '#B2BEC3' })
+      new THREE.CylinderGeometry(0.85, 1.05, 0.85, 20),
+      new THREE.MeshStandardMaterial({ color: '#B2BEC3', roughness: 0.35 })
     );
     pedestal.position.y = 0.9;
 
-    const statueBody = new THREE.Mesh(
-      new THREE.ConeGeometry(0.52, 1.25, 16),
-      new THREE.MeshLambertMaterial({ color: '#FDCB6E', emissive: '#FDCB6E', emissiveIntensity: 0.25 })
-    );
+    const goldMat = new THREE.MeshStandardMaterial({
+      color: '#FDCB6E',
+      emissive: '#FDCB6E',
+      emissiveIntensity: 0.3,
+      metalness: 0.88,
+      roughness: 0.18
+    });
+
+    const statueBody = new THREE.Mesh(new THREE.ConeGeometry(0.52, 1.25, 20), goldMat);
     statueBody.position.y = 1.95;
 
-    const statueHead = new THREE.Mesh(
-      new THREE.SphereGeometry(0.32, 16, 16),
-      new THREE.MeshLambertMaterial({ color: '#FDCB6E', emissive: '#FDCB6E', emissiveIntensity: 0.35 })
-    );
+    const statueHead = new THREE.Mesh(new THREE.SphereGeometry(0.32, 20, 20), goldMat);
     statueHead.position.y = 2.65;
 
     const topHat = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.22, 0.22, 0.32, 12),
-      new THREE.MeshLambertMaterial({ color: '#2D3436' })
+      new THREE.CylinderGeometry(0.22, 0.22, 0.32, 16),
+      new THREE.MeshStandardMaterial({ color: '#2D3436', roughness: 0.3 })
     );
     topHat.position.y = 2.95;
 
-    const cane = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.04, 0.04, 1.1, 8),
-      new THREE.MeshLambertMaterial({ color: '#FDCB6E', emissive: '#FDCB6E', emissiveIntensity: 0.4 })
-    );
+    const cane = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.1, 10), goldMat);
     cane.position.set(0.48, 1.7, 0);
 
     this.billionaireStatue.add(pedestal, statueBody, statueHead, topHat, cane);
@@ -507,14 +513,14 @@ export class BoardScene {
       tree.position.set(tx, 0.3, tz);
 
       const trunk = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.2, 0.26, 0.85, 8),
-        new THREE.MeshLambertMaterial({ color: '#A0522D' })
+        new THREE.CylinderGeometry(0.2, 0.26, 0.85, 10),
+        new THREE.MeshStandardMaterial({ color: '#A0522D', roughness: 0.6 })
       );
       trunk.position.y = 0.42;
 
       const canopy = new THREE.Mesh(
-        new THREE.SphereGeometry(0.8, 12, 12),
-        new THREE.MeshLambertMaterial({ color: '#00B894' })
+        new THREE.SphereGeometry(0.82, 16, 16),
+        new THREE.MeshStandardMaterial({ color: '#00B894', roughness: 0.35 })
       );
       canopy.position.y = 1.25;
       canopy.scale.set(1, 1.22, 1);
@@ -605,26 +611,34 @@ export class BoardScene {
       const tileGroup = new THREE.Group();
       tileGroup.position.copy(pos);
 
-      // Soft Porcelain White Base Block
-      const baseGeo = new THREE.BoxGeometry(w * 0.96, tileHeight, l * 0.96);
-      const baseMat = new THREE.MeshLambertMaterial({ color: '#FCFCFC' });
+      // Ô cờ bo tròn góc mềm mại với RoundedBoxGeometry (Không còn vuông vức góc sắc thô)
+      const baseGeo = new RoundedBoxGeometry(w * 0.96, tileHeight, l * 0.96, 4, 0.08);
+      const baseMat = new THREE.MeshStandardMaterial({
+        color: '#FCFCFC',
+        roughness: 0.28,
+        metalness: 0.04
+      });
       const baseMesh = new THREE.Mesh(baseGeo, baseMat);
       baseMesh.receiveShadow = true;
       tileGroup.add(baseMesh);
 
-      // District Color Bar with Rounded Look
+      // Dải màu nhận diện phân khu bo cong bóng bẩy
       if (tile.districtColor) {
         const barLength = Math.min(w, l) * 0.96;
-        const barGeo = new THREE.BoxGeometry(w > l ? w * 0.96 : barLength, 0.05, w > l ? barLength * 0.28 : l * 0.28);
-        const barMat = new THREE.MeshLambertMaterial({ color: tile.districtColor });
+        const barGeo = new RoundedBoxGeometry(w > l ? w * 0.96 : barLength, 0.06, w > l ? barLength * 0.28 : l * 0.28, 2, 0.02);
+        const barMat = new THREE.MeshStandardMaterial({
+          color: tile.districtColor,
+          roughness: 0.24,
+          metalness: 0.08
+        });
         const bar = new THREE.Mesh(barGeo, barMat);
         bar.position.y = tileHeight / 2 + 0.02;
         tileGroup.add(bar);
       }
 
-      // 2X High-DPI Crisp Tile Typography
+      // 2X High-DPI Crisp Tile Typography with Badges & Vector Icons
       const labelMesh = this.createTileLabel(tile, w, l);
-      labelMesh.position.y = tileHeight / 2 + 0.03;
+      labelMesh.position.y = tileHeight / 2 + 0.035;
       labelMesh.rotation.x = -Math.PI / 2;
       tileGroup.add(labelMesh);
 
@@ -643,58 +657,102 @@ export class BoardScene {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
+    // Khung bo tròn bên trong
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.04)';
+    ctx.lineWidth = 4;
+    ctx.strokeRect(16, 16, 480, 480);
+
     if (tile.type === 'GO') {
       ctx.fillStyle = '#00B894';
       ctx.font = '900 84px sans-serif';
-      ctx.fillText('GO', 256, 180);
-      ctx.fillStyle = '#2D3436';
-      ctx.font = '800 44px sans-serif';
-      ctx.fillText('+200M', 256, 310);
+      ctx.fillText('GO', 256, 175);
+
+      // Pill badge xanh ngọc cho tiền thưởng
+      ctx.fillStyle = '#E6FFFA';
+      this.drawRoundedRect(ctx, 110, 260, 292, 70, 35);
+      ctx.fill();
+
+      ctx.fillStyle = '#00B894';
+      ctx.font = '900 42px sans-serif';
+      ctx.fillText('+200M', 256, 298);
     } else if (tile.type === 'JAIL') {
       ctx.fillStyle = '#E17055';
-      ctx.font = '900 60px sans-serif';
-      ctx.fillText('NHÀ TÙ', 256, 200);
-      ctx.font = '700 42px sans-serif';
-      ctx.fillText('Thăm tù', 256, 300);
+      ctx.font = '900 62px sans-serif';
+      ctx.fillText('NHÀ TÙ', 256, 195);
+      ctx.fillStyle = '#636E72';
+      ctx.font = '800 40px sans-serif';
+      ctx.fillText('Thăm tù', 256, 295);
     } else if (tile.type === 'GO_TO_JAIL') {
       ctx.fillStyle = '#D63031';
-      ctx.font = '900 60px sans-serif';
-      ctx.fillText('VÀO TÙ', 256, 200);
+      ctx.font = '900 62px sans-serif';
+      ctx.fillText('VÀO TÙ', 256, 195);
       ctx.font = '68px sans-serif';
-      ctx.fillText('🚨', 256, 310);
+      ctx.fillText('🚨', 256, 305);
     } else if (tile.type === 'FREE_PARKING') {
       ctx.fillStyle = '#0984E3';
-      ctx.font = '900 56px sans-serif';
-      ctx.fillText('ĐỖ XE', 256, 190);
-      ctx.font = '700 40px sans-serif';
-      ctx.fillText('Miễn phí', 256, 290);
+      ctx.font = '900 58px sans-serif';
+      ctx.fillText('ĐỖ XE', 256, 185);
+      ctx.font = '54px sans-serif';
+      ctx.fillText('🅿️', 256, 290);
     } else if (tile.type === 'CHANCE') {
       ctx.fillStyle = '#E84393';
-      ctx.font = '900 80px sans-serif';
-      ctx.fillText('?', 256, 190);
+      ctx.font = '900 84px sans-serif';
+      ctx.fillText('?', 256, 185);
       ctx.font = '800 44px sans-serif';
-      ctx.fillText('Cơ Hội', 256, 310);
+      ctx.fillText('Cơ Hội', 256, 305);
     } else if (tile.type === 'COMMUNITY_CHEST') {
-      ctx.fillStyle = '#FDCB6E';
-      ctx.font = '68px sans-serif';
-      ctx.fillText('🎁', 256, 190);
+      ctx.font = '72px sans-serif';
+      ctx.fillText('🎁', 256, 185);
+      ctx.fillStyle = '#E17055';
       ctx.font = '800 44px sans-serif';
       ctx.fillText('Khí Vận', 256, 300);
     } else if (tile.type === 'TAX') {
       ctx.fillStyle = '#D63031';
-      ctx.font = '900 52px sans-serif';
-      ctx.fillText(tile.name, 256, 200);
-      ctx.font = '800 44px sans-serif';
-      ctx.fillText('-100M', 256, 300);
-    } else {
+      ctx.font = '900 50px sans-serif';
+      ctx.fillText(tile.name, 256, 195);
+
+      ctx.fillStyle = '#FFEAEA';
+      this.drawRoundedRect(ctx, 130, 260, 252, 60, 30);
+      ctx.fill();
+
+      ctx.fillStyle = '#D63031';
+      ctx.font = '900 38px sans-serif';
+      ctx.fillText('-100M', 256, 292);
+    } else if (tile.type === 'RAILROAD') {
+      ctx.font = '54px sans-serif';
+      ctx.fillText('🚂', 256, 175);
       ctx.fillStyle = '#2D3436';
-      ctx.font = '900 48px sans-serif';
-      ctx.fillText(tile.name, 256, 240);
+      ctx.font = '800 40px sans-serif';
+      ctx.fillText(tile.name, 256, 250);
+
+      ctx.fillStyle = '#00B894';
+      ctx.font = '900 38px sans-serif';
+      ctx.fillText('200M', 256, 335);
+    } else if (tile.type === 'UTILITY') {
+      ctx.font = '54px sans-serif';
+      ctx.fillText(tile.name.includes('Điện') ? '💡' : '💧', 256, 175);
+      ctx.fillStyle = '#2D3436';
+      ctx.font = '800 40px sans-serif';
+      ctx.fillText(tile.name, 256, 250);
+
+      ctx.fillStyle = '#00B894';
+      ctx.font = '900 38px sans-serif';
+      ctx.fillText('150M', 256, 335);
+    } else {
+      // Normal Property
+      ctx.fillStyle = '#2D3436';
+      ctx.font = '900 46px sans-serif';
+      ctx.fillText(tile.name, 256, 235);
 
       if (tile.price > 0) {
+        // Pill badge cho giá tiền
+        ctx.fillStyle = '#F0FFF4';
+        this.drawRoundedRect(ctx, 140, 310, 232, 64, 32);
+        ctx.fill();
+
         ctx.fillStyle = '#00B894';
-        ctx.font = '900 46px sans-serif';
-        ctx.fillText(`${tile.price}M`, 256, 350);
+        ctx.font = '900 42px sans-serif';
+        ctx.fillText(`${tile.price}M`, 256, 345);
       }
     }
 
@@ -705,6 +763,20 @@ export class BoardScene {
     const planeGeo = new THREE.PlaneGeometry(Math.min(w, l) * 0.94, Math.min(w, l) * 0.94);
     const planeMat = new THREE.MeshBasicMaterial({ map: texture, transparent: true });
     return new THREE.Mesh(planeGeo, planeMat);
+  }
+
+  private drawRoundedRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    ctx.lineTo(x + r, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
   }
 
   public updateBuilding(tileId: number, level: number) {
