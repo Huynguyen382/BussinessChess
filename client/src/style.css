@@ -13,7 +13,7 @@ body, html {
   height: 100%;
   overflow: hidden;
   font-family: 'Nunito', sans-serif;
-  background-color: #EBF2FA;
+  background-color: #DFE6ED;
 }
 
 h1, h2, h3, .font-heading {
@@ -101,12 +101,12 @@ h1, h2, h3, .font-heading {
 
 /* Glassmorphism Cards */
 .glass-panel {
-  background: rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border-radius: 24px;
-  border: 2px solid rgba(255, 255, 255, 0.8);
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.12);
 }
 
 /* Top Bar */
@@ -129,7 +129,7 @@ h1, h2, h3, .font-heading {
   align-items: center;
   gap: 8px;
   padding: 6px 14px;
-  background: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.92);
   border-radius: 20px;
   border: 2px solid transparent;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.06);
@@ -202,6 +202,31 @@ h1, h2, h3, .font-heading {
   padding: 14px 36px;
 }
 
+/* Lobby Overlay: Floating Clean Layout (Allows 3D diorama background to be fully admired) */
+.lobby-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 24px 32px;
+  pointer-events: none;
+}
+
+.lobby-card {
+  pointer-events: auto;
+  max-width: 440px;
+  width: 100%;
+  padding: 28px;
+  text-align: center;
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.16);
+  animation: modalPop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
 /* Modals */
 .modal-overlay {
   position: fixed;
@@ -209,8 +234,8 @@ h1, h2, h3, .font-heading {
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(45, 52, 54, 0.45);
-  backdrop-filter: blur(6px);
+  background: rgba(45, 52, 54, 0.35);
+  backdrop-filter: blur(4px);
   z-index: 100;
   display: flex;
   align-items: center;
@@ -227,12 +252,16 @@ h1, h2, h3, .font-heading {
 }
 
 @keyframes modalPop {
-  0% { transform: scale(0.85); opacity: 0; }
+  0% { transform: scale(0.9); opacity: 0; }
   100% { transform: scale(1); opacity: 1; }
 }
 
 /* Responsive for mobile */
 @media (max-width: 768px) {
+  .lobby-overlay {
+    justify-content: center;
+    padding: 12px;
+  }
   .player-badges {
     max-width: 80%;
   }

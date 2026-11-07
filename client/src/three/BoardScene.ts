@@ -4,15 +4,7 @@ import { TokenManager } from './TokenManager';
 import { DicePhysics } from './DicePhysics';
 import { BuildingMesh } from './BuildingMesh';
 import { VFXManager } from './VFXManager';
-
-export interface BoardTileMeta {
-  id: number;
-  name: string;
-  type: string;
-  district?: number;
-  districtColor?: string;
-  price: number;
-}
+import { DEFAULT_BOARD_TILES, BoardTileMeta } from '../config/BoardConfig';
 
 export class BoardScene {
   public scene: THREE.Scene;
@@ -27,12 +19,15 @@ export class BoardScene {
   private tileRotations: number[] = [];
   private fountainRipples: THREE.Mesh | null = null;
   private billionaireStatue: THREE.Group | null = null;
+  private ambientDustMotes: THREE.Points | null = null;
   private clock = new THREE.Clock();
 
   constructor(container: HTMLElement) {
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color('#EBF2FA'); // Cozy Pastel Sky
-    this.scene.fog = new THREE.FogExp2('#EBF2FA', 0.012);
+
+    // Cozy Warm Studio Environment Colors
+    this.scene.background = new THREE.Color('#DFE6ED');
+    this.scene.fog = new THREE.FogExp2('#DFE6ED', 0.008);
 
     this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
     this.renderer.setSize(window.innerWidth, window.innerHeight);
@@ -40,9 +35,8 @@ export class BoardScene {
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
-    // Cinematic Tone Mapping for Vibrant Stylized Palette
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.1;
+    this.renderer.toneMappingExposure = 1.12;
 
     container.appendChild(this.renderer.domElement);
 
@@ -59,8 +53,13 @@ export class BoardScene {
     this.scene.add(this.buildingMesh.group);
 
     this.setupLighting();
+    this.setupStudioRoom();
     this.setupBoardPlinth();
+    this.setupTabletopProps();
     this.setupCenterDiorama();
+
+    // ALWAYS initialize board immediately with default tiles so it's NEVER empty!
+    this.initBoard(DEFAULT_BOARD_TILES);
 
     this.animate = this.animate.bind(this);
     requestAnimationFrame(this.animate);
@@ -69,15 +68,15 @@ export class BoardScene {
   }
 
   private setupLighting() {
-    // Warm Key Light (Sunlight)
-    const dirLight = new THREE.DirectionalLight('#FFF6E5', 1.35);
-    dirLight.position.set(22, 36, 22);
+    // Warm Sunbeam (Studio Spotlight)
+    const dirLight = new THREE.DirectionalLight('#FFF5E6', 1.4);
+    dirLight.position.set(24, 38, 24);
     dirLight.castShadow = true;
     dirLight.shadow.mapSize.width = 1024;
     dirLight.shadow.mapSize.height = 1024;
     dirLight.shadow.camera.near = 0.5;
-    dirLight.shadow.camera.far = 100;
-    const d = 24;
+    dirLight.shadow.camera.far = 120;
+    const d = 26;
     dirLight.shadow.camera.left = -d;
     dirLight.shadow.camera.right = d;
     dirLight.shadow.camera.top = d;
@@ -85,23 +84,77 @@ export class BoardScene {
     dirLight.shadow.bias = -0.0005;
     this.scene.add(dirLight);
 
-    // Fill Light (Secondary cool blue sky bounce)
-    const fillLight = new THREE.DirectionalLight('#DFF9FB', 0.45);
-    fillLight.position.set(-20, 20, -20);
-    this.scene.add(fillLight);
-
-    // Soft Sky & Ground Ambient Hemisphere
-    const hemiLight = new THREE.HemisphereLight('#E0F2FE', '#F1F5F9', 0.85);
+    // Warm Ambient Light from the Room
+    const hemiLight = new THREE.HemisphereLight('#FFF0DB', '#CAD5E2', 0.95);
     this.scene.add(hemiLight);
+
+    // Subtle soft fill light
+    const fillLight = new THREE.DirectionalLight('#DFF9FB', 0.35);
+    fillLight.position.set(-25, 20, -25);
+    this.scene.add(fillLight);
   }
 
-  // Khung gỗ đế sa bàn (Diorama Beveled Wooden Plinth)
+  // 1. Cozy Studio Wooden Tabletop & Room Walls
+  private setupStudioRoom() {
+    const roomGroup = new THREE.Group();
+
+    // Large Oak Wood Tabletop
+    const tableGeo = new THREE.BoxGeometry(100, 2, 100);
+    const tableMat = new THREE.MeshLambertMaterial({
+      color: '#E8D5B5', // Warm blonde oak wood
+    });
+    const table = new THREE.Mesh(tableGeo, tableMat);
+    table.position.y = -1.6;
+    table.receiveShadow = true;
+    roomGroup.add(table);
+
+    // Table runner / Soft Felt Playmat underneath board
+    const matGeo = new THREE.BoxGeometry(32, 0.05, 32);
+    const matMat = new THREE.MeshLambertMaterial({
+      color: '#4B6584' // Deep Slate Blue felt mat
+    });
+    const feltMat = new THREE.Mesh(matGeo, matMat);
+    feltMat.position.y = -0.58;
+    feltMat.receiveShadow = true;
+    roomGroup.add(feltMat);
+
+    // Mat border stitching
+    const stitchGeo = new THREE.BoxGeometry(32.4, 0.04, 32.4);
+    const stitchMat = new THREE.MeshLambertMaterial({ color: '#FDCB6E' });
+    const stitch = new THREE.Mesh(stitchGeo, stitchMat);
+    stitch.position.y = -0.59;
+    roomGroup.add(stitch);
+
+    // Ambient floating dust motes in room sunlight
+    const moteGeo = new THREE.BufferGeometry();
+    const moteCount = 100;
+    const motePositions = new Float32Array(moteCount * 3);
+    for (let i = 0; i < moteCount; i++) {
+      motePositions[i * 3] = (Math.random() - 0.5) * 45;
+      motePositions[i * 3 + 1] = 1 + Math.random() * 20;
+      motePositions[i * 3 + 2] = (Math.random() - 0.5) * 45;
+    }
+    moteGeo.setAttribute('position', new THREE.BufferAttribute(motePositions, 3));
+    const moteMat = new THREE.PointsMaterial({
+      size: 0.25,
+      color: '#FFEAA7',
+      transparent: true,
+      opacity: 0.6,
+      blending: THREE.AdditiveBlending
+    });
+    this.ambientDustMotes = new THREE.Points(moteGeo, moteMat);
+    roomGroup.add(this.ambientDustMotes);
+
+    this.scene.add(roomGroup);
+  }
+
+  // 2. Diorama Board Base Plinth (Platform)
   private setupBoardPlinth() {
     const plinthGroup = new THREE.Group();
 
-    // Bottom Walnut Wood Base
+    // Dark Walnut Wood Beveled Platform
     const baseGeo = new THREE.BoxGeometry(25.6, 0.6, 25.6);
-    const baseMat = new THREE.MeshLambertMaterial({ color: '#2D3436' });
+    const baseMat = new THREE.MeshLambertMaterial({ color: '#2C3A47' });
     const plinth = new THREE.Mesh(baseGeo, baseMat);
     plinth.position.y = -0.3;
     plinth.receiveShadow = true;
@@ -109,19 +162,19 @@ export class BoardScene {
 
     // Gold Trim Inlay
     const trimGeo = new THREE.BoxGeometry(25.8, 0.08, 25.8);
-    const trimMat = new THREE.MeshLambertMaterial({ color: '#FDCB6E', emissive: '#FDCB6E', emissiveIntensity: 0.15 });
+    const trimMat = new THREE.MeshLambertMaterial({ color: '#FDCB6E', emissive: '#FDCB6E', emissiveIntensity: 0.2 });
     const trim = new THREE.Mesh(trimGeo, trimMat);
     trim.position.y = -0.02;
     plinthGroup.add(trim);
 
-    // Contact shadow of entire board
-    const shadowGeo = new THREE.PlaneGeometry(30, 30);
+    // Soft drop shadow
+    const shadowGeo = new THREE.PlaneGeometry(31, 31);
     const canvas = document.createElement('canvas');
     canvas.width = 128;
     canvas.height = 128;
     const ctx = canvas.getContext('2d')!;
-    const grad = ctx.createRadialGradient(64, 64, 20, 64, 64, 64);
-    grad.addColorStop(0, 'rgba(0, 0, 0, 0.35)');
+    const grad = ctx.createRadialGradient(64, 64, 25, 64, 64, 64);
+    grad.addColorStop(0, 'rgba(0, 0, 0, 0.45)');
     grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, 128, 128);
@@ -133,12 +186,135 @@ export class BoardScene {
     });
     const groundShadow = new THREE.Mesh(shadowGeo, shadowMat);
     groundShadow.rotation.x = -Math.PI / 2;
-    groundShadow.position.y = -0.62;
+    groundShadow.position.y = -0.56;
     plinthGroup.add(groundShadow);
 
     this.scene.add(plinthGroup);
   }
 
+  // 3. Decorative Tabletop Props (Mug, Coins, Notebook, Potted Plant)
+  private setupTabletopProps() {
+    const propsGroup = new THREE.Group();
+
+    // ☕ Ceramic Coffee Mug (Top-Right of board)
+    const mug = new THREE.Group();
+    mug.position.set(17, -0.55, -16);
+
+    const mugBody = new THREE.Mesh(
+      new THREE.CylinderGeometry(1.0, 0.9, 1.8, 20),
+      new THREE.MeshLambertMaterial({ color: '#FF7675' })
+    );
+    mugBody.position.y = 0.9;
+    mugBody.castShadow = true;
+
+    const coffee = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.85, 0.85, 0.1, 16),
+      new THREE.MeshLambertMaterial({ color: '#4A2311' }) // Dark roasted coffee
+    );
+    coffee.position.y = 1.65;
+
+    const handle = new THREE.Mesh(
+      new THREE.TorusGeometry(0.55, 0.14, 8, 16, Math.PI),
+      new THREE.MeshLambertMaterial({ color: '#FF7675' })
+    );
+    handle.position.set(1.1, 0.9, 0);
+    handle.rotation.z = -Math.PI / 2;
+
+    mug.add(mugBody, coffee, handle);
+    propsGroup.add(mug);
+
+    // 🪙 Stacks of Golden Coins (Bottom-Right of board)
+    const coinGroup = new THREE.Group();
+    coinGroup.position.set(16, -0.55, 15);
+
+    const coinGeo = new THREE.CylinderGeometry(0.65, 0.65, 0.14, 16);
+    const coinMat = new THREE.MeshLambertMaterial({
+      color: '#FDCB6E',
+      emissive: '#FDCB6E',
+      emissiveIntensity: 0.35
+    });
+
+    // 3 Stacks of varying heights
+    const stackOffsets = [
+      [0, 0, 7],
+      [1.1, 0.6, 5],
+      [-0.9, 0.7, 4]
+    ];
+    stackOffsets.forEach(([sx, sz, count]) => {
+      for (let c = 0; c < count; c++) {
+        const coin = new THREE.Mesh(coinGeo, coinMat);
+        coin.position.set(sx + (Math.random() - 0.5) * 0.05, c * 0.15 + 0.07, sz + (Math.random() - 0.5) * 0.05);
+        coin.rotation.y = Math.random() * Math.PI;
+        coin.castShadow = true;
+        coinGroup.add(coin);
+      }
+    });
+    propsGroup.add(coinGroup);
+
+    // 🪴 Cute Succulent Potted Plant (Top-Left of board)
+    const plant = new THREE.Group();
+    plant.position.set(-17, -0.55, -15);
+
+    const pot = new THREE.Mesh(
+      new THREE.CylinderGeometry(1.1, 0.8, 1.4, 16),
+      new THREE.MeshLambertMaterial({ color: '#E17055' }) // Terracotta pot
+    );
+    pot.position.y = 0.7;
+    pot.castShadow = true;
+
+    const soil = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.95, 0.95, 0.1, 16),
+      new THREE.MeshLambertMaterial({ color: '#2D3436' })
+    );
+    soil.position.y = 1.35;
+
+    // Chunky Succulent Leaves
+    const leafGeo = new THREE.SphereGeometry(0.35, 8, 8);
+    const leafMat = new THREE.MeshLambertMaterial({ color: '#00B894' });
+    for (let l = 0; l < 6; l++) {
+      const angle = (l / 6) * Math.PI * 2;
+      const leaf = new THREE.Mesh(leafGeo, leafMat);
+      leaf.position.set(Math.cos(angle) * 0.5, 1.5, Math.sin(angle) * 0.5);
+      leaf.scale.set(1.2, 0.6, 1.2);
+      plant.add(leaf);
+    }
+    const centerBud = new THREE.Mesh(leafGeo, leafMat);
+    centerBud.position.y = 1.7;
+    plant.add(pot, soil, centerBud);
+    propsGroup.add(plant);
+
+    // 📒 Leather Investor's Ledger & Gold Pen (Bottom-Left of board)
+    const ledger = new THREE.Group();
+    ledger.position.set(-16.5, -0.55, 14.5);
+    ledger.rotation.y = Math.PI / 6;
+
+    const book = new THREE.Mesh(
+      new THREE.BoxGeometry(2.4, 0.35, 3.2),
+      new THREE.MeshLambertMaterial({ color: '#6C5CE7' }) // Purple Leather Cover
+    );
+    book.position.y = 0.175;
+    book.castShadow = true;
+
+    const pages = new THREE.Mesh(
+      new THREE.BoxGeometry(2.2, 0.28, 3.0),
+      new THREE.MeshLambertMaterial({ color: '#FFFDF7' })
+    );
+    pages.position.set(0.1, 0.175, 0);
+
+    const pen = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.06, 0.06, 2.5, 8),
+      new THREE.MeshLambertMaterial({ color: '#FDCB6E', emissive: '#FDCB6E', emissiveIntensity: 0.3 })
+    );
+    pen.position.set(1.5, 0.08, 0);
+    pen.rotation.z = Math.PI / 2;
+
+    ledger.add(book, pages, pen);
+    propsGroup.add(ledger);
+
+    this.scene.add(propsGroup);
+  }
+
+  // 4. Center Park Diorama
   private setupCenterDiorama() {
     const centerGroup = new THREE.Group();
 
@@ -449,7 +625,7 @@ export class BoardScene {
     this.buildingMesh.update(delta);
     this.vfxManager.update(delta);
 
-    // Apply Camera Shake to Perspective Camera
+    // Apply Camera Shake
     if (this.vfxManager.cameraShakeOffset.lengthSq() > 0) {
       this.cameraManager.camera.position.add(this.vfxManager.cameraShakeOffset);
     }
@@ -462,6 +638,17 @@ export class BoardScene {
     // Statue gentle aura rotation
     if (this.billionaireStatue) {
       this.billionaireStatue.rotation.y += delta * 0.15;
+    }
+
+    // Ambient floating dust motes drift
+    if (this.ambientDustMotes) {
+      const positions = (this.ambientDustMotes.geometry.attributes.position as THREE.BufferAttribute);
+      for (let i = 0; i < positions.count; i++) {
+        let y = positions.getY(i) - delta * 0.3;
+        if (y < 0.5) y = 18;
+        positions.setY(i, y);
+      }
+      positions.needsUpdate = true;
     }
 
     this.renderer.render(this.scene, this.cameraManager.camera);

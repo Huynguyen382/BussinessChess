@@ -14,6 +14,10 @@ let latestPlayersSnapshot: any[] = [];
 
 // DOM Elements
 const elLobbyView = document.getElementById('lobby-view')!;
+const elLobbyCard = document.getElementById('lobby-card')!;
+const btnToggleLobbyView = document.getElementById('btn-toggle-lobby-view')!;
+const btnRestoreLobby = document.getElementById('btn-restore-lobby')!;
+
 const elCreateModal = document.getElementById('create-room-modal')!;
 const elRoomWaiting = document.getElementById('room-waiting-modal')!;
 const elGameHud = document.getElementById('game-hud')!;
@@ -76,11 +80,16 @@ function init() {
   const container = document.getElementById('canvas-container')!;
   boardScene = new BoardScene(container);
 
+  // Add sample preview tokens on GO tile so scene is lively immediately
+  boardScene.tokenManager.createToken('preview_1', 'car', '#FF3838', 0);
+  boardScene.tokenManager.createToken('preview_2', 'hat', '#FDCB6E', 1);
+
   fetch('/api/board')
     .then(res => res.json())
     .then(data => {
-      boardTilesData = data.tiles;
-      boardScene.initBoard(boardTilesData);
+      if (data && data.tiles && data.tiles.length > 0) {
+        boardTilesData = data.tiles;
+      }
     })
     .catch(() => {});
 
@@ -102,6 +111,16 @@ function showToast(msg: string) {
 }
 
 function bindUIEvents() {
+  btnToggleLobbyView.addEventListener('click', () => {
+    elLobbyView.style.display = 'none';
+    btnRestoreLobby.style.display = 'block';
+  });
+
+  btnRestoreLobby.addEventListener('click', () => {
+    elLobbyView.style.display = 'flex';
+    btnRestoreLobby.style.display = 'none';
+  });
+
   btnOpenCreate.addEventListener('click', () => {
     elCreateModal.style.display = 'flex';
   });
@@ -226,6 +245,7 @@ function bindSocketEvents() {
   socketClient.on('room:created', (data: any) => {
     currentRoomCode = data.roomCode;
     isHost = true;
+    btnRestoreLobby.style.display = 'none';
     showWaitingLobby(data);
 
     if ((window as any)._autoFillBotsAndStart) {
@@ -240,6 +260,7 @@ function bindSocketEvents() {
   socketClient.on('room:joined', (data: any) => {
     currentRoomCode = data.roomCode;
     isHost = data.hostId === socketClient.socket.id;
+    btnRestoreLobby.style.display = 'none';
     showWaitingLobby(data);
   });
 
@@ -249,6 +270,7 @@ function bindSocketEvents() {
 
   socketClient.on('game:start', (data: any) => {
     elLobbyView.style.display = 'none';
+    btnRestoreLobby.style.display = 'none';
     elRoomWaiting.style.display = 'none';
     elGameHud.style.display = 'flex';
 
@@ -256,6 +278,11 @@ function bindSocketEvents() {
     latestPlayersSnapshot = data.snapshot.players;
     boardScene.initBoard(boardTilesData);
 
+    // Clear sample preview tokens
+    boardScene.tokenManager.group.clear();
+    boardScene.tokenManager.tokens.clear();
+
+    // Create real player tokens
     data.snapshot.players.forEach((p: any, idx: number) => {
       boardScene.tokenManager.createToken(p.id, p.token, p.color, idx);
     });
@@ -344,17 +371,17 @@ function bindSocketEvents() {
 
 function renderRoomList(rooms: any[]) {
   if (rooms.length === 0) {
-    roomListContainer.innerHTML = `<div style="font-size: 0.85rem; color: #B2BEC3; text-align: center; padding: 12px;">Chưa có phòng nào. Hãy tạo phòng mới!</div>`;
+    roomListContainer.innerHTML = `<div style="font-size: 0.8rem; color: #B2BEC3; text-align: center; padding: 10px;">Chưa có phòng nào. Hãy tạo phòng mới!</div>`;
     return;
   }
 
   roomListContainer.innerHTML = rooms.map(r => `
-    <div style="background: white; border-radius: 12px; padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 6px rgba(0,0,0,0.04);">
+    <div style="background: white; border-radius: 12px; padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 6px rgba(0,0,0,0.04);">
       <div>
-        <div style="font-weight: 800; font-size: 0.9rem; color: #2D3436;">${r.name}</div>
-        <div style="font-size: 0.75rem; color: #636E72;">Mã: <b>${r.roomCode}</b> • ${r.playersCount}/${r.maxPlayers} người • Vốn: ${r.initialCash}M</div>
+        <div style="font-weight: 800; font-size: 0.85rem; color: #2D3436;">${r.name}</div>
+        <div style="font-size: 0.72rem; color: #636E72;">Mã: <b>${r.roomCode}</b> • ${r.playersCount}/${r.maxPlayers} người</div>
       </div>
-      <button class="btn-chunky btn-blue" style="padding: 6px 14px; font-size: 0.8rem;" onclick="document.getElementById('input-room-code').value='${r.roomCode}'; document.getElementById('btn-join-room').click();">
+      <button class="btn-chunky btn-blue" style="padding: 4px 12px; font-size: 0.75rem;" onclick="document.getElementById('input-room-code').value='${r.roomCode}'; document.getElementById('btn-join-room').click();">
         Vào
       </button>
     </div>
