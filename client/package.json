@@ -1,0 +1,22 @@
+{
+  "name": "business-chess-client",
+  "version": "1.0.0",
+  "description": "Business Chess 3D Web & Mobile Client",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "canvas-confetti": "^1.9.3",
+    "socket.io-client": "^4.7.5",
+    "three": "^0.166.1"
+  },
+  "devDependencies": {
+    "@types/canvas-confetti": "^1.9.0",
+    "@types/three": "^0.166.0",
+    "typescript": "^5.5.2",
+    "vite": "^5.3.3"
+  }
+}

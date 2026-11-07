@@ -1,0 +1,257 @@
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800&display=swap');
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+body, html {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  font-family: 'Nunito', sans-serif;
+  background-color: #EBF2FA;
+}
+
+h1, h2, h3, .font-heading {
+  font-family: 'Fredoka', sans-serif;
+}
+
+#canvas-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+/* UI Overlay */
+#ui-root {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 10;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.interactive {
+  pointer-events: auto;
+}
+
+/* Chunky Neumorphic & Pill Button Styles */
+.btn-chunky {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Fredoka', sans-serif;
+  font-weight: 700;
+  font-size: 1.1rem;
+  padding: 12px 24px;
+  border-radius: 9999px;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+  position: relative;
+  text-decoration: none;
+}
+
+.btn-chunky:active {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.2) !important;
+}
+
+.btn-primary {
+  background: linear-gradient(180deg, #00D2A0 0%, #00B894 100%);
+  color: white;
+  box-shadow: 0 4px 0 #008f72, 0 8px 15px rgba(0, 184, 148, 0.35);
+}
+
+.btn-accent {
+  background: linear-gradient(180deg, #FED330 0%, #FDCB6E 100%);
+  color: #2D3436;
+  box-shadow: 0 4px 0 #E17055, 0 8px 15px rgba(253, 203, 110, 0.4);
+}
+
+.btn-blue {
+  background: linear-gradient(180deg, #45AAF2 0%, #0984E3 100%);
+  color: white;
+  box-shadow: 0 4px 0 #0762a8, 0 8px 15px rgba(9, 132, 227, 0.35);
+}
+
+.btn-danger {
+  background: linear-gradient(180deg, #FC5C65 0%, #D63031 100%);
+  color: white;
+  box-shadow: 0 4px 0 #a31e1f, 0 8px 15px rgba(214, 48, 49, 0.35);
+}
+
+.btn-white {
+  background: #FFFFFF;
+  color: #2D3436;
+  box-shadow: 0 4px 0 #DFE6E9, 0 6px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* Glassmorphism Cards */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-radius: 24px;
+  border: 2px solid rgba(255, 255, 255, 0.8);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
+}
+
+/* Top Bar */
+.top-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 18px;
+  gap: 12px;
+}
+
+.player-badges {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.player-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 20px;
+  border: 2px solid transparent;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.06);
+  transition: all 0.25s ease;
+}
+
+.player-badge.active-turn {
+  border-color: #00B894;
+  transform: scale(1.05);
+  box-shadow: 0 6px 16px rgba(0, 184, 148, 0.35);
+}
+
+.player-badge.bankrupt {
+  opacity: 0.45;
+  filter: grayscale(1);
+}
+
+.player-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #EBF2FA;
+}
+
+.player-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.player-name {
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: #2D3436;
+}
+
+.player-cash {
+  font-size: 0.85rem;
+  font-weight: 900;
+  color: #00B894;
+}
+
+/* Turn Timer Bar */
+.timer-container {
+  width: 100%;
+  height: 6px;
+  background: rgba(0, 0, 0, 0.08);
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.timer-fill {
+  height: 100%;
+  background: #00B894;
+  width: 100%;
+  transition: width 1s linear, background-color 0.3s;
+}
+
+/* Bottom Controls */
+.bottom-drawer {
+  padding: 16px 20px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+}
+
+.action-pill {
+  font-size: 1.25rem;
+  padding: 14px 36px;
+}
+
+/* Modals */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(45, 52, 54, 0.45);
+  backdrop-filter: blur(6px);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.modal-content {
+  max-width: 460px;
+  width: 100%;
+  padding: 28px;
+  text-align: center;
+  animation: modalPop 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes modalPop {
+  0% { transform: scale(0.85); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* Responsive for mobile */
+@media (max-width: 768px) {
+  .player-badges {
+    max-width: 80%;
+  }
+  .player-badge {
+    padding: 4px 8px;
+  }
+  .player-avatar {
+    width: 28px;
+    height: 28px;
+  }
+  .player-name {
+    font-size: 0.72rem;
+  }
+  .player-cash {
+    font-size: 0.75rem;
+  }
+  .action-pill {
+    width: 100%;
+    font-size: 1.1rem;
+    padding: 14px 20px;
+  }
+}
