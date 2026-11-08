@@ -308,6 +308,11 @@ function bindSocketEvents() {
     const slot = data.snapshot.players.findIndex((p: any) => p.id === data.userId);
     latestPlayersSnapshot = data.snapshot.players;
 
+    const total = data.dice1 + data.dice2;
+    const isDouble = data.dice1 === data.dice2;
+    const playerName = player ? player.username : 'Người chơi';
+    showToast(`🎲 ${playerName} lắc được ${total} điểm (${data.dice1} + ${data.dice2}${isDouble ? ' - ĐÔI! 🎉' : ''})!`);
+
     boardScene.dicePhysics.roll(data.dice1, data.dice2, () => {
       boardScene.tokenManager.moveTokenSteps(
         data.userId,
