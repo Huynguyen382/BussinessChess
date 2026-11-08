@@ -624,6 +624,9 @@ function bindSocketEvents() {
           }
 
           handleTileActionResult(data.actionResult, isMe, player, landingPos);
+          if (data.snapshot) {
+            checkMyTurn(data.snapshot);
+          }
         }
       );
     });

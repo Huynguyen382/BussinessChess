@@ -277,6 +277,9 @@ export class BuildingMesh {
   }
 
   private animateBounce(group: THREE.Group) {
+    if (group.userData.__bounceInterval) {
+      clearInterval(group.userData.__bounceInterval);
+    }
     let progress = 0;
     const interval = setInterval(() => {
       progress += 0.07;
@@ -284,10 +287,12 @@ export class BuildingMesh {
       if (progress >= 1) {
         group.scale.set(1, 1, 1);
         clearInterval(interval);
+        group.userData.__bounceInterval = null;
       } else {
         group.scale.set(s, s, s);
       }
     }, 16);
+    group.userData.__bounceInterval = interval;
   }
 
   public update(elapsedTime: number) {
@@ -300,6 +305,9 @@ export class BuildingMesh {
 
   public reset() {
     this.buildingMap.forEach((mesh) => {
+      if (mesh.userData.__bounceInterval) {
+        clearInterval(mesh.userData.__bounceInterval);
+      }
       this.group.remove(mesh);
     });
     this.buildingMap.clear();

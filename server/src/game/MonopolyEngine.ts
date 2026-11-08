@@ -142,6 +142,7 @@ export class MonopolyEngine {
     this.turnState.isDouble = isDouble;
 
     const prevPos = player.position;
+    const wasInJail = player.inJail;
 
     // Handle Jail
     if (player.inJail) {
@@ -171,14 +172,15 @@ export class MonopolyEngine {
       }
     }
 
-    // Check consecutive doubles
-    if (isDouble) {
+    // Check consecutive doubles (only counts if wasn't in jail)
+    if (isDouble && !wasInJail) {
       this.turnState.consecutiveDoubles++;
       if (this.turnState.consecutiveDoubles >= 3) {
         player.position = 10;
         player.inJail = true;
         player.jailTurns = 0;
         this.turnState.consecutiveDoubles = 0;
+        this.turnState.isDouble = false;
         this.turnState.phase = 'END_TURN';
         this.addLog(`${player.username} đổ đôi 3 lần liên tiếp! Bị tống vào tù vì vi phạm giao thông!`, 'JAIL', player.id, player.username);
         return {
@@ -192,6 +194,10 @@ export class MonopolyEngine {
       }
     } else {
       this.turnState.consecutiveDoubles = 0;
+      if (wasInJail) {
+        // Ra tù bằng đổ đôi sẽ di chuyển bình thường nhưng không được lắc thêm lượt
+        this.turnState.isDouble = false;
+      }
     }
 
     // Move token
@@ -223,7 +229,7 @@ export class MonopolyEngine {
   private evaluateTileAction(player: PlayerState, tile: BoardTile, diceSum: number): any {
     switch (tile.type) {
       case 'GO':
-        this.turnState.phase = 'END_TURN';
+        this.setNextPhaseAfterAction(player);
         return { type: 'GO', message: 'Dừng chân tại ô Khởi Hành.' };
 
       case 'PROPERTY':
@@ -254,14 +260,14 @@ export class MonopolyEngine {
               canAfford: player.balance >= cost
             };
           } else {
-            this.turnState.phase = 'END_TURN';
+            this.setNextPhaseAfterAction(player);
             return { type: 'OWNED_SELF', message: 'Đang ghé thăm bất động sản của chính mình.' };
           }
         } else {
           // Owned by other - pay rent
           const owner = this.players.find(p => p.id === prop.ownerId);
           if (!owner || owner.isBankrupt) {
-            this.turnState.phase = 'END_TURN';
+            this.setNextPhaseAfterAction(player);
             return { type: 'OWNER_BANKRUPT' };
           }
 
@@ -277,7 +283,7 @@ export class MonopolyEngine {
             return { type: 'BANKRUPT', owedTo: owner.username, rentOwed: rent };
           }
 
-          this.turnState.phase = 'END_TURN';
+          this.setNextPhaseAfterAction(player);
           return {
             type: 'PAY_RENT',
             tileId: tile.id,
@@ -296,7 +302,7 @@ export class MonopolyEngine {
           this.handleBankruptcy(player);
           return { type: 'BANKRUPT', taxPaid: actualPaid };
         }
-        this.turnState.phase = 'END_TURN';
+        this.setNextPhaseAfterAction(player);
         return { type: 'TAX', amount: tax };
       }
 
@@ -304,16 +310,18 @@ export class MonopolyEngine {
         player.position = 10;
         player.inJail = true;
         player.jailTurns = 0;
+        this.turnState.isDouble = false;
+        this.turnState.consecutiveDoubles = 0;
         this.turnState.phase = 'END_TURN';
         this.addLog(`${player.username} bước vào ô Vào Tù! Phải chấp hành tạm giam.`, 'JAIL', player.id, player.username);
         return { type: 'GO_TO_JAIL' };
 
       case 'JAIL':
-        this.turnState.phase = 'END_TURN';
+        this.setNextPhaseAfterAction(player);
         return { type: 'JUST_VISITING', message: 'Chỉ ghé thăm nhà tù.' };
 
       case 'FREE_PARKING':
-        this.turnState.phase = 'END_TURN';
+        this.setNextPhaseAfterAction(player);
         return { type: 'FREE_PARKING', message: 'Nghỉ chân miễn phí tại bãi đỗ xe.' };
 
       case 'CHANCE':
@@ -322,7 +330,12 @@ export class MonopolyEngine {
         const card = deck.shift()!;
         deck.push(card);
         const cardResult = this.applyCard(player, card);
-        this.turnState.phase = 'END_TURN';
+        if (!player.inJail && !player.isBankrupt) {
+          this.setNextPhaseAfterAction(player);
+        } else {
+          this.turnState.isDouble = false;
+          this.turnState.phase = 'END_TURN';
+        }
         return {
           type: 'CARD',
           cardType: tile.type,
@@ -332,7 +345,7 @@ export class MonopolyEngine {
       }
 
       default:
-        this.turnState.phase = 'END_TURN';
+        this.setNextPhaseAfterAction(player);
         return { type: 'UNKNOWN' };
     }
   }
@@ -417,7 +430,7 @@ export class MonopolyEngine {
       return { success: false, tileId, level: prop.level, remainingCash: player.balance, error: 'Bất động sản đã có chủ' };
     }
 
-    this.turnState.phase = 'END_TURN';
+    this.setNextPhaseAfterAction(player);
     this.updateNetWorth();
     return {
       success: true,
@@ -425,6 +438,30 @@ export class MonopolyEngine {
       level: prop.level,
       remainingCash: player.balance
     };
+  }
+
+  public setNextPhaseAfterAction(player: PlayerState): 'ROLL_DICE' | 'END_TURN' {
+    if (this.turnState.isDouble && !player.inJail && !player.isBankrupt) {
+      this.turnState.phase = 'ROLL_DICE';
+      this.addLog(`🎉 ${player.username} đổ đôi thành công và được lắc xí ngầu thêm một lượt nữa!`, 'ALERT', player.id, player.username);
+      return 'ROLL_DICE';
+    } else {
+      this.turnState.phase = 'END_TURN';
+      return 'END_TURN';
+    }
+  }
+
+  public skipBuyProperty(userId: string): { success: boolean; phase: 'ROLL_DICE' | 'END_TURN' } {
+    const player = this.getCurrentPlayer();
+    if (!player || player.id !== userId) {
+      return { success: false, phase: this.turnState.phase as any };
+    }
+    if (this.turnState.phase === 'BUY_PROPERTY') {
+      const phase = this.setNextPhaseAfterAction(player);
+      this.addLog(`${player.username} quyết định không mua ô cờ này.`, 'ACTION', player.id, player.username);
+      return { success: true, phase };
+    }
+    return { success: false, phase: this.turnState.phase as any };
   }
 
   private applyCard(player: PlayerState, card: GameCard): string {

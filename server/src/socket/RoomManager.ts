@@ -175,6 +175,7 @@ export class RoomManager {
         snapshot: room.engine.getSnapshot()
       });
 
+      this.checkBankruptcyOrGameOver(room);
       this.checkTriggerBot(room);
     } catch (err: any) {
       socket.emit('error:message', { message: err.message });
@@ -208,9 +209,8 @@ export class RoomManager {
     const room = this.rooms.get(roomCode);
     if (!room || !room.engine || room.status !== 'PLAYING') return;
 
-    const player = room.engine.getCurrentPlayer();
-    if (player && player.id === socket.id && room.engine.turnState.phase === 'BUY_PROPERTY') {
-      room.engine.turnState.phase = 'END_TURN';
+    const res = room.engine.skipBuyProperty(socket.id);
+    if (res.success) {
       this.io.to(room.roomCode).emit('game:state_sync', { snapshot: room.engine.getSnapshot() });
       this.checkTriggerBot(room);
     }
@@ -275,6 +275,8 @@ export class RoomManager {
                 actionResult: res.actionResult,
                 snapshot: room.engine.getSnapshot()
               });
+              this.checkBankruptcyOrGameOver(room);
+              this.checkTriggerBot(room);
             } catch (e) {}
           } else {
             // Tự động kết thúc lượt
@@ -343,8 +345,10 @@ export class RoomManager {
           }
           this.checkTriggerBot(room);
         } else if (action === 'SKIP_BUY') {
-          room.engine!.turnState.phase = 'END_TURN';
-          this.io.to(room.roomCode).emit('game:state_sync', { snapshot: room.engine!.getSnapshot() });
+          const res = room.engine!.skipBuyProperty(curPlayer.id);
+          if (res.success) {
+            this.io.to(room.roomCode).emit('game:state_sync', { snapshot: room.engine!.getSnapshot() });
+          }
           this.checkTriggerBot(room);
         } else if (action === 'END_TURN') {
           try {
@@ -368,6 +372,46 @@ export class RoomManager {
           } catch (e) {}
         }
       });
+    }
+  }
+
+  private checkBankruptcyOrGameOver(room: RoomInfo) {
+    if (!room.engine || room.status !== 'PLAYING') return;
+
+    if (room.engine.isGameOver || room.engine.checkGameOver()) {
+      room.status = 'FINISHED';
+      if (room.timerInterval) clearInterval(room.timerInterval);
+      this.io.to(room.roomCode).emit('game:over', {
+        winnerId: room.engine.winnerId,
+        snapshot: room.engine.getSnapshot()
+      });
+      return;
+    }
+
+    const curPlayer = room.engine.getCurrentPlayer();
+    if (curPlayer && curPlayer.isBankrupt) {
+      setTimeout(() => {
+        if (!room.engine || room.status !== 'PLAYING') return;
+        try {
+          const res = room.engine.endTurn(curPlayer.id);
+          if (res.isGameOver) {
+            room.status = 'FINISHED';
+            if (room.timerInterval) clearInterval(room.timerInterval);
+            this.io.to(room.roomCode).emit('game:over', {
+              winnerId: room.engine.winnerId,
+              snapshot: room.engine.getSnapshot()
+            });
+          } else {
+            this.io.to(room.roomCode).emit('game:turn_change', {
+              nextUserId: res.nextUserId,
+              timeRemaining: room.turnTimeout,
+              snapshot: room.engine.getSnapshot()
+            });
+            this.resetTurnTimer(room);
+            this.checkTriggerBot(room);
+          }
+        } catch (e) {}
+      }, 1200);
     }
   }
 
