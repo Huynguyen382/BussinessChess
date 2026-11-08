@@ -12,10 +12,10 @@ export class CameraManager {
   // Khóa góc nhìn chuẩn Isometric (Mặc định: KHÓA để ổn định như Monopoly GO)
   public isLocked: boolean = true;
 
-  // Góc nhìn vàng tiêu chuẩn: Isometric 45 độ, góc nhìn nghiêng bao quát toàn bộ 40 ô
+  // Góc nhìn vàng tiêu chuẩn: Isometric 45 độ, góc nhìn cận cảnh sắc nét bao quát toàn bộ 40 ô
   private static readonly GOLDEN_THETA = Math.PI / 4;       // 45 độ góc ngang
-  private static readonly GOLDEN_PHI = Math.PI / 3.25;      // ~55 độ góc chúc xuống
-  private spherical = new THREE.Spherical(37, CameraManager.GOLDEN_PHI, CameraManager.GOLDEN_THETA);
+  private static readonly GOLDEN_PHI = Math.PI / 3.4;        // ~53 độ góc chúc xuống tối ưu hiển thị mặt ô cờ
+  private spherical = new THREE.Spherical(26.8, CameraManager.GOLDEN_PHI, CameraManager.GOLDEN_THETA);
 
   // Touch & Mouse orbit control state
   private isPointerDown = false;
@@ -28,7 +28,7 @@ export class CameraManager {
     this.isMobile = window.innerWidth <= 768;
 
     const aspect = window.innerWidth / window.innerHeight;
-    const fov = this.isMobile ? 54 : 44;
+    const fov = aspect < 1 ? (aspect < 0.6 ? 53 : 50) : 46;
     this.camera = new THREE.PerspectiveCamera(fov, aspect, 0.1, 1000);
 
     this.lockToGoldenAngle();
@@ -40,7 +40,9 @@ export class CameraManager {
   public lockToGoldenAngle() {
     this.spherical.theta = CameraManager.GOLDEN_THETA;
     this.spherical.phi = CameraManager.GOLDEN_PHI;
-    this.spherical.radius = this.isMobile ? 39 : 36;
+    // Cận cảnh sắc nét: gần hơn ~26% để thấy rõ từng tên địa điểm, huy hiệu và mô hình 3D,
+    // đồng thời vẫn bao trọn 100% 4 cạnh bàn cờ trong khung nhìn
+    this.spherical.radius = this.isMobile ? 30.5 : 26.8;
   }
 
   public setLocked(locked: boolean) {
@@ -62,10 +64,10 @@ export class CameraManager {
       this.spherical.theta = CameraManager.GOLDEN_THETA;
       this.spherical.phi = CameraManager.GOLDEN_PHI;
       if (!this.isFollowMode) {
-        this.spherical.radius = this.isMobile ? 39 : 36;
+        this.spherical.radius = this.isMobile ? 30.5 : 26.8;
       }
     } else {
-      this.spherical.radius = THREE.MathUtils.clamp(this.spherical.radius, 14, 55);
+      this.spherical.radius = THREE.MathUtils.clamp(this.spherical.radius, 14, 48);
       this.spherical.phi = THREE.MathUtils.clamp(this.spherical.phi, 0.2, Math.PI / 2.1);
     }
 
@@ -162,7 +164,7 @@ export class CameraManager {
   public onResize() {
     this.isMobile = window.innerWidth <= 768;
     this.camera.aspect = window.innerWidth / window.innerHeight;
-    this.camera.fov = this.isMobile ? 54 : 44;
+    this.camera.fov = this.camera.aspect < 1 ? (this.camera.aspect < 0.6 ? 53 : 50) : 46;
     this.camera.updateProjectionMatrix();
     this.updateCameraTransform();
   }

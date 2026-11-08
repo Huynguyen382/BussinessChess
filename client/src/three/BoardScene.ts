@@ -654,66 +654,88 @@ export class BoardScene {
     this.tilePositions = new Array(40);
     this.tileRotations = new Array(40);
 
+    const TILE_LANDMARKS: Record<number, { icon: string; subtitle: string }> = {
+      1: { icon: '🛶', subtitle: 'Chợ Nổi Cái Răng' },
+      2: { icon: '🎁', subtitle: 'Hòm Khí Vận' },
+      3: { icon: '🦀', subtitle: 'Mũi Cực Nam' },
+      4: { icon: '💸', subtitle: 'Thuế Nhà Nước' },
+      5: { icon: '🚌', subtitle: 'Đầu Mối Miền Tây' },
+      6: { icon: '🗼', subtitle: 'Ngọn Hải Đăng' },
+      7: { icon: '❓', subtitle: 'Thẻ May Rủi' },
+      8: { icon: '🏄', subtitle: 'Đồi Cát Bay' },
+      9: { icon: '🏖️', subtitle: 'Vịnh Biển Đẹp' },
+      11: { icon: '🌸', subtitle: 'Xứ Ngàn Hoa' },
+      12: { icon: '⚡', subtitle: 'Lưới Điện Quốc Gia' },
+      13: { icon: '☕', subtitle: 'Thủ Phủ Cà Phê' },
+      14: { icon: '🌲', subtitle: 'Biển Hồ Rừng Xanh' },
+      15: { icon: '🚂', subtitle: 'Ga Trọng Điểm' },
+      16: { icon: '🌊', subtitle: 'Eo Gió Kỳ Co' },
+      17: { icon: '🎁', subtitle: 'Hòm Khí Vận' },
+      18: { icon: '🏮', subtitle: 'Phố Cổ Hoài Phố' },
+      19: { icon: '🌉', subtitle: 'Cầu Rồng Sông Hàn' },
+      21: { icon: '🏯', subtitle: 'Cố Đô Di Sản' },
+      22: { icon: '❓', subtitle: 'Thẻ May Rủi' },
+      23: { icon: '🦇', subtitle: 'Hang Động Kỳ Quan' },
+      24: { icon: '🏖️', subtitle: 'Bãi Biển Xanh' },
+      25: { icon: '🚂', subtitle: 'Ga Miền Trung' },
+      26: { icon: '⚓', subtitle: 'Thành Phố Hoa Phượng' },
+      27: { icon: '⛵', subtitle: 'Kỳ Quan Vịnh Hạ Long' },
+      28: { icon: '💧', subtitle: 'Nguồn Nước Tinh Khiết' },
+      29: { icon: '🛶', subtitle: 'Non Nước Tràng An' },
+      31: { icon: '🐢', subtitle: 'Hồ Tây Ngàn Năm' },
+      32: { icon: '🏮', subtitle: '36 Phố Phường' },
+      33: { icon: '🎁', subtitle: 'Hòm Khí Vận' },
+      34: { icon: '🏛️', subtitle: 'Trung Tâm Thủ Đô' },
+      35: { icon: '🚂', subtitle: 'Ga Đầu Mối Phía Bắc' },
+      36: { icon: '❓', subtitle: 'Thẻ May Rủi' },
+      37: { icon: '🏙️', subtitle: 'Tháp 81 Tầng' },
+      38: { icon: '💎', subtitle: 'Thuế Tiêu Dùng' },
+      39: { icon: '👑', subtitle: 'Đại Lộ Hoàng Kim' }
+    };
+
     for (let i = 0; i < 40; i++) {
       const tile = tiles[i];
       let x = 0;
       let z = 0;
-      let w = normalWidth;
-      let l = cornerSize;
       let angle = 0;
+      const isCorner = (i === 0 || i === 10 || i === 20 || i === 30);
 
       if (i === 0) {
         x = boardSize / 2 - cornerSize / 2;
         z = boardSize / 2 - cornerSize / 2;
-        w = cornerSize;
-        l = cornerSize;
         angle = -Math.PI / 4;
       } else if (i > 0 && i < 10) {
         const offset = (i - 1) * normalWidth + normalWidth / 2;
         x = (boardSize / 2 - cornerSize) - offset;
         z = boardSize / 2 - cornerSize / 2;
-        w = normalWidth;
-        l = cornerSize;
         angle = 0;
       } else if (i === 10) {
         x = -(boardSize / 2 - cornerSize / 2);
         z = boardSize / 2 - cornerSize / 2;
-        w = cornerSize;
-        l = cornerSize;
         angle = Math.PI / 4;
       } else if (i > 10 && i < 20) {
         const offset = (i - 11) * normalWidth + normalWidth / 2;
         x = -(boardSize / 2 - cornerSize / 2);
         z = (boardSize / 2 - cornerSize) - offset;
-        w = cornerSize;
-        l = normalWidth;
-        angle = Math.PI / 2;
+        angle = -Math.PI / 2;
       } else if (i === 20) {
         x = -(boardSize / 2 - cornerSize / 2);
         z = -(boardSize / 2 - cornerSize / 2);
-        w = cornerSize;
-        l = cornerSize;
         angle = (3 * Math.PI) / 4;
       } else if (i > 20 && i < 30) {
         const offset = (i - 21) * normalWidth + normalWidth / 2;
         x = -(boardSize / 2 - cornerSize) + offset;
         z = -(boardSize / 2 - cornerSize / 2);
-        w = normalWidth;
-        l = cornerSize;
         angle = Math.PI;
       } else if (i === 30) {
         x = boardSize / 2 - cornerSize / 2;
         z = -(boardSize / 2 - cornerSize / 2);
-        w = cornerSize;
-        l = cornerSize;
         angle = -(3 * Math.PI) / 4;
       } else {
         const offset = (i - 31) * normalWidth + normalWidth / 2;
         x = boardSize / 2 - cornerSize / 2;
         z = -(boardSize / 2 - cornerSize) + offset;
-        w = cornerSize;
-        l = normalWidth;
-        angle = -Math.PI / 2;
+        angle = Math.PI / 2;
       }
 
       const pos = new THREE.Vector3(x, 0.15, z);
@@ -722,41 +744,43 @@ export class BoardScene {
 
       const tileGroup = new THREE.Group();
       tileGroup.position.copy(pos);
+      tileGroup.rotation.y = angle;
 
-      // Ô cờ bo tròn góc mềm mại với RoundedBoxGeometry
-      const baseGeo = new RoundedBoxGeometry(w * 0.96, tileHeight, l * 0.96, 4, 0.08);
       const baseMat = new THREE.MeshStandardMaterial({
         color: '#FCFCFC',
         roughness: 0.28,
         metalness: 0.04
       });
-      const baseMesh = new THREE.Mesh(baseGeo, baseMat);
-      baseMesh.receiveShadow = true;
-      tileGroup.add(baseMesh);
 
-      // Gờ đá bó vỉa bo cong ngăn cách mặt đường
-      const curb = DetailedModels.createTileCurbs(w, l, angle);
-      tileGroup.add(curb);
+      if (isCorner) {
+        // Ô góc 3.2 x 3.2
+        const baseGeo = new RoundedBoxGeometry(cornerSize * 0.96, tileHeight, cornerSize * 0.96, 4, 0.08);
+        const baseMesh = new THREE.Mesh(baseGeo, baseMat);
+        baseMesh.receiveShadow = true;
+        tileGroup.add(baseMesh);
 
-      // Dải màu nhận diện phân khu bo cong bóng bẩy
-      if (tile.districtColor) {
-        const barLength = Math.min(w, l) * 0.96;
-        const barGeo = new RoundedBoxGeometry(w > l ? w * 0.96 : barLength, 0.06, w > l ? barLength * 0.28 : l * 0.28, 2, 0.02);
-        const barMat = new THREE.MeshStandardMaterial({
-          color: tile.districtColor,
-          roughness: 0.24,
-          metalness: 0.08
-        });
-        const bar = new THREE.Mesh(barGeo, barMat);
-        bar.position.y = tileHeight / 2 + 0.02;
-        tileGroup.add(bar);
+        const cornerLabel = this.createCornerLabel(tile, cornerSize * 0.95, cornerSize * 0.95);
+        cornerLabel.position.y = tileHeight / 2 + 0.015;
+        cornerLabel.rotation.x = -Math.PI / 2;
+        tileGroup.add(cornerLabel);
+      } else {
+        // Ô thường: width = normalWidth (1.95), length = cornerSize (3.2)
+        const baseGeo = new RoundedBoxGeometry(normalWidth * 0.96, tileHeight, cornerSize * 0.96, 4, 0.08);
+        const baseMesh = new THREE.Mesh(baseGeo, baseMat);
+        baseMesh.receiveShadow = true;
+        tileGroup.add(baseMesh);
+
+        // Gờ bó vỉa bo cong ngăn cách mặt đường
+        const curb = DetailedModels.createTileCurbs(normalWidth, cornerSize, 0);
+        tileGroup.add(curb);
+
+        // Card đồ họa độ phân giải cao bao phủ trọn vẹn bề mặt ô
+        const lm = TILE_LANDMARKS[i] || { icon: '📍', subtitle: 'Bất Động Sản' };
+        const labelMesh = this.createTileLabel(tile, lm, normalWidth * 0.95, cornerSize * 0.95);
+        labelMesh.position.y = tileHeight / 2 + 0.015;
+        labelMesh.rotation.x = -Math.PI / 2;
+        tileGroup.add(labelMesh);
       }
-
-      // 2X High-DPI Crisp Tile Typography with Badges & Vector Icons
-      const labelMesh = this.createTileLabel(tile, w, l);
-      labelMesh.position.y = tileHeight / 2 + 0.035;
-      labelMesh.rotation.x = -Math.PI / 2;
-      tileGroup.add(labelMesh);
 
       this.scene.add(tileGroup);
     }
@@ -764,115 +788,387 @@ export class BoardScene {
     this.tokenManager.setTilePositions(this.tilePositions);
   }
 
-  private createTileLabel(tile: BoardTileMeta, w: number, l: number): THREE.Mesh {
+  private createTileLabel(
+    tile: BoardTileMeta,
+    landmark: { icon: string; subtitle: string },
+    w: number,
+    l: number
+  ): THREE.Mesh {
     const canvas = document.createElement('canvas');
-    canvas.width = 512;
-    canvas.height = 512;
+    canvas.width = 640;
+    canvas.height = 1024;
     const ctx = canvas.getContext('2d')!;
 
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.04)';
-    ctx.lineWidth = 4;
-    ctx.strokeRect(16, 16, 480, 480);
+    // 1. Thẻ bài nền trắng sứ sang trọng bo tròn góc
+    ctx.fillStyle = '#FFFFFF';
+    this.drawRoundedRect(ctx, 12, 12, 616, 1000, 36);
+    ctx.fill();
 
-    if (tile.type === 'GO') {
-      ctx.fillStyle = '#00B894';
-      ctx.font = '900 84px sans-serif';
-      ctx.fillText('GO', 256, 175);
+    ctx.strokeStyle = '#DCDDE1';
+    ctx.lineWidth = 6;
+    ctx.stroke();
 
-      ctx.fillStyle = '#E6FFFA';
-      this.drawRoundedRect(ctx, 110, 260, 292, 70, 35);
+    if (tile.type === 'PROPERTY') {
+      // ==========================================
+      // 🏰 ĐẤT BẤT ĐỘNG SẢN: Banner Màu Rực Rỡ + Tên + Biểu Tượng + Giá
+      // ==========================================
+      const headerColor = tile.districtColor || '#0984E3';
+
+      // Header Banner chiếm 28% đỉnh thẻ
+      ctx.fillStyle = headerColor;
+      this.drawRoundedRect(ctx, 16, 16, 608, 270, 28);
       ctx.fill();
 
-      ctx.fillStyle = '#00B894';
-      ctx.font = '900 42px sans-serif';
-      ctx.fillText('+200M', 256, 298);
-    } else if (tile.type === 'JAIL') {
-      ctx.fillStyle = '#E17055';
-      ctx.font = '900 62px sans-serif';
-      ctx.fillText('NHÀ TÙ', 256, 195);
-      ctx.fillStyle = '#636E72';
-      ctx.font = '800 40px sans-serif';
-      ctx.fillText('Thăm tù', 256, 295);
-    } else if (tile.type === 'GO_TO_JAIL') {
-      ctx.fillStyle = '#D63031';
-      ctx.font = '900 62px sans-serif';
-      ctx.fillText('VÀO TÙ', 256, 195);
-      ctx.font = '68px sans-serif';
-      ctx.fillText('🚨', 256, 305);
-    } else if (tile.type === 'FREE_PARKING') {
-      ctx.fillStyle = '#0984E3';
-      ctx.font = '900 58px sans-serif';
-      ctx.fillText('ĐỖ XE', 256, 185);
-      ctx.font = '54px sans-serif';
-      ctx.fillText('🅿️', 256, 290);
-    } else if (tile.type === 'CHANCE') {
-      ctx.fillStyle = '#E84393';
-      ctx.font = '900 84px sans-serif';
-      ctx.fillText('?', 256, 185);
-      ctx.font = '800 44px sans-serif';
-      ctx.fillText('Cơ Hội', 256, 305);
-    } else if (tile.type === 'COMMUNITY_CHEST') {
-      ctx.font = '72px sans-serif';
-      ctx.fillText('🎁', 256, 185);
-      ctx.fillStyle = '#E17055';
-      ctx.font = '800 44px sans-serif';
-      ctx.fillText('Khí Vận', 256, 300);
-    } else if (tile.type === 'TAX') {
-      ctx.fillStyle = '#D63031';
-      ctx.font = '900 50px sans-serif';
-      ctx.fillText(tile.name, 256, 195);
-
-      ctx.fillStyle = '#FFEAEA';
-      this.drawRoundedRect(ctx, 130, 260, 252, 60, 30);
+      // Dải bóng phản chiếu ánh sáng (Gloss Specular Strip)
+      const glossGrad = ctx.createLinearGradient(0, 16, 0, 120);
+      glossGrad.addColorStop(0, 'rgba(255, 255, 255, 0.45)');
+      glossGrad.addColorStop(1, 'rgba(255, 255, 255, 0.0)');
+      ctx.fillStyle = glossGrad;
+      this.drawRoundedRect(ctx, 20, 20, 600, 90, 20);
       ctx.fill();
 
-      ctx.fillStyle = '#D63031';
-      ctx.font = '900 38px sans-serif';
-      ctx.fillText('-100M', 256, 292);
-    } else if (tile.type === 'RAILROAD') {
-      ctx.font = '54px sans-serif';
-      ctx.fillText('🚂', 256, 175);
-      ctx.fillStyle = '#2D3436';
-      ctx.font = '800 40px sans-serif';
-      ctx.fillText(tile.name, 256, 250);
+      // Ngôi sao vàng & Tên phân khu
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = '900 36px system-ui, -apple-system, sans-serif';
+      ctx.fillText(`★ KHU VỰC ${tile.district || 1} ★`, 320, 75);
 
-      ctx.fillStyle = '#00B894';
-      ctx.font = '900 38px sans-serif';
-      ctx.fillText('200M', 256, 335);
-    } else if (tile.type === 'UTILITY') {
-      ctx.font = '54px sans-serif';
-      ctx.fillText(tile.name.includes('Điện') ? '💡' : '💧', 256, 175);
-      ctx.fillStyle = '#2D3436';
-      ctx.font = '800 40px sans-serif';
-      ctx.fillText(tile.name, 256, 250);
+      // Tên Địa Danh In Lớn Đậm Nét (Màu trắng nổi bật trên nền phân khu)
+      ctx.font = '900 60px system-ui, -apple-system, sans-serif';
+      if (tile.name.length > 10) {
+        // Tên dài tự ngắt thành 2 dòng (vd: BUÔN MA / THUỘT, LANDMARK / 81)
+        const parts = tile.name.split(' ');
+        const mid = Math.ceil(parts.length / 2);
+        const line1 = parts.slice(0, mid).join(' ');
+        const line2 = parts.slice(mid).join(' ');
+        ctx.font = '900 52px system-ui, -apple-system, sans-serif';
+        ctx.fillText(line1, 320, 150);
+        ctx.fillText(line2, 320, 215);
+      } else {
+        ctx.fillText(tile.name, 320, 185);
+      }
 
-      ctx.fillStyle = '#00B894';
-      ctx.font = '900 38px sans-serif';
-      ctx.fillText('150M', 256, 335);
-    } else {
-      ctx.fillStyle = '#2D3436';
-      ctx.font = '900 46px sans-serif';
-      ctx.fillText(tile.name, 256, 235);
+      // Mô Tả Danh Thắng (Subtitle)
+      ctx.fillStyle = '#57606F';
+      ctx.font = '700 32px system-ui, -apple-system, sans-serif';
+      ctx.fillText(landmark.subtitle, 320, 360);
 
+      // Huy Hiệu Biểu Tượng Địa Danh (Landmark Crest Medallion)
+      const circleGrad = ctx.createRadialGradient(320, 560, 30, 320, 560, 140);
+      circleGrad.addColorStop(0, '#FFFFFF');
+      circleGrad.addColorStop(1, '#F1F2F6');
+      ctx.fillStyle = circleGrad;
+      ctx.beginPath();
+      ctx.arc(320, 560, 140, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.strokeStyle = headerColor;
+      ctx.lineWidth = 8;
+      ctx.stroke();
+
+      // Icon biểu tượng 3D/Vector lớn 120px
+      ctx.font = '120px "Segoe UI Emoji", "Apple Color Emoji", sans-serif';
+      ctx.fillText(landmark.icon, 320, 575);
+
+      // Hộp Giá Bán Dạng Nút Pill Nổi Bật Ở Đáy (₫ 200M)
       if (tile.price > 0) {
-        ctx.fillStyle = '#F0FFF4';
-        this.drawRoundedRect(ctx, 140, 310, 232, 64, 32);
+        ctx.fillStyle = '#E8F8F5';
+        this.drawRoundedRect(ctx, 110, 840, 420, 115, 58);
         ctx.fill();
 
+        ctx.strokeStyle = '#00B894';
+        ctx.lineWidth = 6;
+        ctx.stroke();
+
         ctx.fillStyle = '#00B894';
-        ctx.font = '900 42px sans-serif';
-        ctx.fillText(`${tile.price}M`, 256, 345);
+        ctx.font = '900 56px system-ui, -apple-system, sans-serif';
+        ctx.fillText(`₫ ${tile.price}M`, 320, 898);
       }
+
+    } else if (tile.type === 'RAILROAD') {
+      // ==========================================
+      // 🚂 GA XE LỬA / BẾN XE
+      // ==========================================
+      const railColor = '#2F3542';
+      ctx.fillStyle = railColor;
+      this.drawRoundedRect(ctx, 16, 16, 608, 220, 28);
+      ctx.fill();
+
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = '900 34px system-ui, sans-serif';
+      ctx.fillText('🚂 ĐƯỜNG SẮT VIỆT NAM', 320, 75);
+
+      ctx.font = '900 52px system-ui, sans-serif';
+      ctx.fillText(tile.name, 320, 155);
+
+      ctx.fillStyle = '#57606F';
+      ctx.font = '700 32px system-ui, sans-serif';
+      ctx.fillText(landmark.subtitle, 320, 330);
+
+      // Icon Đầu Tàu Hỏa Lớn
+      ctx.font = '130px "Segoe UI Emoji", "Apple Color Emoji", sans-serif';
+      ctx.fillText('🚂', 320, 550);
+
+      // Giá Vé
+      ctx.fillStyle = '#E8F8F5';
+      this.drawRoundedRect(ctx, 110, 840, 420, 115, 58);
+      ctx.fill();
+      ctx.strokeStyle = '#00B894';
+      ctx.lineWidth = 6;
+      ctx.stroke();
+
+      ctx.fillStyle = '#00B894';
+      ctx.font = '900 56px system-ui, sans-serif';
+      ctx.fillText('₫ 200M', 320, 898);
+
+    } else if (tile.type === 'UTILITY') {
+      // ==========================================
+      // ⚡ DỊCH VỤ CÔNG (Điện Lực / Cấp Nước)
+      // ==========================================
+      const utilColor = tile.name.includes('Điện') ? '#F39C12' : '#0984E3';
+      ctx.fillStyle = utilColor;
+      this.drawRoundedRect(ctx, 16, 16, 608, 220, 28);
+      ctx.fill();
+
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = '900 34px system-ui, sans-serif';
+      ctx.fillText('TIỆN ÍCH ĐÔ THỊ', 320, 75);
+
+      ctx.font = '900 54px system-ui, sans-serif';
+      ctx.fillText(tile.name, 320, 155);
+
+      ctx.fillStyle = '#57606F';
+      ctx.font = '700 32px system-ui, sans-serif';
+      ctx.fillText(landmark.subtitle, 320, 330);
+
+      ctx.font = '130px "Segoe UI Emoji", "Apple Color Emoji", sans-serif';
+      ctx.fillText(tile.name.includes('Điện') ? '⚡' : '💧', 320, 550);
+
+      ctx.fillStyle = '#E8F8F5';
+      this.drawRoundedRect(ctx, 110, 840, 420, 115, 58);
+      ctx.fill();
+      ctx.strokeStyle = '#00B894';
+      ctx.lineWidth = 6;
+      ctx.stroke();
+
+      ctx.fillStyle = '#00B894';
+      ctx.font = '900 56px system-ui, sans-serif';
+      ctx.fillText('₫ 150M', 320, 898);
+
+    } else if (tile.type === 'CHANCE') {
+      // ==========================================
+      // ❓ CƠ HỘI (May Rủi)
+      // ==========================================
+      const chanceGrad = ctx.createLinearGradient(0, 0, 0, 1024);
+      chanceGrad.addColorStop(0, '#FF7675');
+      chanceGrad.addColorStop(1, '#E84393');
+      ctx.fillStyle = chanceGrad;
+      this.drawRoundedRect(ctx, 16, 16, 608, 992, 28);
+      ctx.fill();
+
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = '900 42px system-ui, sans-serif';
+      ctx.fillText('★ THẺ BÀI ★', 320, 120);
+
+      ctx.font = '900 76px system-ui, sans-serif';
+      ctx.fillText('CƠ HỘI', 320, 220);
+
+      // Vòng tròn vàng chứa dấu chấm hỏi
+      ctx.fillStyle = '#FFFFFF';
+      ctx.beginPath();
+      ctx.arc(320, 540, 150, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#E84393';
+      ctx.font = '900 170px system-ui, sans-serif';
+      ctx.fillText('?', 320, 550);
+
+      ctx.fillStyle = '#FFEAA7';
+      ctx.font = '800 38px system-ui, sans-serif';
+      ctx.fillText('Rút Thẻ May Mắn', 320, 880);
+
+    } else if (tile.type === 'COMMUNITY_CHEST') {
+      // ==========================================
+      // 🎁 KHÍ VẬN (Kho Báu)
+      // ==========================================
+      const chestGrad = ctx.createLinearGradient(0, 0, 0, 1024);
+      chestGrad.addColorStop(0, '#F39C12');
+      chestGrad.addColorStop(1, '#D35400');
+      ctx.fillStyle = chestGrad;
+      this.drawRoundedRect(ctx, 16, 16, 608, 992, 28);
+      ctx.fill();
+
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = '900 42px system-ui, sans-serif';
+      ctx.fillText('★ RƯƠNG VÀNG ★', 320, 120);
+
+      ctx.font = '900 76px system-ui, sans-serif';
+      ctx.fillText('KHÍ VẬN', 320, 220);
+
+      // Icon Rương Vàng Lớn
+      ctx.font = '170px "Segoe UI Emoji", "Apple Color Emoji", sans-serif';
+      ctx.fillText('🎁', 320, 540);
+
+      ctx.fillStyle = '#FFEAA7';
+      ctx.font = '800 38px system-ui, sans-serif';
+      ctx.fillText('Nhận Thưởng Bất Ngờ', 320, 880);
+
+    } else if (tile.type === 'TAX') {
+      // ==========================================
+      // 💸 THUẾ THU NHẬP / THUẾ XA XỈ
+      // ==========================================
+      ctx.fillStyle = '#D63031';
+      this.drawRoundedRect(ctx, 16, 16, 608, 220, 28);
+      ctx.fill();
+
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = '900 34px system-ui, sans-serif';
+      ctx.fillText('KHO BẠC NHÀ NƯỚC', 320, 75);
+
+      ctx.font = '900 54px system-ui, sans-serif';
+      ctx.fillText(tile.name, 320, 155);
+
+      ctx.font = '140px "Segoe UI Emoji", "Apple Color Emoji", sans-serif';
+      ctx.fillText('💸', 320, 530);
+
+      ctx.fillStyle = '#FFEAEA';
+      this.drawRoundedRect(ctx, 110, 840, 420, 115, 58);
+      ctx.fill();
+      ctx.strokeStyle = '#D63031';
+      ctx.lineWidth = 6;
+      ctx.stroke();
+
+      ctx.fillStyle = '#D63031';
+      ctx.font = '900 56px system-ui, sans-serif';
+      ctx.fillText('-100M', 320, 898);
     }
 
     const texture = new THREE.CanvasTexture(canvas);
     texture.generateMipmaps = true;
     texture.minFilter = THREE.LinearMipmapLinearFilter;
+    if (this.renderer) {
+      texture.anisotropy = this.renderer.capabilities.getMaxAnisotropy() || 8;
+    }
 
-    const planeGeo = new THREE.PlaneGeometry(Math.min(w, l) * 0.94, Math.min(w, l) * 0.94);
+    const planeGeo = new THREE.PlaneGeometry(w, l);
+    const planeMat = new THREE.MeshBasicMaterial({ map: texture, transparent: true });
+    return new THREE.Mesh(planeGeo, planeMat);
+  }
+
+  // Tạo Đồ Họa Riêng Cho 4 Ô Góc Lớn (GO, Jail, Free Parking, Go To Jail)
+  private createCornerLabel(tile: BoardTileMeta, w: number, l: number): THREE.Mesh {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1024;
+    canvas.height = 1024;
+    const ctx = canvas.getContext('2d')!;
+
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    ctx.fillStyle = '#FFFFFF';
+    this.drawRoundedRect(ctx, 16, 16, 992, 992, 48);
+    ctx.fill();
+    ctx.strokeStyle = '#DCDDE1';
+    ctx.lineWidth = 8;
+    ctx.stroke();
+
+    if (tile.type === 'GO') {
+      // 🏆 Ô BẮT ĐẦU (GO)
+      const goGrad = ctx.createLinearGradient(0, 0, 1024, 1024);
+      goGrad.addColorStop(0, '#00B894');
+      goGrad.addColorStop(1, '#00CEC9');
+      ctx.fillStyle = goGrad;
+      this.drawRoundedRect(ctx, 24, 24, 976, 976, 42);
+      ctx.fill();
+
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = '900 76px system-ui, sans-serif';
+      ctx.fillText('BẮT ĐẦU', 512, 220);
+
+      ctx.font = '900 160px system-ui, sans-serif';
+      ctx.fillText('GO ➔', 512, 440);
+
+      ctx.fillStyle = '#FFF275';
+      this.drawRoundedRect(ctx, 180, 680, 664, 160, 80);
+      ctx.fill();
+
+      ctx.fillStyle = '#2D3436';
+      ctx.font = '900 68px system-ui, sans-serif';
+      ctx.fillText('NHẬN +200M', 512, 760);
+
+    } else if (tile.type === 'JAIL') {
+      // 🔒 Ô NHÀ TÙ (JAIL)
+      ctx.fillStyle = '#636E72';
+      this.drawRoundedRect(ctx, 24, 24, 976, 976, 42);
+      ctx.fill();
+
+      // Khu vực lồng sắt trong tù
+      ctx.fillStyle = '#D63031';
+      this.drawRoundedRect(ctx, 180, 180, 664, 664, 32);
+      ctx.fill();
+
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = '900 64px system-ui, sans-serif';
+      ctx.fillText('TRONG TÙ', 512, 300);
+
+      ctx.font = '160px "Segoe UI Emoji", "Apple Color Emoji", sans-serif';
+      ctx.fillText('⛓️‍💥 👮', 512, 530);
+
+      ctx.fillStyle = '#FFEAA7';
+      ctx.font = '900 58px system-ui, sans-serif';
+      ctx.fillText('THĂM TÙ', 512, 920);
+
+    } else if (tile.type === 'FREE_PARKING') {
+      // 🅿️ Ô BÃI ĐỖ XE (FREE PARKING)
+      const parkGrad = ctx.createLinearGradient(0, 0, 1024, 1024);
+      parkGrad.addColorStop(0, '#0984E3');
+      parkGrad.addColorStop(1, '#74B9FF');
+      ctx.fillStyle = parkGrad;
+      this.drawRoundedRect(ctx, 24, 24, 976, 976, 42);
+      ctx.fill();
+
+      ctx.font = '180px "Segoe UI Emoji", "Apple Color Emoji", sans-serif';
+      ctx.fillText('🅿️', 512, 380);
+
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = '900 78px system-ui, sans-serif';
+      ctx.fillText('BÃI ĐỖ XE', 512, 640);
+
+      ctx.fillStyle = '#FFEAA7';
+      ctx.font = '800 48px system-ui, sans-serif';
+      ctx.fillText('Nghỉ Chân Miễn Phí', 512, 780);
+
+    } else if (tile.type === 'GO_TO_JAIL') {
+      // 🚨 Ô VÀO TÙ NGAY (GO TO JAIL)
+      const jailGrad = ctx.createLinearGradient(0, 0, 1024, 1024);
+      jailGrad.addColorStop(0, '#D63031');
+      jailGrad.addColorStop(1, '#E84118');
+      ctx.fillStyle = jailGrad;
+      this.drawRoundedRect(ctx, 24, 24, 976, 976, 42);
+      ctx.fill();
+
+      ctx.font = '180px "Segoe UI Emoji", "Apple Color Emoji", sans-serif';
+      ctx.fillText('🚨', 512, 360);
+
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = '900 84px system-ui, sans-serif';
+      ctx.fillText('VÀO TÙ NGAY', 512, 620);
+
+      ctx.fillStyle = '#FFEAA7';
+      ctx.font = '800 48px system-ui, sans-serif';
+      ctx.fillText('Không Được Đi Qua GO!', 512, 760);
+    }
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.generateMipmaps = true;
+    texture.minFilter = THREE.LinearMipmapLinearFilter;
+    if (this.renderer) {
+      texture.anisotropy = this.renderer.capabilities.getMaxAnisotropy() || 8;
+    }
+
+    const planeGeo = new THREE.PlaneGeometry(w, l);
     const planeMat = new THREE.MeshBasicMaterial({ map: texture, transparent: true });
     return new THREE.Mesh(planeGeo, planeMat);
   }
