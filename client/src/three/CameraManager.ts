@@ -11,6 +11,7 @@ export class CameraManager {
 
   // Khóa góc nhìn chuẩn Isometric (Mặc định: KHÓA để ổn định như Monopoly GO)
   public isLocked: boolean = true;
+  public isZoomedIn: boolean = false;
 
   // Góc nhìn vàng tiêu chuẩn: Isometric 45 độ, góc nhìn cận cảnh sắc nét bao quát toàn bộ 40 ô
   private static readonly GOLDEN_THETA = Math.PI / 4;       // 45 độ góc ngang
@@ -40,9 +41,18 @@ export class CameraManager {
   public lockToGoldenAngle() {
     this.spherical.theta = CameraManager.GOLDEN_THETA;
     this.spherical.phi = CameraManager.GOLDEN_PHI;
-    // Cận cảnh sắc nét: gần hơn ~26% để thấy rõ từng tên địa điểm, huy hiệu và mô hình 3D,
-    // đồng thời vẫn bao trọn 100% 4 cạnh bàn cờ trong khung nhìn
-    this.spherical.radius = this.isMobile ? 30.5 : 26.8;
+    if (this.isZoomedIn) {
+      this.spherical.radius = this.isMobile ? 20.0 : 17.5;
+    } else {
+      this.spherical.radius = this.isMobile ? 30.5 : 26.8;
+    }
+  }
+
+  public toggleZoom(): boolean {
+    this.isZoomedIn = !this.isZoomedIn;
+    this.lockToGoldenAngle();
+    this.updateCameraTransform();
+    return this.isZoomedIn;
   }
 
   public setLocked(locked: boolean) {
@@ -64,7 +74,11 @@ export class CameraManager {
       this.spherical.theta = CameraManager.GOLDEN_THETA;
       this.spherical.phi = CameraManager.GOLDEN_PHI;
       if (!this.isFollowMode) {
-        this.spherical.radius = this.isMobile ? 30.5 : 26.8;
+        if (this.isZoomedIn) {
+          this.spherical.radius = this.isMobile ? 20.0 : 17.5;
+        } else {
+          this.spherical.radius = this.isMobile ? 30.5 : 26.8;
+        }
       }
     } else {
       this.spherical.radius = THREE.MathUtils.clamp(this.spherical.radius, 14, 48);

@@ -18,6 +18,11 @@ export class BoardScene {
   public buildingMesh: BuildingMesh;
   public vfxManager: VFXManager;
 
+  public boardTiles: BoardTileMeta[] = [];
+  public onTileClick: ((tileId: number, tile: BoardTileMeta) => void) | null = null;
+  private tileMeshList: { mesh: THREE.Mesh; tileId: number }[] = [];
+  private highlightBox: THREE.Mesh | null = null;
+
   private tilePositions: THREE.Vector3[] = [];
   private tileRotations: number[] = [];
   private fountainRipples: THREE.Mesh | null = null;
@@ -78,10 +83,71 @@ export class BoardScene {
     // Initialize 40 tiles immediately
     this.initBoard(DEFAULT_BOARD_TILES);
 
+    this.setupTileRaycaster(container);
+
     this.animate = this.animate.bind(this);
     requestAnimationFrame(this.animate);
 
     window.addEventListener('resize', this.onResize.bind(this));
+  }
+
+  // Tương tác chạm/click để tra cứu chi tiết tức thì bất kỳ ô nào trên bàn cờ
+  private setupTileRaycaster(_container: HTMLElement) {
+    let downX = 0;
+    let downY = 0;
+
+    this.renderer.domElement.addEventListener('pointerdown', (e) => {
+      downX = e.clientX;
+      downY = e.clientY;
+    });
+
+    this.renderer.domElement.addEventListener('pointerup', (e) => {
+      const dist = Math.hypot(e.clientX - downX, e.clientY - downY);
+      if (dist > 8) return; // Kéo xoay màn hình, không phải click chọn
+
+      const rect = this.renderer.domElement.getBoundingClientRect();
+      const mouse = new THREE.Vector2(
+        ((e.clientX - rect.left) / rect.width) * 2 - 1,
+        -((e.clientY - rect.top) / rect.height) * 2 + 1
+      );
+
+      const raycaster = new THREE.Raycaster();
+      raycaster.setFromCamera(mouse, this.cameraManager.camera);
+      const targets = this.tileMeshList.map(t => t.mesh);
+      const intersects = raycaster.intersectObjects(targets);
+
+      if (intersects.length > 0) {
+        const hit = this.tileMeshList.find(t => t.mesh === intersects[0].object);
+        if (hit && this.boardTiles[hit.tileId]) {
+          const tile = this.boardTiles[hit.tileId];
+          this.highlightTile(hit.tileId);
+          if (this.onTileClick) {
+            this.onTileClick(hit.tileId, tile);
+          }
+        }
+      }
+    });
+  }
+
+  // Hộp chỉ thị màu vàng viền sáng nổi bật ô đang được chọn
+  public highlightTile(tileId: number) {
+    const pos = this.tilePositions[tileId];
+    if (!pos) return;
+    if (!this.highlightBox) {
+      const geo = new RoundedBoxGeometry(2.3, 0.45, 3.5, 3, 0.08);
+      const mat = new THREE.MeshStandardMaterial({
+        color: '#F1C40F',
+        emissive: '#F1C40F',
+        emissiveIntensity: 0.6,
+        transparent: true,
+        opacity: 0.45
+      });
+      this.highlightBox = new THREE.Mesh(geo, mat);
+      this.scene.add(this.highlightBox);
+    }
+    this.highlightBox.position.set(pos.x, 0.22, pos.z);
+    this.highlightBox.rotation.y = this.tileRotations[tileId] || 0;
+    this.highlightBox.visible = true;
   }
 
   private setupLighting() {
@@ -693,6 +759,9 @@ export class BoardScene {
       39: { icon: '👑', subtitle: 'Đại Lộ Hoàng Kim' }
     };
 
+    this.boardTiles = tiles;
+    this.tileMeshList = [];
+
     for (let i = 0; i < 40; i++) {
       const tile = tiles[i];
       let x = 0;
@@ -705,6 +774,7 @@ export class BoardScene {
         z = boardSize / 2 - cornerSize / 2;
         angle = -Math.PI / 4;
       } else if (i > 0 && i < 10) {
+        // Cạnh Đáy (Nam): x chạy từ phải sang trái, nhìn thẳng từ camera
         const offset = (i - 1) * normalWidth + normalWidth / 2;
         x = (boardSize / 2 - cornerSize) - offset;
         z = boardSize / 2 - cornerSize / 2;
@@ -714,6 +784,7 @@ export class BoardScene {
         z = boardSize / 2 - cornerSize / 2;
         angle = Math.PI / 4;
       } else if (i > 10 && i < 20) {
+        // Cạnh Trái (Tây): z chạy từ dưới lên trên
         const offset = (i - 11) * normalWidth + normalWidth / 2;
         x = -(boardSize / 2 - cornerSize / 2);
         z = (boardSize / 2 - cornerSize) - offset;
@@ -723,15 +794,19 @@ export class BoardScene {
         z = -(boardSize / 2 - cornerSize / 2);
         angle = (3 * Math.PI) / 4;
       } else if (i > 20 && i < 30) {
+        // Cạnh Đỉnh (Bắc): x chạy từ trái sang phải
+        // 🌟 GÓC XOAY ĐỘT PHÁ: angle = 0 (thay vì Math.PI) giúp toàn bộ chữ ở cạnh Bắc
+        // luôn đứng thẳng 100%, KHÔNG BAO GIỜ BỊ LỘN NGƯỢC khi nhìn từ camera!
         const offset = (i - 21) * normalWidth + normalWidth / 2;
         x = -(boardSize / 2 - cornerSize) + offset;
         z = -(boardSize / 2 - cornerSize / 2);
-        angle = Math.PI;
+        angle = 0;
       } else if (i === 30) {
         x = boardSize / 2 - cornerSize / 2;
         z = -(boardSize / 2 - cornerSize / 2);
         angle = -(3 * Math.PI) / 4;
       } else {
+        // Cạnh Phải (Đông): z chạy từ trên xuống dưới
         const offset = (i - 31) * normalWidth + normalWidth / 2;
         x = boardSize / 2 - cornerSize / 2;
         z = -(boardSize / 2 - cornerSize) + offset;
@@ -758,9 +833,10 @@ export class BoardScene {
         const baseMesh = new THREE.Mesh(baseGeo, baseMat);
         baseMesh.receiveShadow = true;
         tileGroup.add(baseMesh);
+        this.tileMeshList.push({ mesh: baseMesh, tileId: i });
 
         const cornerLabel = this.createCornerLabel(tile, cornerSize * 0.95, cornerSize * 0.95);
-        cornerLabel.position.y = tileHeight / 2 + 0.015;
+        cornerLabel.position.y = tileHeight / 2 + 0.025;
         cornerLabel.rotation.x = -Math.PI / 2;
         tileGroup.add(cornerLabel);
       } else {
@@ -769,15 +845,18 @@ export class BoardScene {
         const baseMesh = new THREE.Mesh(baseGeo, baseMat);
         baseMesh.receiveShadow = true;
         tileGroup.add(baseMesh);
+        this.tileMeshList.push({ mesh: baseMesh, tileId: i });
 
         // Gờ bó vỉa bo cong ngăn cách mặt đường
+        const isSide3 = (i > 20 && i < 30);
         const curb = DetailedModels.createTileCurbs(normalWidth, cornerSize, 0);
+        curb.position.set(0, 0.18, (isSide3 ? -1 : 1) * cornerSize * 0.44);
         tileGroup.add(curb);
 
         // Card đồ họa độ phân giải cao bao phủ trọn vẹn bề mặt ô
         const lm = TILE_LANDMARKS[i] || { icon: '📍', subtitle: 'Bất Động Sản' };
         const labelMesh = this.createTileLabel(tile, lm, normalWidth * 0.95, cornerSize * 0.95);
-        labelMesh.position.y = tileHeight / 2 + 0.015;
+        labelMesh.position.y = tileHeight / 2 + 0.025;
         labelMesh.rotation.x = -Math.PI / 2;
         tileGroup.add(labelMesh);
       }
@@ -802,24 +881,23 @@ export class BoardScene {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
-    // 1. Thẻ bài nền trắng sứ sang trọng bo tròn góc
+    const headerColor = tile.districtColor || '#0984E3';
+
+    // 1. Thẻ bài nền trắng sứ sang trọng với viền màu phân khu dày 14px cực kỳ bắt mắt
     ctx.fillStyle = '#FFFFFF';
-    this.drawRoundedRect(ctx, 12, 12, 616, 1000, 36);
+    this.drawRoundedRect(ctx, 10, 10, 620, 1004, 38);
     ctx.fill();
 
-    ctx.strokeStyle = '#DCDDE1';
-    ctx.lineWidth = 6;
+    ctx.strokeStyle = headerColor;
+    ctx.lineWidth = 14;
     ctx.stroke();
 
     if (tile.type === 'PROPERTY') {
       // ==========================================
-      // 🏰 ĐẤT BẤT ĐỘNG SẢN: Banner Màu Rực Rỡ + Tên + Biểu Tượng + Giá
+      // 🏰 ĐẤT BẤT ĐỘNG SẢN: Banner Màu Rộng 36% + Tên Địa Danh Siêu To
       // ==========================================
-      const headerColor = tile.districtColor || '#0984E3';
-
-      // Header Banner chiếm 28% đỉnh thẻ
       ctx.fillStyle = headerColor;
-      this.drawRoundedRect(ctx, 16, 16, 608, 270, 28);
+      this.drawRoundedRect(ctx, 16, 16, 608, 360, 28);
       ctx.fill();
 
       // Dải bóng phản chiếu ánh sáng (Gloss Specular Strip)
@@ -830,98 +908,101 @@ export class BoardScene {
       this.drawRoundedRect(ctx, 20, 20, 600, 90, 20);
       ctx.fill();
 
-      // Ngôi sao vàng & Tên phân khu
+      // Dòng phân khu
       ctx.fillStyle = '#FFFFFF';
-      ctx.font = '900 36px system-ui, -apple-system, sans-serif';
-      ctx.fillText(`★ KHU VỰC ${tile.district || 1} ★`, 320, 75);
+      ctx.font = '900 38px system-ui, -apple-system, sans-serif';
+      ctx.fillText(`★ KHU VỰC ${tile.district || 1} ★`, 320, 80);
 
-      // Tên Địa Danh In Lớn Đậm Nét (Màu trắng nổi bật trên nền phân khu)
-      ctx.font = '900 60px system-ui, -apple-system, sans-serif';
-      if (tile.name.length > 10) {
-        // Tên dài tự ngắt thành 2 dòng (vd: BUÔN MA / THUỘT, LANDMARK / 81)
+      // TÊN ĐỊA DANH SIÊU TO (Chữ Trắng Trên Nền Màu Đậm Nét Tương Phản Cực Đại)
+      ctx.fillStyle = '#FFFFFF';
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.85)';
+      ctx.shadowBlur = 10;
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = 4;
+
+      if (tile.name.length > 9) {
+        // Tên dài tự ngắt thành 2 dòng (vd: BUÔN MA / THUỘT, LANDMARK / 81, NHA TRANG)
         const parts = tile.name.split(' ');
         const mid = Math.ceil(parts.length / 2);
         const line1 = parts.slice(0, mid).join(' ');
         const line2 = parts.slice(mid).join(' ');
-        ctx.font = '900 52px system-ui, -apple-system, sans-serif';
-        ctx.fillText(line1, 320, 150);
-        ctx.fillText(line2, 320, 215);
+        ctx.font = '900 64px "Fredoka", "Arial Black", sans-serif';
+        ctx.fillText(line1, 320, 180);
+        ctx.fillText(line2, 320, 270);
       } else {
-        ctx.fillText(tile.name, 320, 185);
+        ctx.font = '900 74px "Fredoka", "Arial Black", sans-serif';
+        ctx.fillText(tile.name, 320, 220);
       }
+      ctx.shadowBlur = 0;
 
-      // Mô Tả Danh Thắng (Subtitle)
-      ctx.fillStyle = '#57606F';
-      ctx.font = '700 32px system-ui, -apple-system, sans-serif';
-      ctx.fillText(landmark.subtitle, 320, 360);
-
-      // Huy Hiệu Biểu Tượng Địa Danh (Landmark Crest Medallion)
-      const circleGrad = ctx.createRadialGradient(320, 560, 30, 320, 560, 140);
-      circleGrad.addColorStop(0, '#FFFFFF');
-      circleGrad.addColorStop(1, '#F1F2F6');
-      ctx.fillStyle = circleGrad;
+      // Huy Hiệu Biểu Tượng Danh Thắng Cỡ Lớn
+      ctx.fillStyle = '#F8F9FA';
       ctx.beginPath();
-      ctx.arc(320, 560, 140, 0, Math.PI * 2);
+      ctx.arc(320, 560, 125, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.strokeStyle = headerColor;
-      ctx.lineWidth = 8;
+      ctx.lineWidth = 10;
       ctx.stroke();
 
-      // Icon biểu tượng 3D/Vector lớn 120px
+      // Icon biểu tượng 3D 120px
       ctx.font = '120px "Segoe UI Emoji", "Apple Color Emoji", sans-serif';
       ctx.fillText(landmark.icon, 320, 575);
 
-      // Hộp Giá Bán Dạng Nút Pill Nổi Bật Ở Đáy (₫ 200M)
+      // Mô Tả Danh Thắng (Subtitle)
+      ctx.fillStyle = '#2D3436';
+      ctx.font = '900 36px system-ui, -apple-system, sans-serif';
+      ctx.fillText(landmark.subtitle, 320, 740);
+
+      // Hộp Giá Bán Dạng Nút Pill Nổi Bật Nền Đen Than Viền Vàng Kim
       if (tile.price > 0) {
-        ctx.fillStyle = '#E8F8F5';
-        this.drawRoundedRect(ctx, 110, 840, 420, 115, 58);
+        ctx.fillStyle = '#1E272E';
+        this.drawRoundedRect(ctx, 80, 830, 480, 130, 65);
         ctx.fill();
 
-        ctx.strokeStyle = '#00B894';
+        ctx.strokeStyle = '#F1C40F';
         ctx.lineWidth = 6;
         ctx.stroke();
 
-        ctx.fillStyle = '#00B894';
-        ctx.font = '900 56px system-ui, -apple-system, sans-serif';
-        ctx.fillText(`₫ ${tile.price}M`, 320, 898);
+        ctx.fillStyle = '#FFEAA7';
+        ctx.font = '900 66px "Fredoka", sans-serif';
+        ctx.fillText(`₫ ${tile.price}M`, 320, 895);
       }
 
     } else if (tile.type === 'RAILROAD') {
       // ==========================================
       // 🚂 GA XE LỬA / BẾN XE
       // ==========================================
-      const railColor = '#2F3542';
-      ctx.fillStyle = railColor;
-      this.drawRoundedRect(ctx, 16, 16, 608, 220, 28);
+      ctx.fillStyle = '#2F3542';
+      this.drawRoundedRect(ctx, 16, 16, 608, 320, 28);
       ctx.fill();
 
       ctx.fillStyle = '#FFFFFF';
-      ctx.font = '900 34px system-ui, sans-serif';
-      ctx.fillText('🚂 ĐƯỜNG SẮT VIỆT NAM', 320, 75);
+      ctx.font = '900 36px system-ui, sans-serif';
+      ctx.fillText('🚂 ĐƯỜNG SẮT VIỆT NAM', 320, 85);
 
-      ctx.font = '900 52px system-ui, sans-serif';
-      ctx.fillText(tile.name, 320, 155);
-
-      ctx.fillStyle = '#57606F';
-      ctx.font = '700 32px system-ui, sans-serif';
-      ctx.fillText(landmark.subtitle, 320, 330);
+      ctx.font = '900 66px "Fredoka", sans-serif';
+      ctx.fillText(tile.name, 320, 205);
 
       // Icon Đầu Tàu Hỏa Lớn
       ctx.font = '130px "Segoe UI Emoji", "Apple Color Emoji", sans-serif';
-      ctx.fillText('🚂', 320, 550);
+      ctx.fillText('🚂', 320, 560);
+
+      ctx.fillStyle = '#2D3436';
+      ctx.font = '900 36px system-ui, sans-serif';
+      ctx.fillText(landmark.subtitle, 320, 740);
 
       // Giá Vé
-      ctx.fillStyle = '#E8F8F5';
-      this.drawRoundedRect(ctx, 110, 840, 420, 115, 58);
+      ctx.fillStyle = '#1E272E';
+      this.drawRoundedRect(ctx, 80, 830, 480, 130, 65);
       ctx.fill();
-      ctx.strokeStyle = '#00B894';
+      ctx.strokeStyle = '#F1C40F';
       ctx.lineWidth = 6;
       ctx.stroke();
 
-      ctx.fillStyle = '#00B894';
-      ctx.font = '900 56px system-ui, sans-serif';
-      ctx.fillText('₫ 200M', 320, 898);
+      ctx.fillStyle = '#FFEAA7';
+      ctx.font = '900 66px "Fredoka", sans-serif';
+      ctx.fillText('₫ 200M', 320, 895);
 
     } else if (tile.type === 'UTILITY') {
       // ==========================================
@@ -929,33 +1010,33 @@ export class BoardScene {
       // ==========================================
       const utilColor = tile.name.includes('Điện') ? '#F39C12' : '#0984E3';
       ctx.fillStyle = utilColor;
-      this.drawRoundedRect(ctx, 16, 16, 608, 220, 28);
+      this.drawRoundedRect(ctx, 16, 16, 608, 320, 28);
       ctx.fill();
 
       ctx.fillStyle = '#FFFFFF';
-      ctx.font = '900 34px system-ui, sans-serif';
-      ctx.fillText('TIỆN ÍCH ĐÔ THỊ', 320, 75);
+      ctx.font = '900 36px system-ui, sans-serif';
+      ctx.fillText('TIỆN ÍCH ĐÔ THỊ', 320, 85);
 
-      ctx.font = '900 54px system-ui, sans-serif';
-      ctx.fillText(tile.name, 320, 155);
-
-      ctx.fillStyle = '#57606F';
-      ctx.font = '700 32px system-ui, sans-serif';
-      ctx.fillText(landmark.subtitle, 320, 330);
+      ctx.font = '900 66px "Fredoka", sans-serif';
+      ctx.fillText(tile.name, 320, 205);
 
       ctx.font = '130px "Segoe UI Emoji", "Apple Color Emoji", sans-serif';
-      ctx.fillText(tile.name.includes('Điện') ? '⚡' : '💧', 320, 550);
+      ctx.fillText(tile.name.includes('Điện') ? '⚡' : '💧', 320, 560);
 
-      ctx.fillStyle = '#E8F8F5';
-      this.drawRoundedRect(ctx, 110, 840, 420, 115, 58);
+      ctx.fillStyle = '#2D3436';
+      ctx.font = '900 36px system-ui, sans-serif';
+      ctx.fillText(landmark.subtitle, 320, 740);
+
+      ctx.fillStyle = '#1E272E';
+      this.drawRoundedRect(ctx, 80, 830, 480, 130, 65);
       ctx.fill();
-      ctx.strokeStyle = '#00B894';
+      ctx.strokeStyle = '#F1C40F';
       ctx.lineWidth = 6;
       ctx.stroke();
 
-      ctx.fillStyle = '#00B894';
-      ctx.font = '900 56px system-ui, sans-serif';
-      ctx.fillText('₫ 150M', 320, 898);
+      ctx.fillStyle = '#FFEAA7';
+      ctx.font = '900 66px "Fredoka", sans-serif';
+      ctx.fillText('₫ 150M', 320, 895);
 
     } else if (tile.type === 'CHANCE') {
       // ==========================================
@@ -969,24 +1050,24 @@ export class BoardScene {
       ctx.fill();
 
       ctx.fillStyle = '#FFFFFF';
-      ctx.font = '900 42px system-ui, sans-serif';
-      ctx.fillText('★ THẺ BÀI ★', 320, 120);
+      ctx.font = '900 48px system-ui, sans-serif';
+      ctx.fillText('★ THẺ BÀI ★', 320, 130);
 
-      ctx.font = '900 76px system-ui, sans-serif';
-      ctx.fillText('CƠ HỘI', 320, 220);
+      ctx.font = '900 88px "Fredoka", sans-serif';
+      ctx.fillText('CƠ HỘI', 320, 240);
 
       // Vòng tròn vàng chứa dấu chấm hỏi
       ctx.fillStyle = '#FFFFFF';
       ctx.beginPath();
-      ctx.arc(320, 540, 150, 0, Math.PI * 2);
+      ctx.arc(320, 550, 160, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.fillStyle = '#E84393';
-      ctx.font = '900 170px system-ui, sans-serif';
-      ctx.fillText('?', 320, 550);
+      ctx.font = '900 190px "Fredoka", sans-serif';
+      ctx.fillText('?', 320, 560);
 
       ctx.fillStyle = '#FFEAA7';
-      ctx.font = '800 38px system-ui, sans-serif';
+      ctx.font = '900 44px system-ui, sans-serif';
       ctx.fillText('Rút Thẻ May Mắn', 320, 880);
 
     } else if (tile.type === 'COMMUNITY_CHEST') {
@@ -1001,18 +1082,17 @@ export class BoardScene {
       ctx.fill();
 
       ctx.fillStyle = '#FFFFFF';
-      ctx.font = '900 42px system-ui, sans-serif';
-      ctx.fillText('★ RƯƠNG VÀNG ★', 320, 120);
+      ctx.font = '900 48px system-ui, sans-serif';
+      ctx.fillText('★ RƯƠNG VÀNG ★', 320, 130);
 
-      ctx.font = '900 76px system-ui, sans-serif';
-      ctx.fillText('KHÍ VẬN', 320, 220);
+      ctx.font = '900 88px "Fredoka", sans-serif';
+      ctx.fillText('KHÍ VẬN', 320, 240);
 
-      // Icon Rương Vàng Lớn
-      ctx.font = '170px "Segoe UI Emoji", "Apple Color Emoji", sans-serif';
-      ctx.fillText('🎁', 320, 540);
+      ctx.font = '180px "Segoe UI Emoji", "Apple Color Emoji", sans-serif';
+      ctx.fillText('🎁', 320, 550);
 
       ctx.fillStyle = '#FFEAA7';
-      ctx.font = '800 38px system-ui, sans-serif';
+      ctx.font = '900 44px system-ui, sans-serif';
       ctx.fillText('Nhận Thưởng Bất Ngờ', 320, 880);
 
     } else if (tile.type === 'TAX') {
@@ -1020,29 +1100,29 @@ export class BoardScene {
       // 💸 THUẾ THU NHẬP / THUẾ XA XỈ
       // ==========================================
       ctx.fillStyle = '#D63031';
-      this.drawRoundedRect(ctx, 16, 16, 608, 220, 28);
+      this.drawRoundedRect(ctx, 16, 16, 608, 320, 28);
       ctx.fill();
 
       ctx.fillStyle = '#FFFFFF';
-      ctx.font = '900 34px system-ui, sans-serif';
-      ctx.fillText('KHO BẠC NHÀ NƯỚC', 320, 75);
+      ctx.font = '900 36px system-ui, sans-serif';
+      ctx.fillText('KHO BẠC NHÀ NƯỚC', 320, 85);
 
-      ctx.font = '900 54px system-ui, sans-serif';
-      ctx.fillText(tile.name, 320, 155);
+      ctx.font = '900 66px "Fredoka", sans-serif';
+      ctx.fillText(tile.name, 320, 205);
 
-      ctx.font = '140px "Segoe UI Emoji", "Apple Color Emoji", sans-serif';
-      ctx.fillText('💸', 320, 530);
+      ctx.font = '150px "Segoe UI Emoji", "Apple Color Emoji", sans-serif';
+      ctx.fillText('💸', 320, 560);
 
       ctx.fillStyle = '#FFEAEA';
-      this.drawRoundedRect(ctx, 110, 840, 420, 115, 58);
+      this.drawRoundedRect(ctx, 80, 830, 480, 130, 65);
       ctx.fill();
       ctx.strokeStyle = '#D63031';
       ctx.lineWidth = 6;
       ctx.stroke();
 
       ctx.fillStyle = '#D63031';
-      ctx.font = '900 56px system-ui, sans-serif';
-      ctx.fillText('-100M', 320, 898);
+      ctx.font = '900 66px "Fredoka", sans-serif';
+      ctx.fillText('-100M', 320, 895);
     }
 
     const texture = new THREE.CanvasTexture(canvas);
@@ -1052,8 +1132,16 @@ export class BoardScene {
       texture.anisotropy = this.renderer.capabilities.getMaxAnisotropy() || 8;
     }
 
+    // Material nâng cấp: bật polygonOffset để triệt tiêu hoàn toàn z-fighting, không bị nhấp nháy mờ đục
     const planeGeo = new THREE.PlaneGeometry(w, l);
-    const planeMat = new THREE.MeshBasicMaterial({ map: texture, transparent: true });
+    const planeMat = new THREE.MeshBasicMaterial({
+      map: texture,
+      transparent: true,
+      polygonOffset: true,
+      polygonOffsetFactor: -4,
+      polygonOffsetUnits: -4,
+      depthWrite: false
+    });
     return new THREE.Mesh(planeGeo, planeMat);
   }
 
@@ -1070,8 +1158,8 @@ export class BoardScene {
     ctx.fillStyle = '#FFFFFF';
     this.drawRoundedRect(ctx, 16, 16, 992, 992, 48);
     ctx.fill();
-    ctx.strokeStyle = '#DCDDE1';
-    ctx.lineWidth = 8;
+    ctx.strokeStyle = '#2D3436';
+    ctx.lineWidth = 14;
     ctx.stroke();
 
     if (tile.type === 'GO') {
@@ -1084,19 +1172,19 @@ export class BoardScene {
       ctx.fill();
 
       ctx.fillStyle = '#FFFFFF';
-      ctx.font = '900 76px system-ui, sans-serif';
+      ctx.font = '900 84px "Fredoka", sans-serif';
       ctx.fillText('BẮT ĐẦU', 512, 220);
 
-      ctx.font = '900 160px system-ui, sans-serif';
+      ctx.font = '900 170px "Fredoka", sans-serif';
       ctx.fillText('GO ➔', 512, 440);
 
       ctx.fillStyle = '#FFF275';
-      this.drawRoundedRect(ctx, 180, 680, 664, 160, 80);
+      this.drawRoundedRect(ctx, 160, 680, 704, 170, 85);
       ctx.fill();
 
       ctx.fillStyle = '#2D3436';
-      ctx.font = '900 68px system-ui, sans-serif';
-      ctx.fillText('NHẬN +200M', 512, 760);
+      ctx.font = '900 74px "Fredoka", sans-serif';
+      ctx.fillText('NHẬN +200M', 512, 765);
 
     } else if (tile.type === 'JAIL') {
       // 🔒 Ô NHÀ TÙ (JAIL)
@@ -1104,20 +1192,19 @@ export class BoardScene {
       this.drawRoundedRect(ctx, 24, 24, 976, 976, 42);
       ctx.fill();
 
-      // Khu vực lồng sắt trong tù
       ctx.fillStyle = '#D63031';
       this.drawRoundedRect(ctx, 180, 180, 664, 664, 32);
       ctx.fill();
 
       ctx.fillStyle = '#FFFFFF';
-      ctx.font = '900 64px system-ui, sans-serif';
+      ctx.font = '900 72px "Fredoka", sans-serif';
       ctx.fillText('TRONG TÙ', 512, 300);
 
-      ctx.font = '160px "Segoe UI Emoji", "Apple Color Emoji", sans-serif';
+      ctx.font = '170px "Segoe UI Emoji", "Apple Color Emoji", sans-serif';
       ctx.fillText('⛓️‍💥 👮', 512, 530);
 
       ctx.fillStyle = '#FFEAA7';
-      ctx.font = '900 58px system-ui, sans-serif';
+      ctx.font = '900 68px "Fredoka", sans-serif';
       ctx.fillText('THĂM TÙ', 512, 920);
 
     } else if (tile.type === 'FREE_PARKING') {
@@ -1129,15 +1216,15 @@ export class BoardScene {
       this.drawRoundedRect(ctx, 24, 24, 976, 976, 42);
       ctx.fill();
 
-      ctx.font = '180px "Segoe UI Emoji", "Apple Color Emoji", sans-serif';
+      ctx.font = '190px "Segoe UI Emoji", "Apple Color Emoji", sans-serif';
       ctx.fillText('🅿️', 512, 380);
 
       ctx.fillStyle = '#FFFFFF';
-      ctx.font = '900 78px system-ui, sans-serif';
+      ctx.font = '900 88px "Fredoka", sans-serif';
       ctx.fillText('BÃI ĐỖ XE', 512, 640);
 
       ctx.fillStyle = '#FFEAA7';
-      ctx.font = '800 48px system-ui, sans-serif';
+      ctx.font = '900 54px system-ui, sans-serif';
       ctx.fillText('Nghỉ Chân Miễn Phí', 512, 780);
 
     } else if (tile.type === 'GO_TO_JAIL') {
@@ -1149,15 +1236,15 @@ export class BoardScene {
       this.drawRoundedRect(ctx, 24, 24, 976, 976, 42);
       ctx.fill();
 
-      ctx.font = '180px "Segoe UI Emoji", "Apple Color Emoji", sans-serif';
+      ctx.font = '190px "Segoe UI Emoji", "Apple Color Emoji", sans-serif';
       ctx.fillText('🚨', 512, 360);
 
       ctx.fillStyle = '#FFFFFF';
-      ctx.font = '900 84px system-ui, sans-serif';
+      ctx.font = '900 92px "Fredoka", sans-serif';
       ctx.fillText('VÀO TÙ NGAY', 512, 620);
 
       ctx.fillStyle = '#FFEAA7';
-      ctx.font = '800 48px system-ui, sans-serif';
+      ctx.font = '900 54px system-ui, sans-serif';
       ctx.fillText('Không Được Đi Qua GO!', 512, 760);
     }
 
@@ -1169,7 +1256,14 @@ export class BoardScene {
     }
 
     const planeGeo = new THREE.PlaneGeometry(w, l);
-    const planeMat = new THREE.MeshBasicMaterial({ map: texture, transparent: true });
+    const planeMat = new THREE.MeshBasicMaterial({
+      map: texture,
+      transparent: true,
+      polygonOffset: true,
+      polygonOffsetFactor: -4,
+      polygonOffsetUnits: -4,
+      depthWrite: false
+    });
     return new THREE.Mesh(planeGeo, planeMat);
   }
 

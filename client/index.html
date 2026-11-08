@@ -161,7 +161,13 @@
             <!-- Injected Player Badges -->
           </div>
 
-          <div class="interactive" style="display: flex; gap: 8px;">
+          <div class="interactive" style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <button id="btn-toggle-zoom" class="btn-chunky btn-accent" style="padding: 8px 12px; font-size: 0.85rem;" title="Phóng to cận cảnh siêu nét">
+              🔍 Phóng To
+            </button>
+            <button id="btn-open-roster" class="btn-chunky btn-white" style="padding: 8px 12px; font-size: 0.85rem;" title="Xem toàn bộ 40 ô cờ & bất động sản">
+              🗺️ 40 Ô Cờ
+            </button>
             <button id="btn-toggle-cam-lock" class="btn-chunky btn-primary" style="padding: 8px 12px; font-size: 0.85rem;" title="Khóa/Mở tự do góc nhìn">
               🔒 Góc Cố Định
             </button>
@@ -247,6 +253,105 @@
       </div>
       <div id="log-items" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
         <!-- Log entries -->
+      </div>
+    </div>
+
+    <!-- 9. TILE INSPECTOR FLOATING CARD (Tra Cứu Nhanh Ô Cờ Khi Click Hoặc Đến Nơi) -->
+    <div id="tile-inspector-card" class="interactive glass-panel tile-inspector" style="display: none;">
+      <div class="inspector-header" id="inspector-header-bg">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span id="inspector-tile-badge" class="inspector-badge">Ô #01 • BẤT ĐỘNG SẢN</span>
+          <button id="btn-close-inspector" class="inspector-close-btn" title="Đóng thẻ">✕</button>
+        </div>
+        <div style="display: flex; align-items: center; gap: 10px; margin-top: 8px;">
+          <span id="inspector-landmark-icon" style="font-size: 2rem;">🏙️</span>
+          <div>
+            <h3 id="inspector-tile-name" style="color: #FFFFFF; font-size: 1.2rem; margin: 0; line-height: 1.2; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">Hồ Tây (Hà Nội)</h3>
+            <span id="inspector-district-name" style="color: rgba(255,255,255,0.88); font-size: 0.75rem; font-weight: 700;">Phân khu 7 • Xanh Ngọc</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="inspector-body">
+        <!-- Trạng thái sở hữu -->
+        <div id="inspector-owner-section" class="inspector-owner-box">
+          <div style="font-size: 0.72rem; font-weight: 800; color: #636E72;">CHỦ SỞ HỮU</div>
+          <div id="inspector-owner-info" style="display: flex; align-items: center; gap: 8px; margin-top: 4px;">
+            <div id="inspector-owner-avatar" class="owner-circle" style="background: #DFE6E9;">❓</div>
+            <div>
+              <span id="inspector-owner-name" style="font-weight: 800; font-size: 0.9rem; color: #2D3436;">Chưa có chủ sở hữu</span>
+              <div id="inspector-building-level" style="font-size: 0.75rem; color: #00B894; font-weight: 700;">Đang mở bán</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Chi tiết giá và tiền thuê -->
+        <div id="inspector-property-details">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px dashed #DFE6E9;">
+            <span style="font-size: 0.8rem; font-weight: 700; color: #636E72;">Giá mua đất</span>
+            <span id="inspector-price-value" style="font-size: 0.95rem; font-weight: 900; color: #00B894;">300M</span>
+          </div>
+
+          <div style="font-size: 0.75rem; font-weight: 800; color: #2D3436; margin-bottom: 6px;">BẢNG TIỀN THUÊ</div>
+          <div class="inspector-rent-grid">
+            <div class="rent-row" id="rent-row-0">
+              <span>Đất trống:</span>
+              <b id="inspector-rent-base">28M</b>
+            </div>
+            <div class="rent-row" id="rent-row-1">
+              <span>🏠 1 Nhà:</span>
+              <b id="inspector-rent-h1">150M</b>
+            </div>
+            <div class="rent-row" id="rent-row-2">
+              <span>🏠🏠 2 Nhà:</span>
+              <b id="inspector-rent-h2">450M</b>
+            </div>
+            <div class="rent-row" id="rent-row-3">
+              <span>🏠🏠🏠 3 Nhà:</span>
+              <b id="inspector-rent-h3">1200M</b>
+            </div>
+            <div class="rent-row" id="rent-row-4">
+              <span>🏨 Khách sạn:</span>
+              <b id="inspector-rent-hotel">1650M</b>
+            </div>
+          </div>
+
+          <div style="margin-top: 8px; font-size: 0.72rem; color: #636E72; text-align: right;">
+            Chi phí xây mỗi nhà: <b id="inspector-house-cost" style="color: #2D3436;">200M</b>
+          </div>
+        </div>
+
+        <!-- Khối mô tả cho ô đặc biệt / Cơ hội / Khí vận / Thuế -->
+        <div id="inspector-special-desc" style="display: none; padding: 10px; background: #F8F9FA; border-radius: 12px; font-size: 0.82rem; color: #2D3436; line-height: 1.45;">
+          Mô tả ô đặc biệt
+        </div>
+      </div>
+    </div>
+
+    <!-- 10. BOARD ROSTER MODAL (Toàn Bộ Danh Sách 40 Ô Cờ) -->
+    <div id="board-roster-modal" class="interactive modal-overlay" style="display: none;">
+      <div class="glass-panel modal-content roster-modal-box">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; border-bottom: 2px solid #F1F2F6; padding-bottom: 10px;">
+          <div style="text-align: left;">
+            <h2 style="font-size: 1.4rem; color: #2D3436; margin: 0;">Bản Đồ 40 Ô Cờ</h2>
+            <p style="font-size: 0.8rem; color: #636E72; margin-top: 2px;">Tra cứu quyền sở hữu, giá tiền và quy hoạch bàn cờ</p>
+          </div>
+          <button id="btn-close-roster" class="btn-chunky btn-white" style="padding: 6px 14px; font-size: 0.9rem;">✕ Đóng</button>
+        </div>
+
+        <!-- Filter tabs -->
+        <div class="roster-tabs" id="roster-filter-tabs">
+          <button class="roster-tab active" data-filter="ALL">Tất Cả (40)</button>
+          <button class="roster-tab" data-filter="PROPERTY">Bất Động Sản (22)</button>
+          <button class="roster-tab" data-filter="RAILROAD">Bến Xe / Ga (4)</button>
+          <button class="roster-tab" data-filter="UTILITY">Tiện Ích (2)</button>
+          <button class="roster-tab" data-filter="SPECIAL">Đặc Biệt (12)</button>
+        </div>
+
+        <!-- Danh sách cuộn 40 ô -->
+        <div id="roster-tiles-list" class="roster-tiles-container">
+          <!-- Injected dynamically -->
+        </div>
       </div>
     </div>
 

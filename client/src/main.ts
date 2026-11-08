@@ -11,6 +11,7 @@ let isHost: boolean = false;
 let currentPendingTileAction: any = null;
 let boardTilesData: any[] = [];
 let latestPlayersSnapshot: any[] = [];
+let latestPropertiesSnapshot: any[] = [];
 
 // DOM Elements
 const elLobbyView = document.getElementById('lobby-view')!;
@@ -25,6 +26,44 @@ const elPropertyModal = document.getElementById('property-modal')!;
 const elCardModal = document.getElementById('card-modal')!;
 const elVictoryModal = document.getElementById('victory-modal')!;
 const elLogDrawer = document.getElementById('log-drawer')!;
+
+// Navigation & Camera Controls
+const btnToggleZoom = document.getElementById('btn-toggle-zoom');
+const btnOpenRoster = document.getElementById('btn-open-roster');
+const btnToggleCamLock = document.getElementById('btn-toggle-cam-lock');
+const btnToggleFollow = document.getElementById('btn-toggle-follow')!;
+const btnResetCam = document.getElementById('btn-reset-cam')!;
+const btnToggleLog = document.getElementById('btn-toggle-log')!;
+const btnCloseLog = document.getElementById('btn-close-log')!;
+const logItems = document.getElementById('log-items')!;
+
+// Tile Inspector Floating Card
+const elTileInspector = document.getElementById('tile-inspector-card')!;
+const btnCloseInspector = document.getElementById('btn-close-inspector')!;
+const inspectorHeaderBg = document.getElementById('inspector-header-bg')!;
+const inspectorTileBadge = document.getElementById('inspector-tile-badge')!;
+const inspectorLandmarkIcon = document.getElementById('inspector-landmark-icon')!;
+const inspectorTileName = document.getElementById('inspector-tile-name')!;
+const inspectorDistrictName = document.getElementById('inspector-district-name')!;
+const inspectorOwnerInfo = document.getElementById('inspector-owner-info')!;
+const inspectorOwnerAvatar = document.getElementById('inspector-owner-avatar')!;
+const inspectorOwnerName = document.getElementById('inspector-owner-name')!;
+const inspectorBuildingLevel = document.getElementById('inspector-building-level')!;
+const inspectorPropertyDetails = document.getElementById('inspector-property-details')!;
+const inspectorPriceValue = document.getElementById('inspector-price-value')!;
+const inspectorRentBase = document.getElementById('inspector-rent-base')!;
+const inspectorRentH1 = document.getElementById('inspector-rent-h1')!;
+const inspectorRentH2 = document.getElementById('inspector-rent-h2')!;
+const inspectorRentH3 = document.getElementById('inspector-rent-h3')!;
+const inspectorRentHotel = document.getElementById('inspector-rent-hotel')!;
+const inspectorHouseCost = document.getElementById('inspector-house-cost')!;
+const inspectorSpecialDesc = document.getElementById('inspector-special-desc')!;
+
+// Board Roster Modal
+const elBoardRosterModal = document.getElementById('board-roster-modal')!;
+const btnCloseRoster = document.getElementById('btn-close-roster')!;
+const rosterTilesList = document.getElementById('roster-tiles-list')!;
+const rosterFilterTabs = document.getElementById('roster-filter-tabs')!;
 
 const inputUsername = document.getElementById('input-username') as HTMLInputElement;
 const inputRoomCode = document.getElementById('input-room-code') as HTMLInputElement;
@@ -53,12 +92,6 @@ const timerFill = document.getElementById('timer-fill')!;
 const hudToast = document.getElementById('hud-toast')!;
 const btnRollDice = document.getElementById('btn-roll-dice')!;
 const btnEndTurn = document.getElementById('btn-end-turn')!;
-const btnToggleCamLock = document.getElementById('btn-toggle-cam-lock');
-const btnToggleFollow = document.getElementById('btn-toggle-follow')!;
-const btnResetCam = document.getElementById('btn-reset-cam')!;
-const btnToggleLog = document.getElementById('btn-toggle-log')!;
-const btnCloseLog = document.getElementById('btn-close-log')!;
-const logItems = document.getElementById('log-items')!;
 
 const propColorBar = document.getElementById('prop-color-bar')!;
 const propTitle = document.getElementById('prop-title')!;
@@ -77,9 +110,227 @@ const victoryWinnerName = document.getElementById('victory-winner-name')!;
 const victoryRankings = document.getElementById('victory-rankings')!;
 const btnPlayAgain = document.getElementById('btn-play-again')!;
 
+const LANDMARK_ICONS: Record<number, string> = {
+  0: '🚩', // Khởi hành (GO)
+  1: '🌉', // Cần Thơ (Cầu Cần Thơ)
+  2: '🎁', // Khí vận
+  3: '🦀', // Cà Mau (Mũi Cà Mau)
+  4: '💸', // Thuế thu nhập
+  5: '🚌', // Bến Xe Miền Tây
+  6: '🏖️', // Vũng Tàu (Bãi Sau)
+  7: '⚡', // Cơ hội
+  8: '⛵', // Phan Thiết (Mũi Né)
+  9: '🏝️', // Nha Trang (Vinpearl)
+  10: '🔒', // Nhà Tù
+  11: '🌲', // Đà Lạt (Hồ Xuân Hương)
+  12: '⚡', // Công Ty Điện Lực
+  13: '☕', // Buôn Ma Thuột
+  14: '⛰️', // Pleiku (Biển Hồ)
+  15: '🚂', // Ga Sài Gòn
+  16: '🌊', // Quy Nhơn (Eo Gió)
+  17: '🎁', // Khí vận
+  18: '🏮', // Hội An (Phố Cổ)
+  19: '🌉', // Đà Nẵng (Cầu Rồng)
+  20: '🚗', // Bãi Đỗ Xe (Free Parking)
+  21: '🏯', // Huế (Đại Nội)
+  22: '⚡', // Cơ hội
+  23: '🦇', // Phong Nha (Kẻ Bàng)
+  24: '🏖️', // Cửa Lò
+  25: '🚂', // Ga Đà Nẵng
+  26: '⚓', // Hải Phòng (Cảng Biển)
+  27: '⛵', // Hạ Long (Vịnh)
+  28: '💧', // Công Ty Nước Sạch
+  29: '🚣', // Tràng An (Ninh Bình)
+  30: '👮', // Vào Tù
+  31: '🌅', // Hồ Tây (Hà Nội)
+  32: '⛩️', // Phố Cổ (Hà Nội)
+  33: '🎁', // Khí vận
+  34: '🏛️', // Tràng Tiền (Hà Nội)
+  35: '🚂', // Ga Hà Nội
+  36: '⚡', // Cơ hội
+  37: '🗼', // Landmark 81 (TP.HCM)
+  38: '💎', // Thuế Xa Xỉ
+  39: '🏙️'  // Nguyễn Huệ (TP.HCM)
+};
+
+const DISTRICT_NAMES: Record<number, string> = {
+  1: 'Phân khu 1 • Iris Purple',
+  2: 'Phân khu 2 • Xanh Dương Nhạt',
+  3: 'Phân khu 3 • Hồng Phấn',
+  4: 'Phân khu 4 • Cam San Hô',
+  5: 'Phân khu 5 • Đỏ Ruby',
+  6: 'Phân khu 6 • Vàng Hoàng Gia',
+  7: 'Phân khu 7 • Xanh Ngọc Bích',
+  8: 'Phân khu 8 • Xanh Lam Đậm'
+};
+
+let currentInspectedTileId: number | null = null;
+let currentRosterFilter = 'ALL';
+
+function showTileInspector(tileId: number, tileData?: any) {
+  const tile = tileData || (boardTilesData && boardTilesData[tileId]);
+  if (!tile) return;
+  currentInspectedTileId = tileId;
+
+  const landmarkIcon = LANDMARK_ICONS[tileId] || '📍';
+  const typeLabel = 
+    tile.type === 'PROPERTY' ? 'BẤT ĐỘNG SẢN' :
+    tile.type === 'RAILROAD' ? 'BẾN XE / NHÀ GA' :
+    tile.type === 'UTILITY' ? 'CÔNG TY TIỆN ÍCH' :
+    tile.type === 'CHANCE' ? 'THẺ CƠ HỘI' :
+    tile.type === 'COMMUNITY_CHEST' ? 'THẺ KHÍ VẬN' :
+    tile.type === 'TAX' ? 'THUẾ VÀ LỆ PHÍ' :
+    tile.type === 'GO' ? 'KHỞI HÀNH (GO)' :
+    tile.type === 'JAIL' ? 'NHÀ TÙ / THĂM TÙ' :
+    tile.type === 'FREE_PARKING' ? 'BÃI ĐỖ XE MIỄN PHÍ' :
+    tile.type === 'GO_TO_JAIL' ? 'LỆNH BẮT VÀO TÙ' : 'ĐỊA ĐIỂM';
+
+  inspectorTileBadge.textContent = `Ô #${tileId < 10 ? '0' + tileId : tileId} • ${typeLabel}`;
+  inspectorLandmarkIcon.textContent = landmarkIcon;
+  inspectorTileName.textContent = tile.name;
+
+  const color = tile.districtColor || (tile.type === 'CHANCE' ? '#FF7675' : tile.type === 'COMMUNITY_CHEST' ? '#FDCB6E' : tile.type === 'RAILROAD' ? '#2D3436' : tile.type === 'UTILITY' ? '#0984E3' : '#636E72');
+  inspectorHeaderBg.style.background = `linear-gradient(135deg, ${color}, #2D3436)`;
+
+  if (tile.district && DISTRICT_NAMES[tile.district]) {
+    inspectorDistrictName.textContent = DISTRICT_NAMES[tile.district];
+    inspectorDistrictName.style.display = 'block';
+  } else {
+    inspectorDistrictName.textContent = tile.description || 'Địa điểm trên bàn cờ';
+    inspectorDistrictName.style.display = 'block';
+  }
+
+  // Check Property ownership
+  const prop = latestPropertiesSnapshot.find(p => p.tileId === tileId);
+  const owner = prop ? latestPlayersSnapshot.find(p => p.id === prop.ownerId) : null;
+
+  if (tile.type === 'PROPERTY' || tile.type === 'RAILROAD' || tile.type === 'UTILITY') {
+    inspectorPropertyDetails.style.display = 'block';
+    inspectorSpecialDesc.style.display = 'none';
+
+    if (owner) {
+      inspectorOwnerAvatar.textContent = '';
+      inspectorOwnerAvatar.style.backgroundColor = owner.color || '#00B894';
+      inspectorOwnerAvatar.innerHTML = `<img src="${owner.avatar}" style="width:100%;height:100%;border-radius:50%;" />`;
+      inspectorOwnerName.textContent = owner.username;
+      inspectorOwnerName.style.color = owner.color || '#2D3436';
+
+      const levelStr = prop.level === 0 ? 'Đất trống' : prop.level === 4 ? '🏨 Khách sạn Landmark' : `🏠 ${prop.level} Tầng Nhà`;
+      inspectorBuildingLevel.textContent = `Cấp độ: ${levelStr}`;
+      inspectorBuildingLevel.style.color = '#E17055';
+    } else {
+      inspectorOwnerAvatar.innerHTML = '❓';
+      inspectorOwnerAvatar.style.backgroundColor = '#DFE6E9';
+      inspectorOwnerName.textContent = 'Chưa có chủ sở hữu';
+      inspectorOwnerName.style.color = '#2D3436';
+      inspectorBuildingLevel.textContent = 'Đang mở bán';
+      inspectorBuildingLevel.style.color = '#00B894';
+    }
+
+    inspectorPriceValue.textContent = `${tile.price}M`;
+    inspectorRentBase.textContent = `${tile.baseRent || 0}M`;
+    inspectorRentH1.textContent = `${tile.rentHouse1 || (tile.baseRent * 5 || 20)}M`;
+    inspectorRentH2.textContent = `${tile.rentHouse2 || (tile.baseRent * 15 || 60)}M`;
+    inspectorRentH3.textContent = `${tile.rentHouse3 || (tile.baseRent * 45 || 180)}M`;
+    inspectorRentHotel.textContent = `${tile.rentHotel || (tile.baseRent * 110 || 450)}M`;
+    inspectorHouseCost.textContent = `${tile.houseCost || 100}M`;
+
+    // Highlight active rent row
+    for (let i = 0; i <= 4; i++) {
+      const row = document.getElementById(`rent-row-${i}`);
+      if (row) {
+        if (owner && prop && prop.level === i) {
+          row.classList.add('current-rent-level');
+        } else {
+          row.classList.remove('current-rent-level');
+        }
+      }
+    }
+  } else {
+    // Special tile
+    inspectorPropertyDetails.style.display = 'none';
+    inspectorSpecialDesc.style.display = 'block';
+    inspectorSpecialDesc.textContent = tile.description || 'Ô đặc biệt không thể mua bán. Dừng chân tại đây để kích hoạt hiệu ứng tương ứng.';
+
+    inspectorOwnerAvatar.innerHTML = '🏛️';
+    inspectorOwnerAvatar.style.backgroundColor = '#DFE6E9';
+    inspectorOwnerName.textContent = 'Khu Vực Công Cộng';
+    inspectorOwnerName.style.color = '#636E72';
+    inspectorBuildingLevel.textContent = 'Không Thể Mua Bán';
+    inspectorBuildingLevel.style.color = '#636E72';
+  }
+
+  elTileInspector.style.display = 'block';
+}
+
+function closeTileInspector() {
+  elTileInspector.style.display = 'none';
+  currentInspectedTileId = null;
+}
+
+function renderBoardRoster(filter: string = currentRosterFilter) {
+  currentRosterFilter = filter;
+  if (!boardTilesData || boardTilesData.length === 0) return;
+
+  const filtered = boardTilesData.filter(t => {
+    if (filter === 'ALL') return true;
+    if (filter === 'PROPERTY') return t.type === 'PROPERTY';
+    if (filter === 'RAILROAD') return t.type === 'RAILROAD';
+    if (filter === 'UTILITY') return t.type === 'UTILITY';
+    if (filter === 'SPECIAL') return t.type !== 'PROPERTY' && t.type !== 'RAILROAD' && t.type !== 'UTILITY';
+    return true;
+  });
+
+  rosterTilesList.innerHTML = filtered.map(t => {
+    const prop = latestPropertiesSnapshot.find(p => p.tileId === t.id);
+    const owner = prop ? latestPlayersSnapshot.find(p => p.id === prop.ownerId) : null;
+    const color = t.districtColor || (t.type === 'RAILROAD' ? '#2D3436' : t.type === 'UTILITY' ? '#0984E3' : '#B2BEC3');
+    const landmarkIcon = LANDMARK_ICONS[t.id] || '📍';
+
+    let ownerStatusHtml = '';
+    if (t.type === 'PROPERTY' || t.type === 'RAILROAD' || t.type === 'UTILITY') {
+      if (owner) {
+        ownerStatusHtml = `<span style="color:${owner.color}; font-weight:800; font-size:0.75rem;">👑 ${owner.username} (${prop.level === 4 ? 'Khách sạn' : prop.level + ' Nhà'})</span>`;
+      } else {
+        ownerStatusHtml = `<span style="color:#00B894; font-weight:800; font-size:0.75rem;">💰 ${t.price}M (Đang mở bán)</span>`;
+      }
+    } else {
+      ownerStatusHtml = `<span style="color:#636E72; font-size:0.72rem;">${t.description || 'Ô chức năng'}</span>`;
+    }
+
+    return `
+      <div class="roster-tile-card" onclick="window.selectTileFromRoster(${t.id})">
+        <div class="roster-tile-top">
+          <div style="display:flex; align-items:center;">
+            <div class="roster-tile-color-bar" style="background:${color};"></div>
+            <span style="font-size:1.1rem; margin-right:6px;">${landmarkIcon}</span>
+            <b style="font-size:0.88rem; color:#2D3436;">${t.name}</b>
+          </div>
+          <span style="font-size:0.7rem; font-weight:800; color:#B2BEC3;">#${t.id < 10 ? '0' + t.id : t.id}</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:2px;">
+          ${ownerStatusHtml}
+          <span style="font-size:0.72rem; color:#0984E3; font-weight:700;">Xem chi tiết ➔</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+(window as any).selectTileFromRoster = (tileId: number) => {
+  elBoardRosterModal.style.display = 'none';
+  boardScene.highlightTile(tileId);
+  showTileInspector(tileId, boardTilesData[tileId]);
+};
+
 function init() {
   const container = document.getElementById('canvas-container')!;
   boardScene = new BoardScene(container);
+
+  // Lắng nghe tương tác chạm/click trực tiếp vào ô cờ 3D
+  boardScene.onTileClick = (tileId: number, tile: any) => {
+    showTileInspector(tileId, tile);
+  };
 
   // Add sample preview tokens on GO tile so scene is lively immediately
   boardScene.tokenManager.createToken('preview_1', 'car', '#FF3838', 0);
@@ -193,6 +444,43 @@ function bindUIEvents() {
     socketClient.emit('game:end_turn');
   });
 
+  if (btnToggleZoom) {
+    btnToggleZoom.addEventListener('click', () => {
+      const isZoomed = boardScene.cameraManager.toggleZoom();
+      btnToggleZoom.textContent = isZoomed ? '🔄 Toàn Cảnh' : '🔍 Phóng To';
+      btnToggleZoom.className = isZoomed ? 'btn-chunky btn-primary' : 'btn-chunky btn-accent';
+      showToast(isZoomed ? 'Đã phóng to cận cảnh ô cờ siêu nét' : 'Đã về góc nhìn toàn cảnh bao quát');
+    });
+  }
+
+  if (btnOpenRoster) {
+    btnOpenRoster.addEventListener('click', () => {
+      renderBoardRoster('ALL');
+      elBoardRosterModal.style.display = 'flex';
+    });
+  }
+
+  if (btnCloseRoster) {
+    btnCloseRoster.addEventListener('click', () => {
+      elBoardRosterModal.style.display = 'none';
+    });
+  }
+
+  if (btnCloseInspector) {
+    btnCloseInspector.addEventListener('click', closeTileInspector);
+  }
+
+  if (rosterFilterTabs) {
+    rosterFilterTabs.addEventListener('click', (e) => {
+      const target = (e.target as HTMLElement).closest('.roster-tab') as HTMLElement;
+      if (!target) return;
+      const filter = target.dataset.filter || 'ALL';
+      rosterFilterTabs.querySelectorAll('.roster-tab').forEach(t => t.classList.remove('active'));
+      target.classList.add('active');
+      renderBoardRoster(filter);
+    });
+  }
+
   if (btnToggleCamLock) {
     btnToggleCamLock.addEventListener('click', () => {
       const isLocked = boardScene.cameraManager.toggleLock();
@@ -286,6 +574,7 @@ function bindSocketEvents() {
 
     boardTilesData = data.boardData;
     latestPlayersSnapshot = data.snapshot.players;
+    latestPropertiesSnapshot = data.snapshot.properties || [];
     boardScene.initBoard(boardTilesData);
 
     // Clear sample preview tokens
@@ -324,6 +613,10 @@ function bindSocketEvents() {
           const token = boardScene.tokenManager.tokens.get(data.userId);
           const landingPos = token ? token.mesh.position : boardScene.getTileWorldPosition(data.newPosition);
 
+          // Highlight và tự động mở Tra Cứu Chi Tiết ô cờ vừa dừng chân
+          boardScene.highlightTile(data.newPosition);
+          showTileInspector(data.newPosition, boardTilesData[data.newPosition]);
+
           if (data.passedGo) {
             sounds.playCoin();
             boardScene.vfxManager.spawnFloatingText('+200M (Lương)', landingPos, true);
@@ -340,6 +633,7 @@ function bindSocketEvents() {
       boardScene.cameraManager.setFollowTarget(token.mesh.position);
     }
 
+    latestPropertiesSnapshot = data.snapshot.properties || latestPropertiesSnapshot;
     updateHudPlayers(data.snapshot);
     renderLogs(data.snapshot.logs);
   });
@@ -349,12 +643,28 @@ function bindSocketEvents() {
     const tilePos = boardScene.getTileWorldPosition(data.tileId);
     boardScene.vfxManager.spawnShockwave(tilePos, '#00B894', 3.0);
     latestPlayersSnapshot = data.snapshot.players;
+    latestPropertiesSnapshot = data.snapshot.properties || latestPropertiesSnapshot;
+
+    if (currentInspectedTileId === data.tileId) {
+      showTileInspector(data.tileId);
+    }
+    if (elBoardRosterModal.style.display === 'flex') {
+      renderBoardRoster();
+    }
+
     updateHudPlayers(data.snapshot);
     renderLogs(data.snapshot.logs);
   });
 
   socketClient.on('game:state_sync', (data: any) => {
     latestPlayersSnapshot = data.snapshot.players;
+    latestPropertiesSnapshot = data.snapshot.properties || latestPropertiesSnapshot;
+    if (currentInspectedTileId !== null) {
+      showTileInspector(currentInspectedTileId);
+    }
+    if (elBoardRosterModal.style.display === 'flex') {
+      renderBoardRoster();
+    }
     updateHudPlayers(data.snapshot);
     renderLogs(data.snapshot.logs);
     checkMyTurn(data.snapshot);
@@ -362,6 +672,7 @@ function bindSocketEvents() {
 
   socketClient.on('game:turn_change', (data: any) => {
     latestPlayersSnapshot = data.snapshot.players;
+    latestPropertiesSnapshot = data.snapshot.properties || latestPropertiesSnapshot;
     updateHudPlayers(data.snapshot);
     renderLogs(data.snapshot.logs);
     checkMyTurn(data.snapshot);
