@@ -88,44 +88,41 @@ export class DetailedModels {
 
     tree.add(branch1, branch2);
 
-    // D. Tán lá cách điệu đa tầng (Tiered Faceted Foliage) với Icosahedron flatShading = true
+    // D. Tán lá cách điệu mềm mại đa tầng (Stylized Soft Cloud Foliage) - Smooth Shading bóng mịn
     // Tầng 1 (Đáy - Shadow Layer): Xanh rêu đậm sâu thẳm
     const shadowFoliageMat = new THREE.MeshStandardMaterial({
-      color: '#006241',
-      roughness: 0.55,
-      metalness: 0.0,
-      flatShading: true
+      color: '#005236',
+      roughness: 0.45,
+      metalness: 0.0
     });
 
     // Tầng 2 (Giữa - Main Canopy): Xanh ngọc bích tươi tắn bắt sáng
     const mainFoliageMat = new THREE.MeshStandardMaterial({
       color: '#00B894',
-      roughness: 0.40,
-      metalness: 0.0,
-      flatShading: true
+      roughness: 0.38,
+      metalness: 0.0
     });
 
-    // Tầng 3 (Đỉnh chóp - Sunlit Crown): Vàng chanh ấm áp đón ánh nắng
+    // Tầng 3 (Đỉnh chóp - Sunlit Crown): Xanh mạ non ấm áp đón nắng vàng
     const sunlitFoliageMat = new THREE.MeshStandardMaterial({
       color: '#55EFC4',
-      roughness: 0.30,
-      metalness: 0.0,
-      flatShading: true
+      roughness: 0.32,
+      metalness: 0.0
     });
 
     const foliageGroup = new THREE.Group();
     foliageGroup.position.y = 1.45;
 
-    // 1. Tầng Đáy (5 khối dẹp tạo bóng đổ chân thực)
+    // 1. Tầng Đáy (5 khối bung tròn dẹp tạo bóng đổ bồng bềnh mềm mại)
     const bottomClusters = [
-      { x: 0, y: 0.05, z: 0, r: 0.72, sx: 1.4, sy: 0.7, sz: 1.4 },
-      { x: -0.38, y: -0.08, z: 0.25, r: 0.55, sx: 1.3, sy: 0.65, sz: 1.3 },
-      { x: 0.35, y: -0.05, z: -0.3, r: 0.58, sx: 1.3, sy: 0.65, sz: 1.3 },
-      { x: 0.28, y: -0.06, z: 0.32, r: 0.52, sx: 1.25, sy: 0.6, sz: 1.25 },
-      { x: -0.32, y: -0.04, z: -0.28, r: 0.54, sx: 1.3, sy: 0.65, sz: 1.3 }
+      { x: 0, y: 0.05, z: 0, r: 0.72, sx: 1.35, sy: 0.8, sz: 1.35 },
+      { x: -0.38, y: -0.06, z: 0.25, r: 0.55, sx: 1.25, sy: 0.75, sz: 1.25 },
+      { x: 0.35, y: -0.04, z: -0.3, r: 0.58, sx: 1.25, sy: 0.75, sz: 1.25 },
+      { x: 0.28, y: -0.05, z: 0.32, r: 0.52, sx: 1.2, sy: 0.7, sz: 1.2 },
+      { x: -0.32, y: -0.03, z: -0.28, r: 0.54, sx: 1.25, sy: 0.75, sz: 1.25 }
     ];
     bottomClusters.forEach(c => {
-      const geo = new THREE.IcosahedronGeometry(c.r, 1);
+      const geo = new THREE.SphereGeometry(c.r, 22, 16);
       const mesh = new THREE.Mesh(geo, shadowFoliageMat);
       mesh.scale.set(c.sx, c.sy, c.sz);
       mesh.position.set(c.x, c.y, c.z);
@@ -134,7 +131,7 @@ export class DetailedModels {
       foliageGroup.add(mesh);
     });
 
-    // 2. Tầng Giữa (7 khối bung tròn xòe sang các nhánh)
+    // 2. Tầng Giữa (7 khối bung tròn xòe như cụm mây)
     const midClusters = [
       { x: 0, y: 0.45, z: 0, r: 0.75, sx: 1.15, sy: 0.95, sz: 1.15 },
       { x: 0.42, y: 0.38, z: 0.2, r: 0.58, sx: 1.1, sy: 0.9, sz: 1.1 },
@@ -145,7 +142,7 @@ export class DetailedModels {
       { x: -0.15, y: 0.48, z: -0.4, r: 0.52, sx: 1.05, sy: 0.85, sz: 1.05 }
     ];
     midClusters.forEach(c => {
-      const geo = new THREE.IcosahedronGeometry(c.r, 1);
+      const geo = new THREE.SphereGeometry(c.r, 22, 16);
       const mesh = new THREE.Mesh(geo, mainFoliageMat);
       mesh.scale.set(c.sx, c.sy, c.sz);
       mesh.position.set(c.x, c.y, c.z);
@@ -153,14 +150,14 @@ export class DetailedModels {
       foliageGroup.add(mesh);
     });
 
-    // 3. Tầng Đỉnh (3 khối đón nắng ấm)
+    // 3. Tầng Đỉnh (3 khối tròn xoe đón nắng ấm)
     const topClusters = [
-      { x: 0.02, y: 0.88, z: 0.02, r: 0.55, sx: 1.0, sy: 0.9, sz: 1.0 },
-      { x: -0.18, y: 0.82, z: 0.12, r: 0.42, sx: 0.95, sy: 0.85, sz: 0.95 },
-      { x: 0.16, y: 0.84, z: -0.14, r: 0.44, sx: 0.95, sy: 0.85, sz: 0.95 }
+      { x: 0.02, y: 0.88, z: 0.02, r: 0.55, sx: 1.05, sy: 0.95, sz: 1.05 },
+      { x: -0.18, y: 0.82, z: 0.12, r: 0.42, sx: 1.0, sy: 0.9, sz: 1.0 },
+      { x: 0.16, y: 0.84, z: -0.14, r: 0.44, sx: 1.0, sy: 0.9, sz: 1.0 }
     ];
     topClusters.forEach(c => {
-      const geo = new THREE.IcosahedronGeometry(c.r, 1);
+      const geo = new THREE.SphereGeometry(c.r, 20, 16);
       const mesh = new THREE.Mesh(geo, sunlitFoliageMat);
       mesh.scale.set(c.sx, c.sy, c.sz);
       mesh.position.set(c.x, c.y, c.z);
@@ -600,40 +597,66 @@ export class DetailedModels {
   }
 
   // =========================================================================
-  // 6. BỤI HOA CẨM TÚ CẦU RỰC RỠ (Hydrangea Flower Bush)
+  // 6. BỤI HOA CẨM TÚ CẦU RỰC RỠ (Hydrangea Flower Bush) - Smooth Toy Shading
   // =========================================================================
   public static createFlowerBush(colorHex: string): THREE.Group {
     const bush = new THREE.Group();
-    const leafMat = new THREE.MeshStandardMaterial({ color: '#00B894', roughness: 0.45, flatShading: true });
+    const leafMat = new THREE.MeshStandardMaterial({
+      color: '#00A382',
+      roughness: 0.38,
+      metalness: 0.0
+    });
     const flowerMat = new THREE.MeshStandardMaterial({
       color: colorHex,
-      roughness: 0.28,
+      roughness: 0.25,
       emissive: colorHex,
-      emissiveIntensity: 0.18,
-      flatShading: true
+      emissiveIntensity: 0.25
+    });
+    const pistilMat = new THREE.MeshStandardMaterial({
+      color: '#FFEAA7',
+      emissive: '#F1C40F',
+      emissiveIntensity: 0.6,
+      roughness: 0.2
     });
 
-    // Cụm lá xanh đa diện (Icosahedron flatShading)
-    const leaves = new THREE.Mesh(new THREE.IcosahedronGeometry(0.36, 1), leafMat);
-    leaves.scale.set(1.25, 0.7, 1.25);
-    leaves.position.y = 0.2;
-    leaves.castShadow = true;
-    bush.add(leaves);
-
-    // Các đóa hoa cẩm tú cầu nở rộ nhấp nhô
-    const floretGeo = new THREE.IcosahedronGeometry(0.12, 0);
-    const floretOffsets = [
-      [0, 0.4, 0],
-      [-0.18, 0.33, 0.14],
-      [0.18, 0.34, -0.1],
-      [0.13, 0.29, 0.18],
-      [-0.14, 0.31, -0.16]
+    // Cụm lá xanh mọng nước bo tròn mềm mại
+    const leafGeo = new THREE.SphereGeometry(0.25, 16, 12);
+    const leafClusters = [
+      [0, 0.16, 0, 1.3, 0.65, 1.3],
+      [-0.15, 0.14, 0.12, 1.0, 0.6, 1.0],
+      [0.15, 0.14, -0.12, 1.0, 0.6, 1.0]
     ];
+    leafClusters.forEach(([lx, ly, lz, sx, sy, sz]) => {
+      const leafMesh = new THREE.Mesh(leafGeo, leafMat);
+      leafMesh.scale.set(sx, sy, sz);
+      leafMesh.position.set(lx, ly, lz);
+      leafMesh.castShadow = true;
+      bush.add(leafMesh);
+    });
+
+    // Các cụm cầu hoa cẩm tú cầu nở rộ tròn xoe đáng yêu
+    const blossomGeo = new THREE.SphereGeometry(0.12, 16, 14);
+    const pistilGeo = new THREE.SphereGeometry(0.035, 10, 8);
+
+    const floretOffsets = [
+      [0, 0.38, 0],
+      [-0.16, 0.32, 0.14],
+      [0.16, 0.33, -0.1],
+      [0.14, 0.28, 0.16],
+      [-0.14, 0.30, -0.15],
+      [0, 0.44, -0.06]
+    ];
+
     floretOffsets.forEach(([fx, fy, fz]) => {
-      const floret = new THREE.Mesh(floretGeo, flowerMat);
-      floret.position.set(fx, fy, fz);
-      floret.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, 0);
-      bush.add(floret);
+      const blossom = new THREE.Mesh(blossomGeo, flowerMat);
+      blossom.position.set(fx, fy, fz);
+      blossom.castShadow = true;
+
+      // Nhụy hoa phát sáng ở tâm
+      const pistil = new THREE.Mesh(pistilGeo, pistilMat);
+      pistil.position.set(fx, fy + 0.09, fz);
+
+      bush.add(blossom, pistil);
     });
 
     return bush;
