@@ -14,9 +14,9 @@ export interface TokenInstance {
   isMoving: boolean;
   pathQueue: number[];
   wheels?: THREE.Mesh[];
-  ears?: THREE.Mesh;
+  ears?: THREE.Mesh | THREE.Group;
   thrusterFlame?: THREE.Mesh;
-  blinkTimer?: number;
+  tail?: THREE.Mesh;
 }
 
 export class TokenManager {
@@ -39,7 +39,7 @@ export class TokenManager {
 
     const grad = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
     grad.addColorStop(0, 'rgba(45, 52, 54, 0.45)');
-    grad.addColorStop(0.5, 'rgba(45, 52, 54, 0.2)');
+    grad.addColorStop(0.5, 'rgba(45, 52, 54, 0.18)');
     grad.addColorStop(1, 'rgba(45, 52, 54, 0)');
 
     ctx.fillStyle = grad;
@@ -65,222 +65,380 @@ export class TokenManager {
   public createToken(userId: string, tokenType: TokenType, color: string, slot: number): THREE.Group {
     const tokenGroup = new THREE.Group();
     const wheels: THREE.Mesh[] = [];
-    let earsMesh: THREE.Mesh | undefined;
+    let earsMesh: THREE.Group | undefined;
     let flameMesh: THREE.Mesh | undefined;
+    let tailMesh: THREE.Mesh | undefined;
 
     if (tokenType === 'car') {
-      // 🚗 Xe Cổ Điển Bo Tròn Mịn (Chunky Vintage Cruiser)
+      // ==========================================
+      // 🚗 1. XE CỔ ĐIỂN MẠ CROM CAO CẤP (Classic Cruiser)
+      // ==========================================
       const bodyMat = new THREE.MeshStandardMaterial({
         color: color || '#FF3838',
-        roughness: 0.22,
-        metalness: 0.12
+        roughness: 0.18,
+        metalness: 0.15
       });
-      // Thân xe bo tròn góc mềm
-      const body = new THREE.Mesh(new RoundedBoxGeometry(0.9, 0.38, 0.54, 4, 0.1), bodyMat);
-      body.position.y = 0.32;
+      const chromeMat = new THREE.MeshStandardMaterial({
+        color: '#FFFFFF',
+        metalness: 0.92,
+        roughness: 0.1
+      });
+
+      // A. Khung gầm thân xe bo tròn cong mềm
+      const body = new THREE.Mesh(new RoundedBoxGeometry(0.92, 0.32, 0.54, 4, 0.1), bodyMat);
+      body.position.y = 0.28;
       body.castShadow = true;
 
-      // Cabin bo tròn với kính xe pha lê
+      // Nắp ca-pô cong phía trước
+      const hood = new THREE.Mesh(new RoundedBoxGeometry(0.38, 0.14, 0.48, 3, 0.06), bodyMat);
+      hood.position.set(0.32, 0.38, 0);
+
+      // B. Cabin xe với kính chắn gió trong suốt
       const cabinMat = new THREE.MeshStandardMaterial({
         color: '#E0F2FE',
-        roughness: 0.1,
+        roughness: 0.08,
         metalness: 0.1,
         transparent: true,
-        opacity: 0.88
+        opacity: 0.85
       });
-      const cabin = new THREE.Mesh(new RoundedBoxGeometry(0.52, 0.32, 0.46, 4, 0.08), cabinMat);
-      cabin.position.set(-0.06, 0.58, 0);
+      const cabin = new THREE.Mesh(new RoundedBoxGeometry(0.48, 0.3, 0.44, 4, 0.08), cabinMat);
+      cabin.position.set(-0.1, 0.54, 0);
 
-      // Cản trước và sau mạ crom sáng bóng
-      const chromeMat = new THREE.MeshStandardMaterial({ color: '#F1F2F6', metalness: 0.88, roughness: 0.15 });
-      const frontBumper = new THREE.Mesh(new RoundedBoxGeometry(0.08, 0.1, 0.52, 2, 0.02), chromeMat);
-      frontBumper.position.set(0.48, 0.22, 0);
-      const rearBumper = new THREE.Mesh(new RoundedBoxGeometry(0.08, 0.1, 0.52, 2, 0.02), chromeMat);
-      rearBumper.position.set(-0.48, 0.22, 0);
+      // C. Lưới tản nhiệt mạ crom có nan sọc
+      const grill = new THREE.Mesh(new RoundedBoxGeometry(0.04, 0.2, 0.36, 2, 0.02), chromeMat);
+      grill.position.set(0.52, 0.28, 0);
 
-      // Đèn pha hình cầu thủy tinh vàng
-      const lightGeo = new THREE.SphereGeometry(0.085, 12, 12);
-      const lightMat = new THREE.MeshStandardMaterial({ color: '#FFF275', emissive: '#FFF275', emissiveIntensity: 0.75 });
-      const hl1 = new THREE.Mesh(lightGeo, lightMat);
-      hl1.position.set(0.44, 0.33, 0.17);
-      const hl2 = new THREE.Mesh(lightGeo, lightMat);
-      hl2.position.set(0.44, 0.33, -0.17);
+      // Biểu tượng mạ crom trên mui xe
+      const hoodOrnament = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.1, 8), chromeMat);
+      hoodOrnament.position.set(0.48, 0.48, 0);
+      hoodOrnament.rotation.z = -Math.PI / 4;
 
-      // 4 Bánh xe lốp cao su có mâm crom
+      // Cản trước và cản sau cong ôm thân xe
+      const frontBumper = new THREE.Mesh(new RoundedBoxGeometry(0.08, 0.1, 0.56, 2, 0.03), chromeMat);
+      frontBumper.position.set(0.52, 0.18, 0);
+      const rearBumper = new THREE.Mesh(new RoundedBoxGeometry(0.08, 0.1, 0.56, 2, 0.03), chromeMat);
+      rearBumper.position.set(-0.5, 0.18, 0);
+
+      // 4 Hốc bánh xe (Wheel Fenders) tạo cơ bắp xe cổ điển
+      const fenderMat = bodyMat;
+      const makeFender = (fx: number, fz: number) => {
+        const fender = new THREE.Mesh(new RoundedBoxGeometry(0.32, 0.18, 0.08, 2, 0.04), fenderMat);
+        fender.position.set(fx, 0.26, fz);
+        tokenGroup.add(fender);
+      };
+      makeFender(-0.26, 0.28);
+      makeFender(0.26, 0.28);
+      makeFender(-0.26, -0.28);
+      makeFender(0.26, -0.28);
+
+      // Đèn pha tròn mạ crom có thủy tinh vàng sáng
+      const lightRimGeo = new THREE.CylinderGeometry(0.09, 0.09, 0.06, 16);
+      lightRimGeo.rotateZ(Math.PI / 2);
+      const lightLensGeo = new THREE.SphereGeometry(0.075, 12, 12);
+      const lightLensMat = new THREE.MeshStandardMaterial({
+        color: '#FFF275',
+        emissive: '#FFF275',
+        emissiveIntensity: 0.8
+      });
+
+      const makeHeadlight = (lz: number) => {
+        const rim = new THREE.Mesh(lightRimGeo, chromeMat);
+        rim.position.set(0.5, 0.32, lz);
+        const lens = new THREE.Mesh(lightLensGeo, lightLensMat);
+        lens.position.set(0.52, 0.32, lz);
+        tokenGroup.add(rim, lens);
+      };
+      makeHeadlight(0.18);
+      makeHeadlight(-0.18);
+
+      // Gương chiếu hậu mạ crom hai bên
+      const mirrorGeo = new THREE.SphereGeometry(0.045, 8, 8);
+      const mirrorL = new THREE.Mesh(mirrorGeo, chromeMat);
+      mirrorL.position.set(0.08, 0.5, 0.26);
+      const mirrorR = new THREE.Mesh(mirrorGeo, chromeMat);
+      mirrorR.position.set(0.08, 0.5, -0.26);
+
+      // 4 Bánh xe lốp cao su dập vân + mâm đĩa crom phản quang
       const tireGeo = new THREE.CylinderGeometry(0.14, 0.14, 0.1, 16);
-      const tireMat = new THREE.MeshStandardMaterial({ color: '#2C3A47', roughness: 0.6 });
       tireGeo.rotateZ(Math.PI / 2);
+      const tireMat = new THREE.MeshStandardMaterial({ color: '#2C3A47', roughness: 0.7 });
 
-      const hubGeo = new THREE.CylinderGeometry(0.07, 0.07, 0.11, 12);
+      const hubGeo = new THREE.CylinderGeometry(0.075, 0.075, 0.11, 14);
       hubGeo.rotateZ(Math.PI / 2);
 
-      const makeWheel = (x: number, z: number) => {
+      const makeWheel = (wx: number, wz: number) => {
         const wGroup = new THREE.Group();
-        wGroup.position.set(x, 0.14, z);
+        wGroup.position.set(wx, 0.14, wz);
         const tire = new THREE.Mesh(tireGeo, tireMat);
+        tire.castShadow = true;
         const hub = new THREE.Mesh(hubGeo, chromeMat);
         wGroup.add(tire, hub);
         tokenGroup.add(wGroup);
         wheels.push(tire);
       };
 
-      makeWheel(-0.27, 0.28);
-      makeWheel(0.27, 0.28);
-      makeWheel(-0.27, -0.28);
-      makeWheel(0.27, -0.28);
+      makeWheel(-0.26, 0.28);
+      makeWheel(0.26, 0.28);
+      makeWheel(-0.26, -0.28);
+      makeWheel(0.26, -0.28);
 
-      tokenGroup.add(body, cabin, frontBumper, rearBumper, hl1, hl2);
+      tokenGroup.add(body, hood, cabin, grill, hoodOrnament, frontBumper, rearBumper, mirrorL, mirrorR);
+
     } else if (tokenType === 'hat') {
-      // 🎩 Mũ Phớt Hoàng Kim Quý Tộc (Golden Top Hat)
+      // ==========================================
+      // 🎩 2. MŨ PHỚT HOÀNG GIA ĐÍNH KIM CƯƠNG (Royal Top Hat)
+      // ==========================================
       const goldMat = new THREE.MeshStandardMaterial({
         color: color || '#FDCB6E',
         emissive: '#FDCB6E',
         emissiveIntensity: 0.25,
         metalness: 0.88,
-        roughness: 0.18
+        roughness: 0.16
       });
-      // Vành mũ uốn cong mềm
-      const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.62, 0.08, 32), goldMat);
-      brim.position.y = 0.08;
 
-      // Dải nơ nhung hoàng gia
-      const ribbon = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.37, 0.37, 0.15, 24),
-        new THREE.MeshStandardMaterial({ color: '#6C5CE7', roughness: 0.4 })
-      );
+      // Vành mũ uốn cong lòng chảo sang trọng (Curved Dished Brim)
+      const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.64, 0.62, 0.08, 32), goldMat);
+      brim.position.y = 0.08;
+      brim.castShadow = true;
+
+      // Viền dải nơ nhung hoàng gia màu tím thẫm
+      const ribbonMat = new THREE.MeshStandardMaterial({
+        color: '#6C5CE7',
+        roughness: 0.35,
+        emissive: '#4834D4',
+        emissiveIntensity: 0.15
+      });
+      const ribbon = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.38, 0.16, 28), ribbonMat);
       ribbon.position.y = 0.2;
 
-      // Thân mũ thon đẹp
-      const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.35, 0.72, 24), goldMat);
-      crown.position.y = 0.62;
+      // Thân mũ thon loe nhẹ ở đỉnh (Fluted Crown)
+      const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.36, 0.74, 28), goldMat);
+      crown.position.y = 0.64;
+      crown.castShadow = true;
 
-      // Khóa nơ vàng đính đá hồng ngọc
+      // Đỉnh mũ vát lõm nhẹ
+      const crownTop = new THREE.Mesh(new THREE.CylinderGeometry(0.41, 0.42, 0.06, 28), goldMat);
+      crownTop.position.y = 1.02;
+
+      // Khóa nơ vàng kim chạm khắc hoa văn
       const buckle = new THREE.Mesh(
-        new THREE.BoxGeometry(0.12, 0.14, 0.05),
-        new THREE.MeshStandardMaterial({ color: '#D63031', emissive: '#D63031', emissiveIntensity: 0.6 })
+        new RoundedBoxGeometry(0.14, 0.16, 0.06, 2, 0.02),
+        new THREE.MeshStandardMaterial({ color: '#FFEAA7', metalness: 0.95, roughness: 0.1 })
       );
-      buckle.position.set(0.38, 0.2, 0);
+      buckle.position.set(0.39, 0.2, 0);
 
-      tokenGroup.add(brim, ribbon, crown, buckle);
+      // Viên hồng ngọc đính giữa khóa nơ
+      const ruby = new THREE.Mesh(
+        new THREE.OctahedronGeometry(0.06),
+        new THREE.MeshStandardMaterial({ color: '#D63031', emissive: '#FF7675', emissiveIntensity: 0.6, roughness: 0.1 })
+      );
+      ruby.position.set(0.43, 0.2, 0);
+
+      // Chiếc lông vũ trắng kiêu kỳ cắm trên vành nơ
+      const featherMat = new THREE.MeshStandardMaterial({ color: '#FFFDF9', roughness: 0.4 });
+      const feather = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.45, 8), featherMat);
+      feather.position.set(0.35, 0.42, 0.1);
+      feather.rotation.z = -Math.PI / 6;
+
+      tokenGroup.add(brim, ribbon, crown, crownTop, buckle, ruby, feather);
+
     } else if (tokenType === 'dog') {
-      // 🐕 Chú Cún May Mắn Bo Tròn Đáng Yêu
-      const dogMat = new THREE.MeshStandardMaterial({ color: color || '#E17055', roughness: 0.4 });
+      // ==========================================
+      // 🐕 3. CHÚ CÚN PUG MAY MẮN SIÊU DỄ THƯƠNG (Lucky Pug)
+      // ==========================================
+      const furMat = new THREE.MeshStandardMaterial({
+        color: color || '#E17055',
+        roughness: 0.45
+      });
+      const darkFurMat = new THREE.MeshStandardMaterial({
+        color: '#2C3A47',
+        roughness: 0.5
+      });
 
-      // Thân cún tròn mập
-      const body = new THREE.Mesh(new RoundedBoxGeometry(0.68, 0.54, 0.48, 4, 0.14), dogMat);
+      // A. Thân cún hình quả lê mũm mĩm
+      const body = new THREE.Mesh(new RoundedBoxGeometry(0.7, 0.56, 0.5, 4, 0.15), furMat);
       body.position.y = 0.38;
+      body.castShadow = true;
 
-      // Đầu cún tròn
-      const head = new THREE.Mesh(new RoundedBoxGeometry(0.45, 0.45, 0.44, 4, 0.12), dogMat);
-      head.position.set(0.32, 0.65, 0);
+      // Bụng cún màu kem sữa
+      const bellyMat = new THREE.MeshStandardMaterial({ color: '#FFEAA7', roughness: 0.5 });
+      const belly = new THREE.Mesh(new THREE.SphereGeometry(0.24, 12, 12), bellyMat);
+      belly.scale.set(1, 0.8, 0.3);
+      belly.position.set(0.15, 0.34, 0);
 
-      // Đôi mắt tròn to đen lay láy có điểm sáng long lanh
-      const eyeMat = new THREE.MeshStandardMaterial({ color: '#1E272E', roughness: 0.1 });
+      // B. Đầu cún tròn trĩnh với má phính
+      const head = new THREE.Mesh(new RoundedBoxGeometry(0.48, 0.46, 0.46, 4, 0.14), furMat);
+      head.position.set(0.32, 0.66, 0);
+      head.castShadow = true;
+
+      // Mõm đen đặc trưng của giống Pug
+      const muzzle = new THREE.Mesh(new RoundedBoxGeometry(0.2, 0.18, 0.24, 3, 0.06), darkFurMat);
+      muzzle.position.set(0.56, 0.61, 0);
+
+      // Mũi đen bóng ướt
+      const nose = new THREE.Mesh(
+        new THREE.SphereGeometry(0.05, 8, 8),
+        new THREE.MeshStandardMaterial({ color: '#1E272E', roughness: 0.1 })
+      );
+      nose.position.set(0.67, 0.66, 0);
+
+      // Lưỡi hồng thè ra nghịch ngợm
+      const tongue = new THREE.Mesh(
+        new RoundedBoxGeometry(0.08, 0.04, 0.1, 2, 0.01),
+        new THREE.MeshStandardMaterial({ color: '#FF7675', roughness: 0.2 })
+      );
+      tongue.position.set(0.64, 0.55, 0.02);
+      tongue.rotation.z = Math.PI / 8;
+
+      // C. Đôi mắt to tròn long lanh có đốm sáng
+      const eyeMat = new THREE.MeshStandardMaterial({ color: '#1E272E', roughness: 0.08 });
       const pupilMat = new THREE.MeshBasicMaterial({ color: '#FFFFFF' });
 
-      const eyeGeo = new THREE.SphereGeometry(0.065, 10, 10);
-      const pupGeo = new THREE.SphereGeometry(0.022, 6, 6);
+      const makeEye = (ez: number) => {
+        const eye = new THREE.Mesh(new THREE.SphereGeometry(0.07, 12, 12), eyeMat);
+        eye.position.set(0.53, 0.73, ez);
+        const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.025, 8, 8), pupilMat);
+        pupil.position.set(0.58, 0.75, ez + (ez > 0 ? 0.01 : -0.01));
+        tokenGroup.add(eye, pupil);
+      };
+      makeEye(0.14);
+      makeEye(-0.14);
 
-      const eyeL = new THREE.Mesh(eyeGeo, eyeMat);
-      eyeL.position.set(0.53, 0.72, 0.13);
-      const pupL = new THREE.Mesh(pupGeo, pupilMat);
-      pupL.position.set(0.58, 0.74, 0.14);
+      // D. Đôi tai mềm rủ xuống hai bên má
+      earsMesh = new THREE.Group();
+      const ear1 = new THREE.Mesh(new RoundedBoxGeometry(0.12, 0.3, 0.16, 2, 0.04), darkFurMat);
+      ear1.position.set(0.28, 0.78, 0.26);
+      ear1.rotation.x = Math.PI / 8;
+      const ear2 = new THREE.Mesh(new RoundedBoxGeometry(0.12, 0.3, 0.16, 2, 0.04), darkFurMat);
+      ear2.position.set(0.28, 0.78, -0.26);
+      ear2.rotation.x = -Math.PI / 8;
+      earsMesh.add(ear1, ear2);
 
-      const eyeR = new THREE.Mesh(eyeGeo, eyeMat);
-      eyeR.position.set(0.53, 0.72, -0.13);
-      const pupR = new THREE.Mesh(pupGeo, pupilMat);
-      pupR.position.set(0.58, 0.74, -0.14);
+      // E. Chiếc đuôi xoắn lò xo ngộ nghĩnh phía sau (Curly Pug Tail)
+      const tailGeo = new THREE.TorusGeometry(0.1, 0.045, 8, 16, Math.PI * 1.5);
+      tailMesh = new THREE.Mesh(tailGeo, furMat);
+      tailMesh.position.set(-0.38, 0.45, 0);
+      tailMesh.rotation.y = Math.PI / 2;
 
-      // Mõm đen xinh xắn
-      const muzzleMat = new THREE.MeshStandardMaterial({ color: '#2D3436', roughness: 0.5 });
-      const muzzle = new THREE.Mesh(new RoundedBoxGeometry(0.18, 0.16, 0.22, 3, 0.05), muzzleMat);
-      muzzle.position.set(0.56, 0.6, 0);
-
-      // Đôi tai mềm mại có thể ve vẩy
-      const earMat = new THREE.MeshStandardMaterial({ color: '#4B6584', roughness: 0.5 });
-      earsMesh = new THREE.Mesh(new RoundedBoxGeometry(0.14, 0.28, 0.5, 3, 0.06), earMat);
-      earsMesh.position.set(0.3, 0.8, 0);
-
-      // Vòng cổ đỏ đính chuông vàng
+      // F. Vòng cổ da đỏ đính chuông vàng rung rinh
       const collar = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.24, 0.24, 0.08, 16),
-        new THREE.MeshStandardMaterial({ color: '#D63031' })
+        new THREE.CylinderGeometry(0.26, 0.26, 0.08, 16),
+        new THREE.MeshStandardMaterial({ color: '#D63031', roughness: 0.3 })
       );
       collar.position.set(0.32, 0.48, 0);
 
       const bell = new THREE.Mesh(
         new THREE.SphereGeometry(0.09, 12, 12),
-        new THREE.MeshStandardMaterial({ color: '#FDCB6E', metalness: 0.85, roughness: 0.2, emissive: '#FDCB6E', emissiveIntensity: 0.5 })
+        new THREE.MeshStandardMaterial({ color: '#FDCB6E', metalness: 0.9, roughness: 0.15, emissive: '#FDCB6E', emissiveIntensity: 0.4 })
       );
-      bell.position.set(0.52, 0.44, 0);
+      bell.position.set(0.54, 0.44, 0);
 
-      // 4 Chân tròn mập
-      const pawGeo = new THREE.SphereGeometry(0.1, 8, 8);
-      const makePaw = (x: number, z: number) => {
-        const paw = new THREE.Mesh(pawGeo, dogMat);
-        paw.position.set(x, 0.1, z);
+      // 4 Bàn chân mập tròn có đệm chân
+      const pawGeo = new THREE.SphereGeometry(0.1, 10, 10);
+      const makePaw = (px: number, pz: number) => {
+        const paw = new THREE.Mesh(pawGeo, furMat);
+        paw.position.set(px, 0.1, pz);
         tokenGroup.add(paw);
       };
-      makePaw(-0.2, 0.2);
-      makePaw(0.2, 0.2);
-      makePaw(-0.2, -0.2);
-      makePaw(0.2, -0.2);
+      makePaw(-0.22, 0.22);
+      makePaw(0.22, 0.22);
+      makePaw(-0.22, -0.22);
+      makePaw(0.22, -0.22);
 
-      tokenGroup.add(body, head, eyeL, pupL, eyeR, pupR, muzzle, earsMesh, collar, bell);
+      tokenGroup.add(body, belly, head, muzzle, nose, tongue, collar, bell);
+      if (earsMesh) tokenGroup.add(earsMesh);
+      if (tailMesh) tokenGroup.add(tailMesh);
+
     } else {
-      // 🚀 Tên Lửa Không Gian Bo Cong Khí Động Học
-      const rocketMat = new THREE.MeshStandardMaterial({ color: color || '#0984E3', roughness: 0.2, metalness: 0.15 });
-      const body = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.34, 0.88, 24), rocketMat);
-      body.position.y = 0.55;
+      // ==========================================
+      // 🚀 4. TÊN LỬA VŨ TRỤ KHÍ ĐỘNG HỌC (Starlight Rocket)
+      // ==========================================
+      const rocketMat = new THREE.MeshStandardMaterial({
+        color: color || '#0984E3',
+        roughness: 0.2,
+        metalness: 0.15
+      });
 
-      // Mũi chóp tên lửa bo cong
-      const nose = new THREE.Mesh(
-        new THREE.ConeGeometry(0.24, 0.42, 24),
-        new THREE.MeshStandardMaterial({ color: '#FF7675', roughness: 0.25 })
-      );
-      nose.position.y = 1.18;
+      // Thân tên lửa thuôn dài bóng bẩy
+      const body = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.35, 0.9, 24), rocketMat);
+      body.position.y = 0.56;
+      body.castShadow = true;
 
-      // Cửa sổ phi thuyền tròn có viền vàng
+      // Mũi chóp đỏ khí động học
+      const noseMat = new THREE.MeshStandardMaterial({ color: '#FF7675', roughness: 0.22 });
+      const nose = new THREE.Mesh(new THREE.ConeGeometry(0.26, 0.45, 24), noseMat);
+      nose.position.y = 1.22;
+      nose.castShadow = true;
+
+      // Cửa sổ phi thuyền tròn viền vàng bọc kính xanh biển phản quang
       const winBorder = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.12, 0.12, 0.04, 16),
-        new THREE.MeshStandardMaterial({ color: '#FDCB6E', metalness: 0.8, roughness: 0.2 })
+        new THREE.CylinderGeometry(0.13, 0.13, 0.05, 20),
+        new THREE.MeshStandardMaterial({ color: '#FDCB6E', metalness: 0.88, roughness: 0.15 })
       );
       winBorder.rotation.x = Math.PI / 2;
-      winBorder.position.set(0, 0.65, 0.28);
+      winBorder.position.set(0, 0.68, 0.3);
 
       const winGlass = new THREE.Mesh(
-        new THREE.CircleGeometry(0.09, 16),
-        new THREE.MeshBasicMaterial({ color: '#74B9FF' })
+        new THREE.CircleGeometry(0.095, 20),
+        new THREE.MeshStandardMaterial({ color: '#74B9FF', roughness: 0.05, metalness: 0.1 })
       );
-      winGlass.position.set(0, 0.65, 0.31);
+      winGlass.position.set(0, 0.68, 0.33);
 
-      // 3 Cánh lái bo tròn
-      const finMat = new THREE.MeshStandardMaterial({ color: '#74B9FF', roughness: 0.3 });
+      // Ngôi sao vàng mini bên trong buồng lái
+      const starInsignia = new THREE.Mesh(
+        new THREE.OctahedronGeometry(0.04),
+        new THREE.MeshStandardMaterial({ color: '#FFEAA7', emissive: '#FFEAA7', emissiveIntensity: 0.8 })
+      );
+      starInsignia.position.set(0, 0.68, 0.34);
+
+      // 3 Cánh lái tam giác vát cạnh với đèn hiệu đầu cánh
+      const finMat = new THREE.MeshStandardMaterial({ color: '#74B9FF', roughness: 0.28 });
       for (let f = 0; f < 3; f++) {
         const angle = (f / 3) * Math.PI * 2;
-        const fin = new THREE.Mesh(new RoundedBoxGeometry(0.05, 0.36, 0.4, 2, 0.02), finMat);
-        fin.position.set(Math.cos(angle) * 0.3, 0.34, Math.sin(angle) * 0.3);
-        fin.rotation.y = -angle;
-        tokenGroup.add(fin);
+        const finGroup = new THREE.Group();
+        finGroup.position.set(Math.cos(angle) * 0.3, 0.36, Math.sin(angle) * 0.3);
+        finGroup.rotation.y = -angle;
+
+        const fin = new THREE.Mesh(new RoundedBoxGeometry(0.06, 0.38, 0.42, 2, 0.02), finMat);
+        const navLight = new THREE.Mesh(
+          new THREE.SphereGeometry(0.04, 8, 8),
+          new THREE.MeshStandardMaterial({
+            color: f === 0 ? '#FF3838' : '#00B894',
+            emissive: f === 0 ? '#FF3838' : '#00B894',
+            emissiveIntensity: 0.9
+          })
+        );
+        navLight.position.set(0, -0.15, 0.22);
+        finGroup.add(fin, navLight);
+        tokenGroup.add(finGroup);
       }
 
-      // Đuôi lửa đẩy rực sáng
+      // Vòi phun động cơ gốm chịu nhiệt
+      const nozzle = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.2, 0.28, 0.16, 20),
+        new THREE.MeshStandardMaterial({ color: '#2D3436', metalness: 0.8, roughness: 0.4 })
+      );
+      nozzle.position.y = 0.08;
+
+      // Ngọn lửa ion xanh-cam phập phồng
       flameMesh = new THREE.Mesh(
-        new THREE.ConeGeometry(0.18, 0.38, 16),
+        new THREE.ConeGeometry(0.2, 0.42, 16),
         new THREE.MeshStandardMaterial({
           color: '#FFA502',
           emissive: '#FF4757',
-          emissiveIntensity: 0.9,
+          emissiveIntensity: 0.95,
           transparent: true,
           opacity: 0.92
         })
       );
-      flameMesh.position.y = 0.06;
+      flameMesh.position.y = -0.15;
       flameMesh.rotation.x = Math.PI;
 
-      tokenGroup.add(body, nose, winBorder, winGlass, flameMesh);
+      tokenGroup.add(body, nose, winBorder, winGlass, starInsignia, nozzle);
+      if (flameMesh) tokenGroup.add(flameMesh);
     }
 
+    // Đĩa bóng tiếp xúc nướng sẵn
     const shadowGeo = new THREE.PlaneGeometry(1.3, 1.3);
     const shadowMat = new THREE.MeshBasicMaterial({
       map: this.shadowTexture,
@@ -311,7 +469,7 @@ export class TokenManager {
       wheels,
       ears: earsMesh,
       thrusterFlame: flameMesh,
-      blinkTimer: 0
+      tail: tailMesh
     });
 
     return wrapper;
@@ -365,16 +523,22 @@ export class TokenManager {
         token.mesh.position.lerpVectors(startPos, endPos, t);
         token.mesh.position.y = startPos.y + hopHeight;
 
+        // Quay bánh xe ô tô
         if (token.wheels && token.wheels.length > 0) {
           token.wheels.forEach(w => {
-            w.rotation.x += 0.24;
+            w.rotation.x += 0.25;
           });
         }
 
+        // Ve vẩy tai và vẫy đuôi cún
         if (token.ears) {
-          token.ears.rotation.x = Math.sin(t * Math.PI * 2) * 0.28;
+          token.ears.rotation.x = Math.sin(t * Math.PI * 2) * 0.3;
+        }
+        if (token.tail) {
+          token.tail.rotation.z = Math.sin(t * Math.PI * 4) * 0.4;
         }
 
+        // Squash & Stretch
         if (token.innerModel) {
           if (t < 0.65) {
             const stretch = 1 + Math.sin(t * Math.PI) * 0.16;
@@ -420,11 +584,18 @@ export class TokenManager {
     this.animClock += delta;
     for (const token of this.tokens.values()) {
       if (!token.isMoving && token.innerModel) {
+        // Nhịp thở Idle sống động
         const breathe = Math.sin(this.animClock * 2.5 + token.currentTile) * 0.02;
         token.innerModel.position.y = breathe;
 
+        // Vẫy đuôi cún nhè nhẹ khi đứng yên
+        if (token.tail) {
+          token.tail.rotation.z = Math.sin(this.animClock * 5) * 0.15;
+        }
+
+        // Đuôi lửa phập phồng
         if (token.thrusterFlame) {
-          const fScale = 0.85 + Math.sin(this.animClock * 15) * 0.25;
+          const fScale = 0.85 + Math.sin(this.animClock * 16) * 0.22;
           token.thrusterFlame.scale.set(fScale, fScale, fScale);
         }
       }

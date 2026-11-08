@@ -6,6 +6,7 @@ import { DicePhysics } from './DicePhysics';
 import { BuildingMesh } from './BuildingMesh';
 import { VFXManager } from './VFXManager';
 import { TextureGenerator } from './TextureGenerator';
+import { DetailedModels } from './DetailedModels';
 import { DEFAULT_BOARD_TILES, BoardTileMeta } from '../config/BoardConfig';
 
 export class BoardScene {
@@ -20,13 +21,14 @@ export class BoardScene {
   private tilePositions: THREE.Vector3[] = [];
   private tileRotations: number[] = [];
   private fountainRipples: THREE.Mesh | null = null;
+  private fountainWaterfalls: THREE.Mesh[] = [];
   private fountainSpray: THREE.Points | null = null;
   private billionaireStatue: THREE.Group | null = null;
   private parkTrees: THREE.Group[] = [];
   private coffeeSteam: THREE.Points | null = null;
   private ambientDustMotes: THREE.Points | null = null;
 
-  // Chi tiết 3D mới: Xe taxi đồ chơi chạy quanh công viên & Còi cảnh sát
+  // Xe taxi mini & đèn còi cảnh sát
   private miniTaxi: THREE.Group | null = null;
   private taxiAngle: number = 0;
   private policeBeacon: THREE.Mesh | null = null;
@@ -288,7 +290,6 @@ export class BoardScene {
     const archTop = new THREE.Mesh(new RoundedBoxGeometry(1.8, 0.24, 0.28, 2, 0.04), goldMat);
     archTop.position.set(0, 1.45, 0);
 
-    // Banner +200M màu xanh ngọc
     const banner = new THREE.Mesh(
       new RoundedBoxGeometry(1.4, 0.22, 0.06, 2, 0.02),
       new THREE.MeshStandardMaterial({ color: '#00B894', emissive: '#00B894', emissiveIntensity: 0.4 })
@@ -376,7 +377,7 @@ export class BoardScene {
     this.scene.add(cornerGroup);
   }
 
-  // 5. Natural Tabletop Props: Steaming Mug, Succulent, Gold Coins, Ledger, Banker's Lamp
+  // 5. Tabletop Props: Steaming Mug, Succulent, Gold Coins, Ledger, Banker's Lamp
   private setupTabletopProps() {
     const propsGroup = new THREE.Group();
 
@@ -428,7 +429,7 @@ export class BoardScene {
 
     propsGroup.add(mug);
 
-    // 💡 Đèn Bàn Cổ Điển Banker's Lamp (Chụp đèn thủy tinh ngọc lục bảo)
+    // 💡 Đèn Bàn Cổ Điển Banker's Lamp
     const lamp = new THREE.Group();
     lamp.position.set(-18, -0.55, -8);
     lamp.rotation.y = Math.PI / 4;
@@ -550,11 +551,11 @@ export class BoardScene {
     this.scene.add(propsGroup);
   }
 
-  // 6. Center Park Diorama: Xe Taxi Mini Chạy Quanh Công Viên & Ghế Băng
+  // 6. Center Park Diorama: Đài Phun Nước Đẳng Cấp, Cây Đa Tầng & Xe Taxi
   private setupCenterDiorama() {
     const centerGroup = new THREE.Group();
 
-    // Park Grass Base with Beveled Edge
+    // Park Grass Base với gờ viền mềm
     const parkGeo = new THREE.CylinderGeometry(8.5, 8.8, 0.3, 36);
     const parkMat = new THREE.MeshStandardMaterial({ color: '#55EFC4', roughness: 0.5 });
     const park = new THREE.Mesh(parkGeo, parkMat);
@@ -562,7 +563,7 @@ export class BoardScene {
     park.receiveShadow = true;
     centerGroup.add(park);
 
-    // Garden Path Ring
+    // Lối đi dạo quanh công viên lát sỏi
     const pathGeo = new THREE.RingGeometry(4.2, 5.4, 36);
     const pathMat = new THREE.MeshStandardMaterial({ color: '#FFEAA7', roughness: 0.6, side: THREE.DoubleSide });
     const path = new THREE.Mesh(pathGeo, pathMat);
@@ -570,7 +571,7 @@ export class BoardScene {
     path.position.y = 0.31;
     centerGroup.add(path);
 
-    // 4 Ghế Băng Công Viên Gỗ (Park Benches)
+    // Ghế Băng Công Viên Gỗ
     for (let b = 0; b < 4; b++) {
       const angle = (b / 4) * Math.PI * 2 + Math.PI / 4;
       const bench = new THREE.Group();
@@ -592,7 +593,7 @@ export class BoardScene {
       centerGroup.add(bench);
     }
 
-    // 🚕 Xe Taxi Vàng Tí Hon Chạy Quanh Công Viên
+    // 🚕 Xe Taxi Vàng Mini Chạy Quanh Công Viên
     this.miniTaxi = new THREE.Group();
     const taxiBody = new THREE.Mesh(
       new RoundedBoxGeometry(0.65, 0.28, 0.38, 3, 0.05),
@@ -617,106 +618,53 @@ export class BoardScene {
     this.miniTaxi.position.set(4.8, 0.2, 0);
     centerGroup.add(this.miniTaxi);
 
-    // Fountain Basin with Rounded Lip
-    const basinGeo = new THREE.CylinderGeometry(3.5, 3.8, 0.45, 28);
-    const basinMat = new THREE.MeshStandardMaterial({ color: '#DFE6E9', roughness: 0.35 });
-    const basin = new THREE.Mesh(basinGeo, basinMat);
-    basin.position.y = 0.35;
-    centerGroup.add(basin);
+    // ⛲ Đài Phun Nước Đẳng Cấp 2 Tầng Cổ Điển với Màng Nước Tràn
+    const fountainData = DetailedModels.createDetailedFountain();
+    this.fountainRipples = fountainData.waterRipples;
+    this.fountainWaterfalls = fountainData.waterFalls;
+    centerGroup.add(fountainData.group);
 
-    // Translucent Water Surface
-    const waterGeo = new THREE.CylinderGeometry(3.2, 3.2, 0.1, 28);
-    const waterMat = new THREE.MeshStandardMaterial({
-      color: '#0984E3',
-      emissive: '#74B9FF',
-      emissiveIntensity: 0.38,
-      transparent: true,
-      opacity: 0.88,
-      roughness: 0.08,
-      metalness: 0.1
-    });
-    this.fountainRipples = new THREE.Mesh(waterGeo, waterMat);
-    this.fountainRipples.position.y = 0.55;
-    centerGroup.add(this.fountainRipples);
+    // Các Bụi Hoa Cẩm Tú Cầu Xung Quanh Đài Phun Nước
+    const flowerColors = ['#FF7675', '#FD79A8', '#FDCB6E', '#A29BFE'];
+    for (let f = 0; f < 8; f++) {
+      const fAngle = (f / 8) * Math.PI * 2 + 0.2;
+      const bush = DetailedModels.createFlowerBush(flowerColors[f % flowerColors.length]);
+      bush.position.set(Math.cos(fAngle) * 3.7, 0.3, Math.sin(fAngle) * 3.7);
+      centerGroup.add(bush);
+    }
 
-    // Fountain Spray Droplets bubbling
+    // Hạt Nước Li Ti Sủi Bọt Ở Đỉnh
     const sprayCount = 28;
     const sprayGeo = new THREE.BufferGeometry();
     const sprayPositions = new Float32Array(sprayCount * 3);
     for (let i = 0; i < sprayCount; i++) {
-      sprayPositions[i * 3] = (Math.random() - 0.5) * 1.6;
-      sprayPositions[i * 3 + 1] = 0.8 + Math.random() * 1.6;
-      sprayPositions[i * 3 + 2] = (Math.random() - 0.5) * 1.6;
+      sprayPositions[i * 3] = (Math.random() - 0.5) * 1.4;
+      sprayPositions[i * 3 + 1] = 2.3 + Math.random() * 1.2;
+      sprayPositions[i * 3 + 2] = (Math.random() - 0.5) * 1.4;
     }
     sprayGeo.setAttribute('position', new THREE.BufferAttribute(sprayPositions, 3));
     const sprayMat = new THREE.PointsMaterial({
-      size: 0.22,
+      size: 0.24,
       color: '#A0E7E5',
       transparent: true,
-      opacity: 0.8,
+      opacity: 0.85,
       blending: THREE.AdditiveBlending
     });
     this.fountainSpray = new THREE.Points(sprayGeo, sprayMat);
     centerGroup.add(this.fountainSpray);
 
-    // Gold Billionaire Statue
+    // 👑 Tượng Vua Tỷ Phú Vàng Đứng Cạnh Đài Phun Nước
     this.billionaireStatue = new THREE.Group();
+    this.billionaireStatue.position.set(0, 0, 0);
 
-    const pedestal = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.85, 1.05, 0.85, 20),
-      new THREE.MeshStandardMaterial({ color: '#B2BEC3', roughness: 0.35 })
-    );
-    pedestal.position.y = 0.9;
-
-    const goldMat = new THREE.MeshStandardMaterial({
-      color: '#FDCB6E',
-      emissive: '#FDCB6E',
-      emissiveIntensity: 0.3,
-      metalness: 0.88,
-      roughness: 0.18
-    });
-
-    const statueBody = new THREE.Mesh(new THREE.ConeGeometry(0.52, 1.25, 20), goldMat);
-    statueBody.position.y = 1.95;
-
-    const statueHead = new THREE.Mesh(new THREE.SphereGeometry(0.32, 20, 20), goldMat);
-    statueHead.position.y = 2.65;
-
-    const topHat = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.22, 0.22, 0.32, 16),
-      new THREE.MeshStandardMaterial({ color: '#2D3436', roughness: 0.3 })
-    );
-    topHat.position.y = 2.95;
-
-    const cane = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.1, 10), goldMat);
-    cane.position.set(0.48, 1.7, 0);
-
-    this.billionaireStatue.add(pedestal, statueBody, statueHead, topHat, cane);
-    centerGroup.add(this.billionaireStatue);
-
-    // Natural Swaying Trees
+    // 🌳 4 CÂY CÔNG VIÊN CAO CẤP ĐA TẦNG LÁ MÂY BỒNG BỀNH
     const treePositions = [
       [-6, -4.5], [-5.5, 5], [5.5, -5.5], [6, 4.5]
     ];
     this.parkTrees = [];
     treePositions.forEach(([tx, tz]) => {
-      const tree = new THREE.Group();
+      const tree = DetailedModels.createStylizedTree();
       tree.position.set(tx, 0.3, tz);
-
-      const trunk = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.2, 0.26, 0.85, 10),
-        new THREE.MeshStandardMaterial({ color: '#A0522D', roughness: 0.6 })
-      );
-      trunk.position.y = 0.42;
-
-      const canopy = new THREE.Mesh(
-        new THREE.SphereGeometry(0.82, 16, 16),
-        new THREE.MeshStandardMaterial({ color: '#00B894', roughness: 0.35 })
-      );
-      canopy.position.y = 1.25;
-      canopy.scale.set(1, 1.22, 1);
-
-      tree.add(trunk, canopy);
       centerGroup.add(tree);
       this.parkTrees.push(tree);
     });
@@ -812,6 +760,10 @@ export class BoardScene {
       const baseMesh = new THREE.Mesh(baseGeo, baseMat);
       baseMesh.receiveShadow = true;
       tileGroup.add(baseMesh);
+
+      // Gờ đá bó vỉa bo cong ngăn cách mặt đường
+      const curb = DetailedModels.createTileCurbs(w, l, angle);
+      tileGroup.add(curb);
 
       // Dải màu nhận diện phân khu bo cong bóng bẩy
       if (tile.districtColor) {
@@ -999,17 +951,22 @@ export class BoardScene {
       this.cameraManager.camera.position.add(this.vfxManager.cameraShakeOffset);
     }
 
-    // Water Surface ripples
+    // Gợn sóng xoay tròn trên mặt hồ đài phun nước
     if (this.fountainRipples) {
       this.fountainRipples.rotation.y += delta * 0.45;
     }
 
-    // Fountain Spray Droplets bubbling
+    // Hiệu ứng màng nước rơi từ tầng 2 xuống tầng 1
+    this.fountainWaterfalls.forEach(cascade => {
+      cascade.rotation.y += delta * 0.6;
+    });
+
+    // Tia nước sủi bọt phun lên
     if (this.fountainSpray) {
       const pos = this.fountainSpray.geometry.attributes.position as THREE.BufferAttribute;
       for (let i = 0; i < pos.count; i++) {
-        let y = pos.getY(i) + delta * (0.8 + Math.sin(elapsedTime * 4 + i) * 0.5);
-        if (y > 2.5) y = 0.8;
+        let y = pos.getY(i) + delta * (0.9 + Math.sin(elapsedTime * 4 + i) * 0.5);
+        if (y > 3.6) y = 2.2;
         pos.setY(i, y);
       }
       pos.needsUpdate = true;
@@ -1033,12 +990,7 @@ export class BoardScene {
       beaconMat.emissive.setHex(pulse > 0.5 ? 0xFF4757 : 0x0984E3);
     }
 
-    // Statue gentle aura rotation
-    if (this.billionaireStatue) {
-      this.billionaireStatue.rotation.y += delta * 0.15;
-    }
-
-    // Gentle breeze swaying park trees
+    // Tán cây công viên đung đưa theo gió
     this.parkTrees.forEach((tree, idx) => {
       tree.rotation.z = Math.sin(elapsedTime * 1.8 + idx * 1.5) * 0.035;
     });
