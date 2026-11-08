@@ -9,11 +9,18 @@ export class CameraManager {
   public isFollowMode: boolean = false;
   public isMobile: boolean = false;
 
+  // Khóa góc nhìn chuẩn Isometric (Mặc định: KHÓA để ổn định như Monopoly GO)
+  public isLocked: boolean = true;
+
+  // Góc nhìn vàng tiêu chuẩn: Isometric 45 độ, góc nhìn nghiêng bao quát toàn bộ 40 ô
+  private static readonly GOLDEN_THETA = Math.PI / 4;       // 45 độ góc ngang
+  private static readonly GOLDEN_PHI = Math.PI / 3.25;      // ~55 độ góc chúc xuống
+  private spherical = new THREE.Spherical(37, CameraManager.GOLDEN_PHI, CameraManager.GOLDEN_THETA);
+
   // Touch & Mouse orbit control state
   private isPointerDown = false;
   private prevPointerX = 0;
   private prevPointerY = 0;
-  private spherical = new THREE.Spherical(38, Math.PI / 3.2, Math.PI / 4); // radius, phi, theta
   private pinchStartDist = 0;
 
   constructor(domElement: HTMLElement) {
@@ -21,16 +28,46 @@ export class CameraManager {
     this.isMobile = window.innerWidth <= 768;
 
     const aspect = window.innerWidth / window.innerHeight;
-    const fov = this.isMobile ? 55 : 45;
+    const fov = this.isMobile ? 54 : 44;
     this.camera = new THREE.PerspectiveCamera(fov, aspect, 0.1, 1000);
 
+    this.lockToGoldenAngle();
     this.updateCameraTransform();
     this.bindEvents();
   }
 
+  // Khóa cứng góc nhìn chuẩn Isometric không cho xoay tự do
+  public lockToGoldenAngle() {
+    this.spherical.theta = CameraManager.GOLDEN_THETA;
+    this.spherical.phi = CameraManager.GOLDEN_PHI;
+    this.spherical.radius = this.isMobile ? 39 : 36;
+  }
+
+  public setLocked(locked: boolean) {
+    this.isLocked = locked;
+    if (locked) {
+      this.lockToGoldenAngle();
+      this.updateCameraTransform();
+    }
+  }
+
+  public toggleLock(): boolean {
+    this.setLocked(!this.isLocked);
+    return this.isLocked;
+  }
+
   private updateCameraTransform() {
-    this.spherical.radius = THREE.MathUtils.clamp(this.spherical.radius, 14, 55);
-    this.spherical.phi = THREE.MathUtils.clamp(this.spherical.phi, 0.2, Math.PI / 2.1);
+    // Luôn giữ góc nhìn ổn định khi bị khóa
+    if (this.isLocked) {
+      this.spherical.theta = CameraManager.GOLDEN_THETA;
+      this.spherical.phi = CameraManager.GOLDEN_PHI;
+      if (!this.isFollowMode) {
+        this.spherical.radius = this.isMobile ? 39 : 36;
+      }
+    } else {
+      this.spherical.radius = THREE.MathUtils.clamp(this.spherical.radius, 14, 55);
+      this.spherical.phi = THREE.MathUtils.clamp(this.spherical.phi, 0.2, Math.PI / 2.1);
+    }
 
     const offset = new THREE.Vector3().setFromSpherical(this.spherical);
     const center = this.isFollowMode && this.followTarget ? this.followTarget : this.targetPosition;
@@ -43,22 +80,23 @@ export class CameraManager {
   private bindEvents() {
     window.addEventListener('resize', this.onResize.bind(this));
 
-    // Pointer events for desktop and mobile drag
+    // Pointer events: Chỉ cho phép kéo xoay nếu ĐÃ MỞ KHÓA
     this.domElement.addEventListener('pointerdown', (e) => {
+      if (this.isLocked) return; // Khóa góc nhìn hoàn toàn
       this.isPointerDown = true;
       this.prevPointerX = e.clientX;
       this.prevPointerY = e.clientY;
     });
 
     window.addEventListener('pointermove', (e) => {
-      if (!this.isPointerDown) return;
+      if (this.isLocked || !this.isPointerDown) return;
       const deltaX = e.clientX - this.prevPointerX;
       const deltaY = e.clientY - this.prevPointerY;
       this.prevPointerX = e.clientX;
       this.prevPointerY = e.clientY;
 
-      this.spherical.theta -= deltaX * 0.006;
-      this.spherical.phi -= deltaY * 0.006;
+      this.spherical.theta -= deltaX * 0.005;
+      this.spherical.phi -= deltaY * 0.005;
       this.updateCameraTransform();
     });
 
@@ -66,8 +104,9 @@ export class CameraManager {
       this.isPointerDown = false;
     });
 
-    // Wheel zoom
+    // Wheel zoom: Chỉ cho phép thu phóng nhẹ khi mở khóa
     this.domElement.addEventListener('wheel', (e) => {
+      if (this.isLocked) return;
       e.preventDefault();
       this.spherical.radius += e.deltaY * 0.03;
       this.updateCameraTransform();
@@ -75,6 +114,7 @@ export class CameraManager {
 
     // Touch pinch to zoom
     this.domElement.addEventListener('touchstart', (e) => {
+      if (this.isLocked) return;
       if (e.touches.length === 2) {
         this.pinchStartDist = Math.hypot(
           e.touches[0].clientX - e.touches[1].clientX,
@@ -84,13 +124,14 @@ export class CameraManager {
     });
 
     this.domElement.addEventListener('touchmove', (e) => {
+      if (this.isLocked) return;
       if (e.touches.length === 2) {
         const dist = Math.hypot(
           e.touches[0].clientX - e.touches[1].clientX,
           e.touches[0].clientY - e.touches[1].clientY
         );
         const diff = this.pinchStartDist - dist;
-        this.spherical.radius += diff * 0.05;
+        this.spherical.radius += diff * 0.04;
         this.pinchStartDist = dist;
         this.updateCameraTransform();
       }
@@ -105,7 +146,6 @@ export class CameraManager {
     this.isFollowMode = !this.isFollowMode;
     if (this.isFollowMode) {
       this.spherical.radius = this.isMobile ? 18 : 22;
-      this.spherical.phi = Math.PI / 3.4;
     } else {
       this.resetOverview();
     }
@@ -114,16 +154,15 @@ export class CameraManager {
   public resetOverview() {
     this.isFollowMode = false;
     this.followTarget = null;
-    this.spherical.radius = this.isMobile ? 36 : 38;
-    this.spherical.phi = Math.PI / 3.2;
-    this.spherical.theta = Math.PI / 4;
+    this.lockToGoldenAngle();
     this.targetPosition.set(0, 0, 0);
+    this.updateCameraTransform();
   }
 
   public onResize() {
     this.isMobile = window.innerWidth <= 768;
     this.camera.aspect = window.innerWidth / window.innerHeight;
-    this.camera.fov = this.isMobile ? 55 : 45;
+    this.camera.fov = this.isMobile ? 54 : 44;
     this.camera.updateProjectionMatrix();
     this.updateCameraTransform();
   }

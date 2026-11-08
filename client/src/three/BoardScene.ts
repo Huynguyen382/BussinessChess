@@ -25,6 +25,12 @@ export class BoardScene {
   private parkTrees: THREE.Group[] = [];
   private coffeeSteam: THREE.Points | null = null;
   private ambientDustMotes: THREE.Points | null = null;
+
+  // Chi tiết 3D mới: Xe taxi đồ chơi chạy quanh công viên & Còi cảnh sát
+  private miniTaxi: THREE.Group | null = null;
+  private taxiAngle: number = 0;
+  private policeBeacon: THREE.Mesh | null = null;
+
   private clock = new THREE.Clock();
 
   constructor(container: HTMLElement) {
@@ -62,6 +68,7 @@ export class BoardScene {
     this.setupStudioEnvironment();
     this.setupBoardPlinth();
     this.setupStreetLamps();
+    this.setupCornerLandmarks();
     this.setupTabletopProps();
     this.setupCenterDiorama();
 
@@ -217,14 +224,14 @@ export class BoardScene {
     this.scene.add(plinthGroup);
   }
 
-  // 3. Four Miniature Warm Street Lamp Posts on Board Corners
+  // 3. Four Miniature Street Lamp Posts on Board Corners
   private setupStreetLamps() {
     const lampsGroup = new THREE.Group();
     const lampPositions = [
-      [11.2, 11.2],
-      [-11.2, 11.2],
-      [-11.2, -11.2],
-      [11.2, -11.2]
+      [11.5, 11.5],
+      [-11.5, 11.5],
+      [-11.5, -11.5],
+      [11.5, -11.5]
     ];
 
     lampPositions.forEach(([lx, lz]) => {
@@ -263,7 +270,113 @@ export class BoardScene {
     this.scene.add(lampsGroup);
   }
 
-  // 4. Natural Tabletop Props: Steaming Mug, Succulent, Gold Coins, Ledger
+  // 4. Chi Tiết 3D Đặc Sắc Cho 4 Góc Bàn Cờ (Corner Iconic 3D Props)
+  private setupCornerLandmarks() {
+    const cornerGroup = new THREE.Group();
+
+    // 🏆 Ô số 0 (GO): Cổng Khải Hoàn Môn Hoàng Kim 3D
+    const goGate = new THREE.Group();
+    goGate.position.set(10.6, 0.3, 10.6);
+    goGate.rotation.y = -Math.PI / 4;
+
+    const goldMat = new THREE.MeshStandardMaterial({ color: '#FDCB6E', metalness: 0.85, roughness: 0.2, emissive: '#FDCB6E', emissiveIntensity: 0.2 });
+    const pillar1 = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.14, 1.4, 16), goldMat);
+    pillar1.position.set(-0.8, 0.7, 0);
+    const pillar2 = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.14, 1.4, 16), goldMat);
+    pillar2.position.set(0.8, 0.7, 0);
+
+    const archTop = new THREE.Mesh(new RoundedBoxGeometry(1.8, 0.24, 0.28, 2, 0.04), goldMat);
+    archTop.position.set(0, 1.45, 0);
+
+    // Banner +200M màu xanh ngọc
+    const banner = new THREE.Mesh(
+      new RoundedBoxGeometry(1.4, 0.22, 0.06, 2, 0.02),
+      new THREE.MeshStandardMaterial({ color: '#00B894', emissive: '#00B894', emissiveIntensity: 0.4 })
+    );
+    banner.position.set(0, 1.45, 0.16);
+
+    goGate.add(pillar1, pillar2, archTop, banner);
+    cornerGroup.add(goGate);
+
+    // 🔒 Ô số 10 (JAIL): Lồng Sắt Hoạt Hình 3D với Ổ Khóa Vàng
+    const jailCell = new THREE.Group();
+    jailCell.position.set(-10.6, 0.3, 10.6);
+    jailCell.rotation.y = Math.PI / 4;
+
+    const barMat = new THREE.MeshStandardMaterial({ color: '#4B6584', metalness: 0.8, roughness: 0.25 });
+    for (let b = -0.5; b <= 0.5; b += 0.25) {
+      const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 1.1, 8), barMat);
+      bar.position.set(b, 0.55, 0.5);
+      jailCell.add(bar);
+    }
+    const cellTop = new THREE.Mesh(new RoundedBoxGeometry(1.2, 0.1, 1.2, 2, 0.02), barMat);
+    cellTop.position.y = 1.15;
+
+    const lock = new THREE.Mesh(
+      new THREE.TorusGeometry(0.1, 0.035, 8, 16),
+      new THREE.MeshStandardMaterial({ color: '#FDCB6E', metalness: 0.9, roughness: 0.15 })
+    );
+    lock.position.set(0, 0.55, 0.55);
+    jailCell.add(cellTop, lock);
+    cornerGroup.add(jailCell);
+
+    // 🅿️ Ô số 20 (FREE PARKING): Trụ Đồng Hồ Đỗ Xe Đỏ & Biển Chữ P
+    const parkingProp = new THREE.Group();
+    parkingProp.position.set(-10.6, 0.3, -10.6);
+    parkingProp.rotation.y = (3 * Math.PI) / 4;
+
+    const meterPole = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.06, 0.08, 1.0, 12),
+      new THREE.MeshStandardMaterial({ color: '#718093', metalness: 0.7 })
+    );
+    meterPole.position.y = 0.5;
+
+    const meterHead = new THREE.Mesh(
+      new RoundedBoxGeometry(0.3, 0.4, 0.25, 3, 0.05),
+      new THREE.MeshStandardMaterial({ color: '#E84118', roughness: 0.3 })
+    );
+    meterHead.position.y = 1.15;
+
+    const signP = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.2, 0.2, 0.04, 16),
+      new THREE.MeshStandardMaterial({ color: '#0984E3', emissive: '#0984E3', emissiveIntensity: 0.3 })
+    );
+    signP.rotation.x = Math.PI / 2;
+    signP.position.set(0, 1.5, 0);
+
+    parkingProp.add(meterPole, meterHead, signP);
+    cornerGroup.add(parkingProp);
+
+    // 🚨 Ô số 30 (GO TO JAIL): Đèn Còi Cảnh Sát 3D Nhấp Nháy
+    const policeProp = new THREE.Group();
+    policeProp.position.set(10.6, 0.3, -10.6);
+    policeProp.rotation.y = -(3 * Math.PI) / 4;
+
+    const sirenBase = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.28, 0.35, 0.4, 16),
+      new THREE.MeshStandardMaterial({ color: '#2F3542', metalness: 0.6 })
+    );
+    sirenBase.position.y = 0.2;
+
+    this.policeBeacon = new THREE.Mesh(
+      new THREE.SphereGeometry(0.26, 16, 16, 0, Math.PI * 2, 0, Math.PI / 2),
+      new THREE.MeshStandardMaterial({
+        color: '#FF4757',
+        emissive: '#FF4757',
+        emissiveIntensity: 0.85,
+        transparent: true,
+        opacity: 0.9
+      })
+    );
+    this.policeBeacon.position.y = 0.4;
+
+    policeProp.add(sirenBase, this.policeBeacon);
+    cornerGroup.add(policeProp);
+
+    this.scene.add(cornerGroup);
+  }
+
+  // 5. Natural Tabletop Props: Steaming Mug, Succulent, Gold Coins, Ledger, Banker's Lamp
   private setupTabletopProps() {
     const propsGroup = new THREE.Group();
 
@@ -314,6 +427,37 @@ export class BoardScene {
     mug.add(this.coffeeSteam);
 
     propsGroup.add(mug);
+
+    // 💡 Đèn Bàn Cổ Điển Banker's Lamp (Chụp đèn thủy tinh ngọc lục bảo)
+    const lamp = new THREE.Group();
+    lamp.position.set(-18, -0.55, -8);
+    lamp.rotation.y = Math.PI / 4;
+
+    const lampBase = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.9, 1.1, 0.25, 20),
+      new THREE.MeshStandardMaterial({ color: '#FDCB6E', metalness: 0.88, roughness: 0.2 })
+    );
+    lampBase.position.y = 0.125;
+
+    const lampArm = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.08, 0.08, 2.4, 12),
+      new THREE.MeshStandardMaterial({ color: '#FDCB6E', metalness: 0.88, roughness: 0.2 })
+    );
+    lampArm.position.set(0, 1.3, 0);
+
+    const shade = new THREE.Mesh(
+      new RoundedBoxGeometry(1.6, 0.6, 0.8, 4, 0.1),
+      new THREE.MeshStandardMaterial({
+        color: '#00B894',
+        emissive: '#55EFC4',
+        emissiveIntensity: 0.45,
+        roughness: 0.15
+      })
+    );
+    shade.position.set(0.4, 2.5, 0);
+
+    lamp.add(lampBase, lampArm, shade);
+    propsGroup.add(lamp);
 
     // 🪙 Stacks of Golden Coins
     const coinGroup = new THREE.Group();
@@ -406,7 +550,7 @@ export class BoardScene {
     this.scene.add(propsGroup);
   }
 
-  // 5. Center Park Diorama with Water Spray & Swaying Trees
+  // 6. Center Park Diorama: Xe Taxi Mini Chạy Quanh Công Viên & Ghế Băng
   private setupCenterDiorama() {
     const centerGroup = new THREE.Group();
 
@@ -425,6 +569,53 @@ export class BoardScene {
     path.rotation.x = -Math.PI / 2;
     path.position.y = 0.31;
     centerGroup.add(path);
+
+    // 4 Ghế Băng Công Viên Gỗ (Park Benches)
+    for (let b = 0; b < 4; b++) {
+      const angle = (b / 4) * Math.PI * 2 + Math.PI / 4;
+      const bench = new THREE.Group();
+      bench.position.set(Math.cos(angle) * 4.8, 0.32, Math.sin(angle) * 4.8);
+      bench.rotation.y = -angle + Math.PI / 2;
+
+      const seat = new THREE.Mesh(
+        new RoundedBoxGeometry(0.8, 0.06, 0.28, 2, 0.01),
+        new THREE.MeshStandardMaterial({ color: '#A0522D', roughness: 0.6 })
+      );
+      seat.position.y = 0.18;
+      const back = new THREE.Mesh(
+        new RoundedBoxGeometry(0.8, 0.24, 0.04, 2, 0.01),
+        new THREE.MeshStandardMaterial({ color: '#A0522D', roughness: 0.6 })
+      );
+      back.position.set(0, 0.32, -0.12);
+
+      bench.add(seat, back);
+      centerGroup.add(bench);
+    }
+
+    // 🚕 Xe Taxi Vàng Tí Hon Chạy Quanh Công Viên
+    this.miniTaxi = new THREE.Group();
+    const taxiBody = new THREE.Mesh(
+      new RoundedBoxGeometry(0.65, 0.28, 0.38, 3, 0.05),
+      new THREE.MeshStandardMaterial({ color: '#FED330', roughness: 0.25 })
+    );
+    taxiBody.position.y = 0.22;
+    taxiBody.castShadow = true;
+
+    const taxiCabin = new THREE.Mesh(
+      new RoundedBoxGeometry(0.36, 0.22, 0.32, 2, 0.04),
+      new THREE.MeshStandardMaterial({ color: '#2D3436', roughness: 0.3 })
+    );
+    taxiCabin.position.set(-0.04, 0.42, 0);
+
+    const taxiSign = new THREE.Mesh(
+      new THREE.BoxGeometry(0.12, 0.08, 0.16),
+      new THREE.MeshStandardMaterial({ color: '#FFFFFF', emissive: '#FFF275', emissiveIntensity: 0.8 })
+    );
+    taxiSign.position.set(-0.04, 0.58, 0);
+
+    this.miniTaxi.add(taxiBody, taxiCabin, taxiSign);
+    this.miniTaxi.position.set(4.8, 0.2, 0);
+    centerGroup.add(this.miniTaxi);
 
     // Fountain Basin with Rounded Lip
     const basinGeo = new THREE.CylinderGeometry(3.5, 3.8, 0.45, 28);
@@ -611,7 +802,7 @@ export class BoardScene {
       const tileGroup = new THREE.Group();
       tileGroup.position.copy(pos);
 
-      // Ô cờ bo tròn góc mềm mại với RoundedBoxGeometry (Không còn vuông vức góc sắc thô)
+      // Ô cờ bo tròn góc mềm mại với RoundedBoxGeometry
       const baseGeo = new RoundedBoxGeometry(w * 0.96, tileHeight, l * 0.96, 4, 0.08);
       const baseMat = new THREE.MeshStandardMaterial({
         color: '#FCFCFC',
@@ -657,7 +848,6 @@ export class BoardScene {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
-    // Khung bo tròn bên trong
     ctx.strokeStyle = 'rgba(0, 0, 0, 0.04)';
     ctx.lineWidth = 4;
     ctx.strokeRect(16, 16, 480, 480);
@@ -667,7 +857,6 @@ export class BoardScene {
       ctx.font = '900 84px sans-serif';
       ctx.fillText('GO', 256, 175);
 
-      // Pill badge xanh ngọc cho tiền thưởng
       ctx.fillStyle = '#E6FFFA';
       this.drawRoundedRect(ctx, 110, 260, 292, 70, 35);
       ctx.fill();
@@ -739,13 +928,11 @@ export class BoardScene {
       ctx.font = '900 38px sans-serif';
       ctx.fillText('150M', 256, 335);
     } else {
-      // Normal Property
       ctx.fillStyle = '#2D3436';
       ctx.font = '900 46px sans-serif';
       ctx.fillText(tile.name, 256, 235);
 
       if (tile.price > 0) {
-        // Pill badge cho giá tiền
         ctx.fillStyle = '#F0FFF4';
         this.drawRoundedRect(ctx, 140, 310, 232, 64, 32);
         ctx.fill();
@@ -826,6 +1013,24 @@ export class BoardScene {
         pos.setY(i, y);
       }
       pos.needsUpdate = true;
+    }
+
+    // Xe taxi vàng mini chạy vòng quanh công viên
+    if (this.miniTaxi) {
+      this.taxiAngle += delta * 0.45;
+      const radius = 4.8;
+      this.miniTaxi.position.x = Math.cos(this.taxiAngle) * radius;
+      this.miniTaxi.position.z = Math.sin(this.taxiAngle) * radius;
+      this.miniTaxi.rotation.y = -this.taxiAngle - Math.PI / 2;
+    }
+
+    // Đèn còi cảnh sát nhấp nháy xoay vòng
+    if (this.policeBeacon) {
+      const beaconMat = this.policeBeacon.material as THREE.MeshStandardMaterial;
+      const pulse = (Math.sin(elapsedTime * 12) + 1) * 0.5;
+      beaconMat.emissiveIntensity = 0.4 + pulse * 0.6;
+      beaconMat.color.setHex(pulse > 0.5 ? 0xFF4757 : 0x0984E3);
+      beaconMat.emissive.setHex(pulse > 0.5 ? 0xFF4757 : 0x0984E3);
     }
 
     // Statue gentle aura rotation

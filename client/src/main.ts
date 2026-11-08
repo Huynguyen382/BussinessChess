@@ -53,6 +53,7 @@ const timerFill = document.getElementById('timer-fill')!;
 const hudToast = document.getElementById('hud-toast')!;
 const btnRollDice = document.getElementById('btn-roll-dice')!;
 const btnEndTurn = document.getElementById('btn-end-turn')!;
+const btnToggleCamLock = document.getElementById('btn-toggle-cam-lock');
 const btnToggleFollow = document.getElementById('btn-toggle-follow')!;
 const btnResetCam = document.getElementById('btn-reset-cam')!;
 const btnToggleLog = document.getElementById('btn-toggle-log')!;
@@ -191,6 +192,15 @@ function bindUIEvents() {
     btnEndTurn.style.display = 'none';
     socketClient.emit('game:end_turn');
   });
+
+  if (btnToggleCamLock) {
+    btnToggleCamLock.addEventListener('click', () => {
+      const isLocked = boardScene.cameraManager.toggleLock();
+      btnToggleCamLock.textContent = isLocked ? '🔒 Góc Cố Định' : '🔓 Góc Tự Do';
+      btnToggleCamLock.className = isLocked ? 'btn-chunky btn-primary' : 'btn-chunky btn-white';
+      showToast(isLocked ? 'Đã khóa góc nhìn Isometric chuẩn' : 'Đã mở khóa xoay tự do');
+    });
+  }
 
   btnToggleFollow.addEventListener('click', () => {
     boardScene.cameraManager.toggleFollowMode();
