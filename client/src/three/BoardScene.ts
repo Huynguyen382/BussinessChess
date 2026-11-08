@@ -7,6 +7,7 @@ import { BuildingMesh } from './BuildingMesh';
 import { VFXManager } from './VFXManager';
 import { TextureGenerator } from './TextureGenerator';
 import { DetailedModels } from './DetailedModels';
+import { LandmarkModels } from './LandmarkModels';
 import { DEFAULT_BOARD_TILES, BoardTileMeta } from '../config/BoardConfig';
 
 export class BoardScene {
@@ -22,9 +23,11 @@ export class BoardScene {
   public onTileClick: ((tileId: number, tile: BoardTileMeta) => void) | null = null;
   private tileMeshList: { mesh: THREE.Mesh; tileId: number }[] = [];
   private highlightBox: THREE.Mesh | null = null;
+  private tilesParentGroup = new THREE.Group();
 
   private tilePositions: THREE.Vector3[] = [];
   private tileRotations: number[] = [];
+  private animatedLandmarks: THREE.Group[] = [];
   private fountainRipples: THREE.Mesh | null = null;
   private fountainWaterfalls: THREE.Mesh[] = [];
   private fountainWaterJets: THREE.Mesh[] = [];
@@ -71,12 +74,12 @@ export class BoardScene {
     this.scene.add(this.tokenManager.group);
     this.scene.add(this.dicePhysics.group);
     this.scene.add(this.buildingMesh.group);
+    this.scene.add(this.tilesParentGroup);
 
     this.setupLighting();
     this.setupStudioEnvironment();
     this.setupBoardPlinth();
     this.setupStreetLamps();
-    this.setupCornerLandmarks();
     this.setupTabletopProps();
     this.setupCenterDiorama();
 
@@ -760,7 +763,9 @@ export class BoardScene {
     };
 
     this.boardTiles = tiles;
+    this.tilesParentGroup.clear();
     this.tileMeshList = [];
+    this.animatedLandmarks = [];
 
     for (let i = 0; i < 40; i++) {
       const tile = tiles[i];
@@ -795,8 +800,7 @@ export class BoardScene {
         angle = (3 * Math.PI) / 4;
       } else if (i > 20 && i < 30) {
         // Cạnh Đỉnh (Bắc): x chạy từ trái sang phải
-        // 🌟 GÓC XOAY ĐỘT PHÁ: angle = 0 (thay vì Math.PI) giúp toàn bộ chữ ở cạnh Bắc
-        // luôn đứng thẳng 100%, KHÔNG BAO GIỜ BỊ LỘN NGƯỢC khi nhìn từ camera!
+        // GÓC XOAY ĐỘT PHÁ: angle = 0 giúp toàn bộ chữ ở cạnh Bắc luôn đứng thẳng 100%
         const offset = (i - 21) * normalWidth + normalWidth / 2;
         x = -(boardSize / 2 - cornerSize) + offset;
         z = -(boardSize / 2 - cornerSize / 2);
@@ -828,40 +832,123 @@ export class BoardScene {
       });
 
       if (isCorner) {
-        // Ô góc 3.2 x 3.2
+        // ==========================================
+        // 🏰 Ô GÓC 3.2 x 3.2: SA BÀN ĐẠI CÔNG TRÌNH 3D
+        // ==========================================
+        // 1. Chân đế đá hoa cương viền dày chịu lực
+        const plinthMat = new THREE.MeshStandardMaterial({
+          color: '#2D3436',
+          metalness: 0.75,
+          roughness: 0.3
+        });
+        const plinthMesh = new THREE.Mesh(
+          new RoundedBoxGeometry(cornerSize * 0.99, tileHeight * 0.45, cornerSize * 0.99, 3, 0.04),
+          plinthMat
+        );
+        plinthMesh.position.y = -tileHeight * 0.26;
+        plinthMesh.receiveShadow = true;
+        tileGroup.add(plinthMesh);
+
+        // 2. Mặt đá chính
         const baseGeo = new RoundedBoxGeometry(cornerSize * 0.96, tileHeight, cornerSize * 0.96, 4, 0.08);
         const baseMesh = new THREE.Mesh(baseGeo, baseMat);
         baseMesh.receiveShadow = true;
         tileGroup.add(baseMesh);
         this.tileMeshList.push({ mesh: baseMesh, tileId: i });
 
+        // 3. Nhãn ô góc
         const cornerLabel = this.createCornerLabel(tile, cornerSize * 0.95, cornerSize * 0.95);
         cornerLabel.position.y = tileHeight / 2 + 0.025;
         cornerLabel.rotation.x = -Math.PI / 2;
         tileGroup.add(cornerLabel);
+
+        // 4. Mô hình 3D ô góc chi tiết cao cấp
+        let corner3D: THREE.Group | null = null;
+        if (i === 0) corner3D = LandmarkModels.createGOCorner();
+        else if (i === 10) corner3D = LandmarkModels.createJailCorner();
+        else if (i === 20) corner3D = LandmarkModels.createFreeParkingCorner();
+        else if (i === 30) corner3D = LandmarkModels.createGoToJailCorner();
+
+        if (corner3D) {
+          corner3D.position.set(0, tileHeight / 2 + 0.02, 0);
+          tileGroup.add(corner3D);
+          this.animatedLandmarks.push(corner3D);
+        }
       } else {
-        // Ô thường: width = normalWidth (1.95), length = cornerSize (3.2)
+        // ==========================================
+        // 🏙️ Ô THƯỜNG 1.95 x 3.2: ĐẾ ĐA TẦNG & MODEL DANH THẮNG 3D
+        // ==========================================
+        const isSide3 = (i > 20 && i < 30);
+        const subPlinthColor = tile.districtColor || (tile.type === 'RAILROAD' ? '#2F3542' : tile.type === 'UTILITY' ? '#0984E3' : '#BDC3C7');
+        const subPlinthMat = new THREE.MeshStandardMaterial({
+          color: subPlinthColor,
+          roughness: 0.35,
+          metalness: 0.25
+        });
+
+        // 1. Đế chân giật cấp viền màu phân khu (Sub-plinth)
+        const subPlinth = new THREE.Mesh(
+          new RoundedBoxGeometry(normalWidth * 0.99, tileHeight * 0.45, cornerSize * 0.99, 3, 0.04),
+          subPlinthMat
+        );
+        subPlinth.position.y = -tileHeight * 0.26;
+        subPlinth.receiveShadow = true;
+        tileGroup.add(subPlinth);
+
+        // 2. Thân ô đá trắng bo góc
         const baseGeo = new RoundedBoxGeometry(normalWidth * 0.96, tileHeight, cornerSize * 0.96, 4, 0.08);
         const baseMesh = new THREE.Mesh(baseGeo, baseMat);
         baseMesh.receiveShadow = true;
         tileGroup.add(baseMesh);
         this.tileMeshList.push({ mesh: baseMesh, tileId: i });
 
-        // Gờ bó vỉa bo cong ngăn cách mặt đường
-        const isSide3 = (i > 20 && i < 30);
+        // 3. Gờ bó vỉa bo cong ngăn cách mặt đường
         const curb = DetailedModels.createTileCurbs(normalWidth, cornerSize, 0);
         curb.position.set(0, 0.18, (isSide3 ? -1 : 1) * cornerSize * 0.44);
         tileGroup.add(curb);
 
-        // Card đồ họa độ phân giải cao bao phủ trọn vẹn bề mặt ô
+        // 4. Bụi hoa cẩm tú cầu tí hon trang trí góc vỉa hè cho các ô phân khu màu
+        if (tile.districtColor && i % 2 === 0) {
+          const bush = DetailedModels.createFlowerBush(tile.districtColor);
+          bush.scale.set(0.62, 0.62, 0.62);
+          bush.position.set(normalWidth * 0.35, tileHeight / 2 + 0.02, (isSide3 ? -1 : 1) * cornerSize * 0.42);
+          tileGroup.add(bush);
+        }
+
+        // 5. Card đồ họa độ phân giải cao bao phủ trọn vẹn bề mặt ô
         const lm = TILE_LANDMARKS[i] || { icon: '📍', subtitle: 'Bất Động Sản' };
         const labelMesh = this.createTileLabel(tile, lm, normalWidth * 0.95, cornerSize * 0.95);
         labelMesh.position.y = tileHeight / 2 + 0.025;
         labelMesh.rotation.x = -Math.PI / 2;
         tileGroup.add(labelMesh);
+
+        // 6. MÔ HÌNH 3D DANH THẮNG / ĐỊA DANH CHI TIẾT
+        let landmark3D: THREE.Group | null = null;
+        if (tile.type === 'PROPERTY') {
+          landmark3D = LandmarkModels.createCityLandmark(i);
+        } else if (tile.type === 'RAILROAD') {
+          landmark3D = LandmarkModels.createRailroadModel(i);
+        } else if (tile.type === 'UTILITY') {
+          landmark3D = LandmarkModels.createUtilityModel(i);
+        } else if (tile.type === 'CHANCE') {
+          landmark3D = LandmarkModels.createCardTileModel(true);
+        } else if (tile.type === 'COMMUNITY_CHEST') {
+          landmark3D = LandmarkModels.createCardTileModel(false);
+        } else if (tile.type === 'TAX') {
+          landmark3D = LandmarkModels.createTaxModel(i);
+        }
+
+        if (landmark3D) {
+          // Đặt ở mép ngoài ô cờ (Landmark Skyline), vươn cao trong không gian
+          const landmarkZ = (isSide3 ? -1 : 1) * 1.08;
+          landmark3D.position.set(0, tileHeight / 2 + 0.02, landmarkZ);
+          landmark3D.rotation.y = isSide3 ? Math.PI : 0;
+          tileGroup.add(landmark3D);
+          this.animatedLandmarks.push(landmark3D);
+        }
       }
 
-      this.scene.add(tileGroup);
+      this.tilesParentGroup.add(tileGroup);
     }
 
     this.tokenManager.setTilePositions(this.tilePositions);
@@ -1392,6 +1479,12 @@ export class BoardScene {
       }
       positions.needsUpdate = true;
     }
+
+    // Hoạt ảnh bồng bềnh sống động cho các mô hình địa danh 3D trên bàn cờ
+    this.animatedLandmarks.forEach((lm, idx) => {
+      const floatY = (0.18 / 2 + 0.02) + Math.sin(elapsedTime * 2.2 + idx * 0.45) * 0.016;
+      lm.position.y = floatY;
+    });
 
     this.renderer.render(this.scene, this.cameraManager.camera);
   }
