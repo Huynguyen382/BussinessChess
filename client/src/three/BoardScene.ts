@@ -22,6 +22,7 @@ export class BoardScene {
   private tileRotations: number[] = [];
   private fountainRipples: THREE.Mesh | null = null;
   private fountainWaterfalls: THREE.Mesh[] = [];
+  private fountainWaterJets: THREE.Mesh[] = [];
   private fountainSpray: THREE.Points | null = null;
   private billionaireStatue: THREE.Group | null = null;
   private parkTrees: THREE.Group[] = [];
@@ -226,46 +227,20 @@ export class BoardScene {
     this.scene.add(plinthGroup);
   }
 
-  // 3. Four Miniature Street Lamp Posts on Board Corners
+  // 3. Four Miniature Street Lamp Posts on Board Corners (Victorian Lantern Posts)
   private setupStreetLamps() {
     const lampsGroup = new THREE.Group();
     const lampPositions = [
-      [11.5, 11.5],
-      [-11.5, 11.5],
-      [-11.5, -11.5],
-      [11.5, -11.5]
+      [11.5, 11.5, -Math.PI / 4],
+      [-11.5, 11.5, Math.PI / 4],
+      [-11.5, -11.5, (3 * Math.PI) / 4],
+      [11.5, -11.5, -(3 * Math.PI) / 4]
     ];
 
-    lampPositions.forEach(([lx, lz]) => {
-      const lamp = new THREE.Group();
+    lampPositions.forEach(([lx, lz, rot]) => {
+      const lamp = DetailedModels.createStreetLamp();
       lamp.position.set(lx, 0.3, lz);
-
-      const pole = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.06, 0.09, 1.2, 12),
-        new THREE.MeshStandardMaterial({ color: '#2D3436', metalness: 0.7, roughness: 0.3 })
-      );
-      pole.position.y = 0.6;
-      pole.castShadow = true;
-
-      const lantern = new THREE.Mesh(
-        new RoundedBoxGeometry(0.24, 0.28, 0.24, 2, 0.04),
-        new THREE.MeshStandardMaterial({
-          color: '#FFEAA7',
-          emissive: '#FFEAA7',
-          emissiveIntensity: 0.85,
-          roughness: 0.2
-        })
-      );
-      lantern.position.y = 1.25;
-
-      const cap = new THREE.Mesh(
-        new THREE.ConeGeometry(0.22, 0.16, 4),
-        new THREE.MeshStandardMaterial({ color: '#2D3436', metalness: 0.8 })
-      );
-      cap.position.y = 1.45;
-      cap.rotation.y = Math.PI / 4;
-
-      lamp.add(pole, lantern, cap);
+      lamp.rotation.y = rot;
       lampsGroup.add(lamp);
     });
 
@@ -571,26 +546,23 @@ export class BoardScene {
     path.position.y = 0.31;
     centerGroup.add(path);
 
-    // Ghế Băng Công Viên Gỗ
+    // Ghế Băng Công Viên Cổ Điển London bằng Gỗ Sồi & Chân Sắt Uốn
     for (let b = 0; b < 4; b++) {
       const angle = (b / 4) * Math.PI * 2 + Math.PI / 4;
-      const bench = new THREE.Group();
-      bench.position.set(Math.cos(angle) * 4.8, 0.32, Math.sin(angle) * 4.8);
+      const bench = DetailedModels.createParkBench();
+      bench.position.set(Math.cos(angle) * 4.9, 0.32, Math.sin(angle) * 4.9);
       bench.rotation.y = -angle + Math.PI / 2;
-
-      const seat = new THREE.Mesh(
-        new RoundedBoxGeometry(0.8, 0.06, 0.28, 2, 0.01),
-        new THREE.MeshStandardMaterial({ color: '#A0522D', roughness: 0.6 })
-      );
-      seat.position.y = 0.18;
-      const back = new THREE.Mesh(
-        new RoundedBoxGeometry(0.8, 0.24, 0.04, 2, 0.01),
-        new THREE.MeshStandardMaterial({ color: '#A0522D', roughness: 0.6 })
-      );
-      back.position.set(0, 0.32, -0.12);
-
-      bench.add(seat, back);
       centerGroup.add(bench);
+    }
+
+    // 4 Cột Đèn Đường Cổ Điển Dọc Lối Đi Dạo Công Viên
+    for (let l = 0; l < 4; l++) {
+      const lAngle = (l / 4) * Math.PI * 2;
+      const pLamp = DetailedModels.createStreetLamp();
+      pLamp.scale.set(0.72, 0.72, 0.72);
+      pLamp.position.set(Math.cos(lAngle) * 5.5, 0.32, Math.sin(lAngle) * 5.5);
+      pLamp.rotation.y = -lAngle - Math.PI / 2;
+      centerGroup.add(pLamp);
     }
 
     // 🚕 Xe Taxi Vàng Mini Chạy Quanh Công Viên
@@ -618,10 +590,11 @@ export class BoardScene {
     this.miniTaxi.position.set(4.8, 0.2, 0);
     centerGroup.add(this.miniTaxi);
 
-    // ⛲ Đài Phun Nước Đẳng Cấp 2 Tầng Cổ Điển với Màng Nước Tràn
+    // ⛲ Đài Phun Nước Hoàng Gia Bát Giác 3 Tầng với 4 Vòi Cá & Màng Nước Rơi
     const fountainData = DetailedModels.createDetailedFountain();
     this.fountainRipples = fountainData.waterRipples;
     this.fountainWaterfalls = fountainData.waterFalls;
+    this.fountainWaterJets = fountainData.waterJets;
     centerGroup.add(fountainData.group);
 
     // Các Bụi Hoa Cẩm Tú Cầu Xung Quanh Đài Phun Nước
@@ -942,7 +915,7 @@ export class BoardScene {
 
     this.dicePhysics.update(delta);
     this.cameraManager.update();
-    this.buildingMesh.update(delta);
+    this.buildingMesh.update(elapsedTime);
     this.vfxManager.update(delta);
     this.tokenManager.update(delta);
 
@@ -951,14 +924,22 @@ export class BoardScene {
       this.cameraManager.camera.position.add(this.vfxManager.cameraShakeOffset);
     }
 
-    // Gợn sóng xoay tròn trên mặt hồ đài phun nước
+    // Gợn sóng lăn tăn xoay tròn trên mặt hồ đài phun nước
     if (this.fountainRipples) {
-      this.fountainRipples.rotation.y += delta * 0.45;
+      this.fountainRipples.rotation.z += delta * 0.35;
     }
 
-    // Hiệu ứng màng nước rơi từ tầng 2 xuống tầng 1
-    this.fountainWaterfalls.forEach(cascade => {
-      cascade.rotation.y += delta * 0.6;
+    // Hiệu ứng màng nước thác rơi từ tầng 2 xuống tầng 1 và từ tầng 1 xuống hồ
+    this.fountainWaterfalls.forEach((cascade, idx) => {
+      cascade.rotation.y += (idx % 2 === 0 ? 1 : -1) * delta * 0.7;
+      const mat = cascade.material as THREE.MeshStandardMaterial;
+      mat.opacity = 0.45 + Math.sin(elapsedTime * 3 + idx) * 0.1;
+    });
+
+    // 4 Tia nước phát quang từ miệng vòi cá vàng
+    this.fountainWaterJets.forEach((jet, idx) => {
+      const jMat = jet.material as THREE.MeshStandardMaterial;
+      jMat.emissiveIntensity = 0.5 + Math.sin(elapsedTime * 4 + idx) * 0.2;
     });
 
     // Tia nước sủi bọt phun lên
