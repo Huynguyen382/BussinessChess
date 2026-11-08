@@ -592,7 +592,7 @@ export class DetailedModels {
     // Gờ đá bó vỉa bo cong ngăn cách vỉa hè với lòng đường
     const curbGeo = new RoundedBoxGeometry(w * 0.98, 0.07, 0.12, 2, 0.02);
     const curb = new THREE.Mesh(curbGeo, curbMat);
-    curb.position.set(0, 0.18, l * 0.44);
+    curb.position.set(0, 0, 0);
     curb.receiveShadow = true;
     curbGroup.add(curb);
 

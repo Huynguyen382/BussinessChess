@@ -8,6 +8,7 @@ import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeom
 export class LandmarkModels {
   // Bộ chia sẻ vật liệu dùng chung (Material Cache) giúp tối ưu hiệu năng WebGL 60 FPS
   private static materials: Map<string, THREE.Material> = new Map();
+  private static shadowTexture: THREE.CanvasTexture | null = null;
 
   private static getMat(key: string, createFn: () => THREE.Material): THREE.Material {
     if (!this.materials.has(key)) {
@@ -16,11 +17,43 @@ export class LandmarkModels {
     return this.materials.get(key)!;
   }
 
+  public static getContactShadowTexture(): THREE.CanvasTexture {
+    if (!this.shadowTexture) {
+      const canvas = document.createElement('canvas');
+      canvas.width = 128;
+      canvas.height = 128;
+      const ctx = canvas.getContext('2d')!;
+      const grad = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
+      grad.addColorStop(0, 'rgba(20, 24, 30, 0.65)');
+      grad.addColorStop(0.5, 'rgba(20, 24, 30, 0.28)');
+      grad.addColorStop(1, 'rgba(20, 24, 30, 0)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, 128, 128);
+      this.shadowTexture = new THREE.CanvasTexture(canvas);
+    }
+    return this.shadowTexture;
+  }
+
+  public static createContactShadow(sx: number, sz: number, opacity = 0.45): THREE.Mesh {
+    const geo = new THREE.PlaneGeometry(sx, sz);
+    const mat = new THREE.MeshBasicMaterial({
+      map: this.getContactShadowTexture(),
+      transparent: true,
+      opacity,
+      depthWrite: false
+    });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.rotation.x = -Math.PI / 2;
+    mesh.position.y = 0.008;
+    return mesh;
+  }
+
   // =========================================================================
   // 1. Ô 0: KHỞI HÀNH (GO) - CỔNG CHÀO KHẢI HOÀN MÔN & RƯƠNG VÀNG THỊNH VƯỢNG
   // =========================================================================
   public static createGOCorner(): THREE.Group {
     const group = new THREE.Group();
+    group.add(this.createContactShadow(2.6, 2.6, 0.55));
 
     const marbleMat = this.getMat('marbleWhite', () => new THREE.MeshStandardMaterial({
       color: '#FFFFFF',
@@ -93,6 +126,7 @@ export class LandmarkModels {
   // =========================================================================
   public static createJailCorner(): THREE.Group {
     const group = new THREE.Group();
+    group.add(this.createContactShadow(2.4, 2.4, 0.55));
 
     const stoneMat = this.getMat('graniteStone', () => new THREE.MeshStandardMaterial({
       color: '#57606F',
@@ -157,6 +191,7 @@ export class LandmarkModels {
   // =========================================================================
   public static createFreeParkingCorner(): THREE.Group {
     const group = new THREE.Group();
+    group.add(this.createContactShadow(2.4, 2.4, 0.55));
 
     const asphaltMat = this.getMat('asphaltGray', () => new THREE.MeshStandardMaterial({
       color: '#34495E',
@@ -214,6 +249,7 @@ export class LandmarkModels {
   // =========================================================================
   public static createGoToJailCorner(): THREE.Group {
     const group = new THREE.Group();
+    group.add(this.createContactShadow(2.4, 2.4, 0.55));
 
     const woodDarkMat = this.getMat('woodDark', () => new THREE.MeshStandardMaterial({
       color: '#4A2311',
@@ -285,6 +321,7 @@ export class LandmarkModels {
   // =========================================================================
   public static createRailroadModel(tileId: number): THREE.Group {
     const group = new THREE.Group();
+    group.add(this.createContactShadow(1.3, 1.4, 0.45));
 
     const ironBlack = this.getMat('engineBlack', () => new THREE.MeshStandardMaterial({
       color: '#1E272E',
@@ -382,6 +419,7 @@ export class LandmarkModels {
   // =========================================================================
   public static createUtilityModel(tileId: number): THREE.Group {
     const group = new THREE.Group();
+    group.add(this.createContactShadow(1.2, 1.2, 0.42));
 
     if (tileId === 12) {
       // ⚡ CÔNG TY ĐIỆN LỰC: Trụ điện cao thế giàn thép & Quả cầu sét phát quang
@@ -486,6 +524,7 @@ export class LandmarkModels {
   // =========================================================================
   public static createCardTileModel(isChance: boolean): THREE.Group {
     const group = new THREE.Group();
+    group.add(this.createContactShadow(1.1, 1.1, 0.42));
 
     if (isChance) {
       // ❓ CƠ HỘI: Hộp quà kỳ diệu & Dấu hỏi vàng 3D
@@ -533,6 +572,7 @@ export class LandmarkModels {
   // =========================================================================
   public static createTaxModel(tileId: number): THREE.Group {
     const group = new THREE.Group();
+    group.add(this.createContactShadow(1.15, 1.15, 0.45));
 
     if (tileId === 4) {
       // 💸 THUẾ THU NHẬP: Két sắt bảo an ngân hàng màu xanh than
@@ -596,6 +636,7 @@ export class LandmarkModels {
   // =========================================================================
   public static createCityLandmark(tileId: number): THREE.Group {
     const group = new THREE.Group();
+    group.add(this.createContactShadow(1.35, 1.15, 0.45));
 
     switch (tileId) {
       // =====================================================

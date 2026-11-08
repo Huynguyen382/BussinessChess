@@ -9,6 +9,7 @@ import { TextureGenerator } from './TextureGenerator';
 import { DetailedModels } from './DetailedModels';
 import { LandmarkModels } from './LandmarkModels';
 import { DEFAULT_BOARD_TILES, BoardTileMeta } from '../config/BoardConfig';
+import { sounds } from '../components/AudioSynth';
 
 export class BoardScene {
   public scene: THREE.Scene;
@@ -28,6 +29,7 @@ export class BoardScene {
   private tilePositions: THREE.Vector3[] = [];
   private tileRotations: number[] = [];
   private animatedLandmarks: THREE.Group[] = [];
+  private tileLandmarkMap: Map<number, THREE.Group> = new Map();
   private fountainRipples: THREE.Mesh | null = null;
   private fountainWaterfalls: THREE.Mesh[] = [];
   private fountainWaterJets: THREE.Mesh[] = [];
@@ -37,8 +39,9 @@ export class BoardScene {
   private coffeeSteam: THREE.Points | null = null;
   private ambientDustMotes: THREE.Points | null = null;
 
-  // Xe taxi mini & đèn còi cảnh sát
+  // Xe cộ mini trên đại lộ đô thị & đèn còi cảnh sát
   private miniTaxi: THREE.Group | null = null;
+  private miniBus: THREE.Group | null = null;
   private taxiAngle: number = 0;
   private policeBeacon: THREE.Mesh | null = null;
 
@@ -104,10 +107,7 @@ export class BoardScene {
       downY = e.clientY;
     });
 
-    this.renderer.domElement.addEventListener('pointerup', (e) => {
-      const dist = Math.hypot(e.clientX - downX, e.clientY - downY);
-      if (dist > 8) return; // Kéo xoay màn hình, không phải click chọn
-
+    const getIntersectedTileId = (e: MouseEvent | PointerEvent): number | null => {
       const rect = this.renderer.domElement.getBoundingClientRect();
       const mouse = new THREE.Vector2(
         ((e.clientX - rect.left) / rect.width) * 2 - 1,
@@ -116,23 +116,44 @@ export class BoardScene {
 
       const raycaster = new THREE.Raycaster();
       raycaster.setFromCamera(mouse, this.cameraManager.camera);
-      const targets = this.tileMeshList.map(t => t.mesh);
-      const intersects = raycaster.intersectObjects(targets);
 
+      // Raycast sâu vào mọi chi tiết thuộc các ô cờ (kể cả Landmark 3D, mái chùa, đầu tàu hỏa, hoa cẩm tú cầu)
+      const intersects = raycaster.intersectObjects(this.tilesParentGroup.children, true);
       if (intersects.length > 0) {
-        const hit = this.tileMeshList.find(t => t.mesh === intersects[0].object);
-        if (hit && this.boardTiles[hit.tileId]) {
-          const tile = this.boardTiles[hit.tileId];
-          this.highlightTile(hit.tileId);
-          if (this.onTileClick) {
-            this.onTileClick(hit.tileId, tile);
+        let cur: THREE.Object3D | null = intersects[0].object;
+        while (cur && cur !== this.tilesParentGroup) {
+          if (cur.userData && typeof cur.userData.tileId === 'number') {
+            return cur.userData.tileId;
           }
+          cur = cur.parent;
+        }
+      }
+      return null;
+    };
+
+    this.renderer.domElement.addEventListener('pointerup', (e) => {
+      const dist = Math.hypot(e.clientX - downX, e.clientY - downY);
+      if (dist > 8) return; // Kéo xoay màn hình, không phải click chọn
+
+      const tileId = getIntersectedTileId(e);
+      if (tileId !== null && this.boardTiles[tileId]) {
+        const tile = this.boardTiles[tileId];
+        sounds.playTap();
+        this.highlightTile(tileId);
+        if (this.onTileClick) {
+          this.onTileClick(tileId, tile);
         }
       }
     });
+
+    // Con trỏ bàn tay (cursor pointer) khi rê chuột qua bất kỳ danh thắng hoặc ô cờ nào
+    this.renderer.domElement.addEventListener('pointermove', (e) => {
+      const tileId = getIntersectedTileId(e);
+      this.renderer.domElement.style.cursor = tileId !== null ? 'pointer' : 'default';
+    });
   }
 
-  // Hộp chỉ thị màu vàng viền sáng nổi bật ô đang được chọn
+  // Hộp chỉ thị màu vàng viền sáng nổi bật ô đang được chọn & nảy đàn hồi mô hình 3D
   public highlightTile(tileId: number) {
     const pos = this.tilePositions[tileId];
     if (!pos) return;
@@ -151,6 +172,28 @@ export class BoardScene {
     this.highlightBox.position.set(pos.x, 0.22, pos.z);
     this.highlightBox.rotation.y = this.tileRotations[tileId] || 0;
     this.highlightBox.visible = true;
+
+    // Kích hoạt phản hồi xúc giác 3D nhún nảy (Juicy Spring Bounce) cho mô hình danh thắng
+    const lm = this.tileLandmarkMap.get(tileId);
+    if (lm) {
+      this.bounceLandmark(lm);
+    }
+  }
+
+  private bounceLandmark(lm: THREE.Group) {
+    let t = 0;
+    const baseScale = lm.scale.x;
+    const interval = setInterval(() => {
+      t += 0.12;
+      const factor = 1 + Math.sin(t * Math.PI) * 0.28;
+      if (t >= 1) {
+        lm.scale.set(baseScale, baseScale, baseScale);
+        clearInterval(interval);
+      } else {
+        const s = baseScale * factor;
+        lm.scale.set(s, s, s);
+      }
+    }, 16);
   }
 
   private setupLighting() {
@@ -256,32 +299,43 @@ export class BoardScene {
   private setupBoardPlinth() {
     const plinthGroup = new THREE.Group();
 
-    // Dark Walnut Wood Platform
-    const baseGeo = new RoundedBoxGeometry(25.8, 0.6, 25.8, 4, 0.12);
-    const baseMat = new THREE.MeshStandardMaterial({ color: '#253342', roughness: 0.4 });
+    // Dark Walnut Wood Platform bề thế ôm trọn bàn cờ 24x24
+    const baseGeo = new RoundedBoxGeometry(26.2, 0.75, 26.2, 4, 0.16);
+    const baseMat = new THREE.MeshStandardMaterial({
+      color: '#1E272E',
+      roughness: 0.38,
+      metalness: 0.12
+    });
     const plinth = new THREE.Mesh(baseGeo, baseMat);
-    plinth.position.y = -0.3;
+    plinth.position.y = -0.38;
     plinth.receiveShadow = true;
     plinthGroup.add(plinth);
 
-    // Gold Trim Inlay
-    const trimGeo = new THREE.BoxGeometry(26.0, 0.08, 26.0);
-    const trimMat = new THREE.MeshStandardMaterial({ color: '#FDCB6E', emissive: '#FDCB6E', emissiveIntensity: 0.25, metalness: 0.85, roughness: 0.2 });
+    // Gold Trim Inlay bao quanh 4 mép bàn cờ
+    const trimGeo = new THREE.BoxGeometry(26.5, 0.1, 26.5);
+    const trimMat = new THREE.MeshStandardMaterial({
+      color: '#F1C40F',
+      emissive: '#F39C12',
+      emissiveIntensity: 0.32,
+      metalness: 0.88,
+      roughness: 0.16
+    });
     const trim = new THREE.Mesh(trimGeo, trimMat);
     trim.position.y = -0.02;
     plinthGroup.add(trim);
 
-    // Soft drop shadow
-    const shadowGeo = new THREE.PlaneGeometry(31, 31);
+    // Soft drop shadow siêu thực tỏa ra mặt bàn gỗ
+    const shadowGeo = new THREE.PlaneGeometry(33, 33);
     const canvas = document.createElement('canvas');
-    canvas.width = 128;
-    canvas.height = 128;
+    canvas.width = 256;
+    canvas.height = 256;
     const ctx = canvas.getContext('2d')!;
-    const grad = ctx.createRadialGradient(64, 64, 25, 64, 64, 64);
-    grad.addColorStop(0, 'rgba(0, 0, 0, 0.45)');
+    const grad = ctx.createRadialGradient(128, 128, 60, 128, 128, 128);
+    grad.addColorStop(0, 'rgba(0, 0, 0, 0.52)');
+    grad.addColorStop(0.7, 'rgba(0, 0, 0, 0.22)');
     grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
     ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, 128, 128);
+    ctx.fillRect(0, 0, 256, 256);
 
     const shadowMat = new THREE.MeshBasicMaterial({
       map: new THREE.CanvasTexture(canvas),
@@ -290,7 +344,7 @@ export class BoardScene {
     });
     const groundShadow = new THREE.Mesh(shadowGeo, shadowMat);
     groundShadow.rotation.x = -Math.PI / 2;
-    groundShadow.position.y = -0.56;
+    groundShadow.position.y = -0.74;
     plinthGroup.add(groundShadow);
 
     this.scene.add(plinthGroup);
@@ -599,8 +653,58 @@ export class BoardScene {
   private setupCenterDiorama() {
     const centerGroup = new THREE.Group();
 
-    // Park Grass Base với gờ viền mềm
-    const parkGeo = new THREE.CylinderGeometry(8.5, 8.8, 0.3, 36);
+    // 1. Đại Lộ Nhựa Đường Đô Thị (Asphalt City Avenue) bao quanh giữa công viên và 40 ô cờ
+    const avenueGeo = new THREE.RingGeometry(5.8, 8.75, 48);
+    const avenueMat = new THREE.MeshStandardMaterial({
+      color: '#2F3542',
+      roughness: 0.72,
+      metalness: 0.1,
+      side: THREE.DoubleSide
+    });
+    const avenue = new THREE.Mesh(avenueGeo, avenueMat);
+    avenue.rotation.x = -Math.PI / 2;
+    avenue.position.y = 0.16;
+    avenue.receiveShadow = true;
+    centerGroup.add(avenue);
+
+    // Vạch kẻ tim đường vàng đứt khúc (Yellow Dashed Centerline)
+    const dashLineMat = new THREE.MeshStandardMaterial({
+      color: '#F1C40F',
+      emissive: '#F1C40F',
+      emissiveIntensity: 0.35,
+      side: THREE.DoubleSide
+    });
+    const dashCount = 28;
+    for (let d = 0; d < dashCount; d++) {
+      if (d % 2 === 0) {
+        const theta1 = (d / dashCount) * Math.PI * 2;
+        const theta2 = ((d + 0.65) / dashCount) * Math.PI * 2;
+        const dashGeo = new THREE.RingGeometry(7.22, 7.38, 4, 1, theta1, theta2 - theta1);
+        const dashMesh = new THREE.Mesh(dashGeo, dashLineMat);
+        dashMesh.rotation.x = -Math.PI / 2;
+        dashMesh.position.y = 0.165;
+        centerGroup.add(dashMesh);
+      }
+    }
+
+    // 4 Vạch Kẻ Sang Đường Cho Người Đi Bộ (Zebra Crossings) tại 4 góc tiếp giáp ô góc
+    const zebraWhite = new THREE.MeshStandardMaterial({ color: '#FFFFFF', roughness: 0.4, side: THREE.DoubleSide });
+    const crossAngles = [Math.PI / 4, (3 * Math.PI) / 4, (5 * Math.PI) / 4, (7 * Math.PI) / 4];
+    crossAngles.forEach(ca => {
+      const zebraGroup = new THREE.Group();
+      zebraGroup.position.set(Math.cos(ca) * 7.3, 0.168, Math.sin(ca) * 7.3);
+      zebraGroup.rotation.y = -ca;
+      for (let z = -0.45; z <= 0.45; z += 0.18) {
+        const stripe = new THREE.Mesh(new THREE.PlaneGeometry(0.1, 1.45), zebraWhite);
+        stripe.rotation.x = -Math.PI / 2;
+        stripe.position.set(z, 0, 0);
+        zebraGroup.add(stripe);
+      }
+      centerGroup.add(zebraGroup);
+    });
+
+    // 2. Park Grass Base với gờ viền mềm
+    const parkGeo = new THREE.CylinderGeometry(5.4, 5.7, 0.3, 36);
     const parkMat = new THREE.MeshStandardMaterial({ color: '#55EFC4', roughness: 0.5 });
     const park = new THREE.Mesh(parkGeo, parkMat);
     park.position.y = 0.15;
@@ -608,7 +712,7 @@ export class BoardScene {
     centerGroup.add(park);
 
     // Lối đi dạo quanh công viên lát sỏi
-    const pathGeo = new THREE.RingGeometry(4.2, 5.4, 36);
+    const pathGeo = new THREE.RingGeometry(3.3, 4.2, 36);
     const pathMat = new THREE.MeshStandardMaterial({ color: '#FFEAA7', roughness: 0.6, side: THREE.DoubleSide });
     const path = new THREE.Mesh(pathGeo, pathMat);
     path.rotation.x = -Math.PI / 2;
@@ -619,7 +723,8 @@ export class BoardScene {
     for (let b = 0; b < 4; b++) {
       const angle = (b / 4) * Math.PI * 2 + Math.PI / 4;
       const bench = DetailedModels.createParkBench();
-      bench.position.set(Math.cos(angle) * 4.9, 0.32, Math.sin(angle) * 4.9);
+      bench.scale.set(0.85, 0.85, 0.85);
+      bench.position.set(Math.cos(angle) * 3.75, 0.32, Math.sin(angle) * 3.75);
       bench.rotation.y = -angle + Math.PI / 2;
       centerGroup.add(bench);
     }
@@ -628,36 +733,126 @@ export class BoardScene {
     for (let l = 0; l < 4; l++) {
       const lAngle = (l / 4) * Math.PI * 2;
       const pLamp = DetailedModels.createStreetLamp();
-      pLamp.scale.set(0.72, 0.72, 0.72);
-      pLamp.position.set(Math.cos(lAngle) * 5.5, 0.32, Math.sin(lAngle) * 5.5);
+      pLamp.scale.set(0.65, 0.65, 0.65);
+      pLamp.position.set(Math.cos(lAngle) * 4.4, 0.32, Math.sin(lAngle) * 4.4);
       pLamp.rotation.y = -lAngle - Math.PI / 2;
       centerGroup.add(pLamp);
     }
 
-    // 🚕 Xe Taxi Vàng Mini Chạy Quanh Công Viên
+    // 🚕 Xe Taxi Vàng Mini Chạy Trên Đại Lộ Đô Thị
     this.miniTaxi = new THREE.Group();
+    this.miniTaxi.add(LandmarkModels.createContactShadow(0.85, 0.52, 0.5));
+
     const taxiBody = new THREE.Mesh(
-      new RoundedBoxGeometry(0.65, 0.28, 0.38, 3, 0.05),
-      new THREE.MeshStandardMaterial({ color: '#FED330', roughness: 0.25 })
+      new RoundedBoxGeometry(0.66, 0.26, 0.38, 3, 0.05),
+      new THREE.MeshStandardMaterial({ color: '#F1C40F', roughness: 0.25, metalness: 0.1 })
     );
-    taxiBody.position.y = 0.22;
+    taxiBody.position.y = 0.2;
     taxiBody.castShadow = true;
 
     const taxiCabin = new THREE.Mesh(
-      new RoundedBoxGeometry(0.36, 0.22, 0.32, 2, 0.04),
-      new THREE.MeshStandardMaterial({ color: '#2D3436', roughness: 0.3 })
+      new RoundedBoxGeometry(0.38, 0.2, 0.32, 2, 0.04),
+      new THREE.MeshStandardMaterial({ color: '#2D3436', roughness: 0.2 })
     );
-    taxiCabin.position.set(-0.04, 0.42, 0);
+    taxiCabin.position.set(-0.04, 0.38, 0);
 
     const taxiSign = new THREE.Mesh(
-      new THREE.BoxGeometry(0.12, 0.08, 0.16),
-      new THREE.MeshStandardMaterial({ color: '#FFFFFF', emissive: '#FFF275', emissiveIntensity: 0.8 })
+      new THREE.BoxGeometry(0.12, 0.07, 0.16),
+      new THREE.MeshStandardMaterial({ color: '#FFFFFF', emissive: '#F1C40F', emissiveIntensity: 0.9 })
     );
-    taxiSign.position.set(-0.04, 0.58, 0);
+    taxiSign.position.set(-0.04, 0.52, 0);
 
-    this.miniTaxi.add(taxiBody, taxiCabin, taxiSign);
-    this.miniTaxi.position.set(4.8, 0.2, 0);
+    // Bánh xe cao su & mâm mạ bạc
+    const wheelMat = new THREE.MeshStandardMaterial({ color: '#1E272E', roughness: 0.6 });
+    const hubMat = new THREE.MeshStandardMaterial({ color: '#DFE6E9', metalness: 0.85, roughness: 0.15 });
+    const wheelGeo = new THREE.CylinderGeometry(0.08, 0.08, 0.06, 12);
+    wheelGeo.rotateX(Math.PI / 2);
+    const hubGeo = new THREE.CylinderGeometry(0.04, 0.04, 0.062, 10);
+    hubGeo.rotateX(Math.PI / 2);
+
+    const makeWheel = (wx: number, wz: number) => {
+      const w = new THREE.Mesh(wheelGeo, wheelMat);
+      const h = new THREE.Mesh(hubGeo, hubMat);
+      w.position.set(wx, 0.08, wz);
+      h.position.set(wx, 0.08, wz);
+      this.miniTaxi!.add(w, h);
+    };
+    makeWheel(0.2, 0.2);
+    makeWheel(0.2, -0.2);
+    makeWheel(-0.2, 0.2);
+    makeWheel(-0.2, -0.2);
+
+    // Đèn pha trước vàng sáng rực
+    const headLightMat = new THREE.MeshStandardMaterial({
+      color: '#FFEAA7',
+      emissive: '#FFEAA7',
+      emissiveIntensity: 1.2
+    });
+    const headLightGeo = new THREE.BoxGeometry(0.02, 0.06, 0.08);
+    const hl1 = new THREE.Mesh(headLightGeo, headLightMat);
+    hl1.position.set(0.33, 0.18, 0.12);
+    const hl2 = new THREE.Mesh(headLightGeo, headLightMat);
+    hl2.position.set(0.33, 0.18, -0.12);
+
+    // Đèn hậu đỏ ruby
+    const tailLightMat = new THREE.MeshStandardMaterial({
+      color: '#D63031',
+      emissive: '#D63031',
+      emissiveIntensity: 1.0
+    });
+    const tl1 = new THREE.Mesh(headLightGeo, tailLightMat);
+    tl1.position.set(-0.33, 0.18, 0.12);
+    const tl2 = new THREE.Mesh(headLightGeo, tailLightMat);
+    tl2.position.set(-0.33, 0.18, -0.12);
+
+    this.miniTaxi.add(taxiBody, taxiCabin, taxiSign, hl1, hl2, tl1, tl2);
+    this.miniTaxi.position.set(7.35, 0.15, 0);
     centerGroup.add(this.miniTaxi);
+
+    // 🚌 Xe Buýt Mini Xanh Ngọc (Mint City Transit) chạy làn đối diện
+    this.miniBus = new THREE.Group();
+    this.miniBus.add(LandmarkModels.createContactShadow(1.1, 0.56, 0.5));
+
+    const busBodyMat = new THREE.MeshStandardMaterial({ color: '#00CEC9', roughness: 0.28 });
+    const busBody = new THREE.Mesh(new RoundedBoxGeometry(0.92, 0.38, 0.42, 3, 0.06), busBodyMat);
+    busBody.position.y = 0.28;
+    busBody.castShadow = true;
+
+    // Nóc xe trắng tinh khôi bo tròn
+    const busRoofMat = new THREE.MeshStandardMaterial({ color: '#FFFFFF', roughness: 0.22 });
+    const busRoof = new THREE.Mesh(new RoundedBoxGeometry(0.9, 0.08, 0.4, 2, 0.04), busRoofMat);
+    busRoof.position.y = 0.49;
+
+    // Dải cửa sổ kính đen sang trọng
+    const busWindowMat = new THREE.MeshStandardMaterial({ color: '#1E272E', roughness: 0.15 });
+    const busWindows = new THREE.Mesh(new THREE.BoxGeometry(0.78, 0.14, 0.43), busWindowMat);
+    busWindows.position.y = 0.35;
+
+    // Đèn pha trước & đèn hậu xe buýt
+    const bhl1 = new THREE.Mesh(headLightGeo, headLightMat);
+    bhl1.position.set(0.46, 0.2, 0.14);
+    const bhl2 = new THREE.Mesh(headLightGeo, headLightMat);
+    bhl2.position.set(0.46, 0.2, -0.14);
+    const btl1 = new THREE.Mesh(headLightGeo, tailLightMat);
+    btl1.position.set(-0.46, 0.2, 0.14);
+    const btl2 = new THREE.Mesh(headLightGeo, tailLightMat);
+    btl2.position.set(-0.46, 0.2, -0.14);
+
+    const makeBusWheel = (wx: number, wz: number) => {
+      const w = new THREE.Mesh(wheelGeo, wheelMat);
+      const h = new THREE.Mesh(hubGeo, hubMat);
+      w.position.set(wx, 0.08, wz);
+      h.position.set(wx, 0.08, wz);
+      this.miniBus!.add(w, h);
+    };
+    makeBusWheel(0.3, 0.22);
+    makeBusWheel(0.3, -0.22);
+    makeBusWheel(-0.3, 0.22);
+    makeBusWheel(-0.3, -0.22);
+
+    this.miniBus.add(busBody, busRoof, busWindows, bhl1, bhl2, btl1, btl2);
+    this.miniBus.position.set(-7.35, 0.15, 0);
+    centerGroup.add(this.miniBus);
 
     // ⛲ Đài Phun Nước Hoàng Gia Bát Giác 3 Tầng với 4 Vòi Cá & Màng Nước Rơi
     const fountainData = DetailedModels.createDetailedFountain();
@@ -671,7 +866,7 @@ export class BoardScene {
     for (let f = 0; f < 8; f++) {
       const fAngle = (f / 8) * Math.PI * 2 + 0.2;
       const bush = DetailedModels.createFlowerBush(flowerColors[f % flowerColors.length]);
-      bush.position.set(Math.cos(fAngle) * 3.7, 0.3, Math.sin(fAngle) * 3.7);
+      bush.position.set(Math.cos(fAngle) * 3.3, 0.3, Math.sin(fAngle) * 3.3);
       centerGroup.add(bush);
     }
 
@@ -766,6 +961,7 @@ export class BoardScene {
     this.tilesParentGroup.clear();
     this.tileMeshList = [];
     this.animatedLandmarks = [];
+    this.tileLandmarkMap.clear();
 
     for (let i = 0; i < 40; i++) {
       const tile = tiles[i];
@@ -824,6 +1020,7 @@ export class BoardScene {
       const tileGroup = new THREE.Group();
       tileGroup.position.copy(pos);
       tileGroup.rotation.y = angle;
+      tileGroup.userData = { tileId: i };
 
       const baseMat = new THREE.MeshStandardMaterial({
         color: '#FCFCFC',
@@ -873,6 +1070,7 @@ export class BoardScene {
           corner3D.position.set(0, tileHeight / 2 + 0.02, 0);
           tileGroup.add(corner3D);
           this.animatedLandmarks.push(corner3D);
+          this.tileLandmarkMap.set(i, corner3D);
         }
       } else {
         // ==========================================
@@ -902,16 +1100,17 @@ export class BoardScene {
         tileGroup.add(baseMesh);
         this.tileMeshList.push({ mesh: baseMesh, tileId: i });
 
-        // 3. Gờ bó vỉa bo cong ngăn cách mặt đường
+        // 3. Gờ bó vỉa bo cong ngăn cách vỉa hè với lòng đường đại lộ
+        const curbZ = (isSide3 ? 1 : -1) * (cornerSize * 0.46);
         const curb = DetailedModels.createTileCurbs(normalWidth, cornerSize, 0);
-        curb.position.set(0, 0.18, (isSide3 ? -1 : 1) * cornerSize * 0.44);
+        curb.position.set(0, tileHeight / 2 + 0.035, curbZ);
         tileGroup.add(curb);
 
         // 4. Bụi hoa cẩm tú cầu tí hon trang trí góc vỉa hè cho các ô phân khu màu
         if (tile.districtColor && i % 2 === 0) {
           const bush = DetailedModels.createFlowerBush(tile.districtColor);
           bush.scale.set(0.62, 0.62, 0.62);
-          bush.position.set(normalWidth * 0.35, tileHeight / 2 + 0.02, (isSide3 ? -1 : 1) * cornerSize * 0.42);
+          bush.position.set(normalWidth * 0.36, tileHeight / 2 + 0.02, curbZ * 0.82);
           tileGroup.add(bush);
         }
 
@@ -945,6 +1144,7 @@ export class BoardScene {
           landmark3D.rotation.y = isSide3 ? Math.PI : 0;
           tileGroup.add(landmark3D);
           this.animatedLandmarks.push(landmark3D);
+          this.tileLandmarkMap.set(i, landmark3D);
         }
       }
 
@@ -1430,13 +1630,22 @@ export class BoardScene {
       pos.needsUpdate = true;
     }
 
-    // Xe taxi vàng mini chạy vòng quanh công viên
+    // Xe taxi vàng mini chạy vòng quanh đại lộ đô thị
     if (this.miniTaxi) {
-      this.taxiAngle += delta * 0.45;
-      const radius = 4.8;
+      this.taxiAngle += delta * 0.35;
+      const radius = 7.35;
       this.miniTaxi.position.x = Math.cos(this.taxiAngle) * radius;
       this.miniTaxi.position.z = Math.sin(this.taxiAngle) * radius;
       this.miniTaxi.rotation.y = -this.taxiAngle - Math.PI / 2;
+    }
+
+    // Xe buýt mini xanh ngọc chạy vòng quanh đại lộ đô thị (làn đối diện)
+    if (this.miniBus) {
+      const busAngle = this.taxiAngle + Math.PI;
+      const radius = 7.35;
+      this.miniBus.position.x = Math.cos(busAngle) * radius;
+      this.miniBus.position.z = Math.sin(busAngle) * radius;
+      this.miniBus.rotation.y = -busAngle - Math.PI / 2;
     }
 
     // Đèn còi cảnh sát nhấp nháy xoay vòng
@@ -1480,10 +1689,39 @@ export class BoardScene {
       positions.needsUpdate = true;
     }
 
-    // Hoạt ảnh bồng bềnh sống động cho các mô hình địa danh 3D trên bàn cờ
+    // Hoạt ảnh bồng bềnh sống động & micro-animations cho các mô hình địa danh 3D trên bàn cờ
     this.animatedLandmarks.forEach((lm, idx) => {
       const floatY = (0.18 / 2 + 0.02) + Math.sin(elapsedTime * 2.2 + idx * 0.45) * 0.016;
       lm.position.y = floatY;
+
+      // Xử lý chuyển động vi mô cho các bộ phận chi tiết của kỳ quan
+      lm.traverse((child) => {
+        if (child.userData && child.userData.animType) {
+          const type = child.userData.animType;
+          if (type === 'spin_y') {
+            child.rotation.y += delta * 1.5;
+          } else if (type === 'rotate_pulse') {
+            child.rotation.y += delta * 2.2;
+            const mat = (child as THREE.Mesh).material as THREE.MeshStandardMaterial;
+            if (mat && mat.emissiveIntensity !== undefined) {
+              mat.emissiveIntensity = 0.9 + Math.sin(elapsedTime * 6) * 0.4;
+            }
+          } else if (type === 'flicker') {
+            const scale = 1 + Math.sin(elapsedTime * 14) * 0.12;
+            child.scale.set(scale, scale * (1 + Math.cos(elapsedTime * 10) * 0.1), scale);
+          } else if (type === 'pulse_red') {
+            const pulse = (Math.sin(elapsedTime * 10) + 1) * 0.5;
+            child.scale.setScalar(0.9 + pulse * 0.25);
+          } else if (type === 'lighthouse') {
+            const mat = (child as THREE.Mesh).material as THREE.MeshStandardMaterial;
+            if (mat && mat.emissiveIntensity !== undefined) {
+              mat.emissiveIntensity = 0.8 + Math.sin(elapsedTime * 5 + idx) * 0.5;
+            }
+          } else if (type === 'float_wave') {
+            child.rotation.z = Math.sin(elapsedTime * 3 + idx) * 0.06;
+          }
+        }
+      });
     });
 
     this.renderer.render(this.scene, this.cameraManager.camera);

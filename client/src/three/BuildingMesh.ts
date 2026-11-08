@@ -30,6 +30,17 @@ export class BuildingMesh {
     bGroup.position.copy(position);
     bGroup.rotation.y = baseAngle;
 
+    // Đặt công trình ở nửa phía trước ô cờ (hướng về mặt đường/avenue),
+    // nhường không gian phía sau cho mô hình kỳ quan Landmark 3D vươn cao
+    const isSide3 = tileId > 20 && tileId < 30;
+    const buildingZ = isSide3 ? 0.35 : -0.35;
+    const modelSubGroup = new THREE.Group();
+    modelSubGroup.position.set(0, 0, buildingZ);
+    if (isSide3) {
+      modelSubGroup.rotation.y = Math.PI;
+    }
+    bGroup.add(modelSubGroup);
+
     // Bóng tiếp xúc mềm mại dưới đáy công trình
     const shadowGeo = new THREE.PlaneGeometry(1.6, 1.6);
     const shadowCanvas = document.createElement('canvas');
@@ -51,7 +62,7 @@ export class BuildingMesh {
     const cShadow = new THREE.Mesh(shadowGeo, shadowMat);
     cShadow.rotation.x = -Math.PI / 2;
     cShadow.position.y = 0.02;
-    bGroup.add(cShadow);
+    modelSubGroup.add(cShadow);
 
     if (level === 1) {
       // ==========================================
@@ -101,7 +112,7 @@ export class BuildingMesh {
       const chimney = new THREE.Mesh(new RoundedBoxGeometry(0.14, 0.38, 0.14, 2, 0.02), chimneyMat);
       chimney.position.set(0.22, 0.92, 0.16);
 
-      bGroup.add(plinth, base, roof, win, door, doorknob, chimney);
+      modelSubGroup.add(plinth, base, roof, win, door, doorknob, chimney);
 
     } else if (level === 2) {
       // ==========================================
@@ -143,7 +154,7 @@ export class BuildingMesh {
       roof.position.y = 1.25;
       roof.rotation.y = Math.PI / 4;
 
-      bGroup.add(plinth, f1, f2, balcony, flowers, roof);
+      modelSubGroup.add(plinth, f1, f2, balcony, flowers, roof);
 
     } else if (level === 3) {
       // ==========================================
@@ -176,7 +187,7 @@ export class BuildingMesh {
       );
       orb.position.y = 2.4;
 
-      bGroup.add(base, tower, antenna, orb);
+      modelSubGroup.add(base, tower, antenna, orb);
 
     } else if (level === 4) {
       // ==========================================
@@ -248,7 +259,7 @@ export class BuildingMesh {
       orb.position.y = 3.95;
 
       this.animatedSpireLandmarks.push(orb);
-      bGroup.add(tier1, tier2, tier3, carpet, canopy, heliPad, hSign, crown, orb);
+      modelSubGroup.add(tier1, tier2, tier3, carpet, canopy, heliPad, hSign, crown, orb);
     }
 
     // Hoạt ảnh nảy lò xo đàn hồi (Elastic Pop-in Bounce)

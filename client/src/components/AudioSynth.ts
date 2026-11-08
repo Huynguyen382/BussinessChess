@@ -14,6 +14,24 @@ class SoundEffects {
     }
   }
 
+  // Tiếng chạm/bấm nhẹ nhàng vui nhộn khi chọn ô cờ hoặc danh lam thắng cảnh 3D
+  public playTap() {
+    this.initCtx();
+    if (!this.ctx) return;
+
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(650, this.ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(1100, this.ctx.currentTime + 0.07);
+    gain.gain.setValueAtTime(0.12, this.ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.005, this.ctx.currentTime + 0.08);
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start();
+    osc.stop(this.ctx.currentTime + 0.08);
+  }
+
   // Tiếng lắc xúc xắc lọc cọc
   public playDiceRoll() {
     this.initCtx();
