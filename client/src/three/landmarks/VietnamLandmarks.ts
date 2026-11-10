@@ -1232,19 +1232,24 @@ export class VietnamLandmarks {
       // PHÂN KHU 8: ĐẠI ĐÔ THỊ SÀI GÒN PHỒN VINH (Royal Sapphire)
       // =====================================================
       case 37: {
-        // TP. Hồ Chí Minh: Tòa Tháp Landmark 81 Bó Tre Kính Phản Chiếu & Spire Pha Lê
+        // TP. Hồ Chí Minh: Tòa Tháp Landmark 81 Bó Tre Kính Phản Chiếu, Gân Thép Đứng & Spire Pha Lê
         const glassCyanMat = LandmarkMaterials.getMat('l81GlassCyan', () => new THREE.MeshStandardMaterial({
           color: '#74B9FF',
           emissive: '#0984E3',
-          emissiveIntensity: 0.35,
-          roughness: 0.12,
-          metalness: 0.85
+          emissiveIntensity: 0.38,
+          roughness: 0.1,
+          metalness: 0.88
+        }));
+        const mullionMat = LandmarkMaterials.getMat('l81MullionChrome', () => new THREE.MeshStandardMaterial({
+          color: '#FFFFFF',
+          metalness: 0.95,
+          roughness: 0.08
         }));
         const neonLedMat = LandmarkMaterials.getMat('l81NeonRib', () => new THREE.MeshStandardMaterial({
-          color: '#FFFFFF',
-          emissive: '#74B9FF',
-          emissiveIntensity: 0.9,
-          roughness: 0.15
+          color: '#E0F7FA',
+          emissive: '#00CEC9',
+          emissiveIntensity: 1.15,
+          roughness: 0.12
         }));
         const spireGoldMat = LandmarkMaterials.getMat('l81SpireGold', () => new THREE.MeshStandardMaterial({
           color: '#F1C40F',
@@ -1253,50 +1258,102 @@ export class VietnamLandmarks {
           metalness: 0.92,
           roughness: 0.1
         }));
+        const beaconRedMat = LandmarkMaterials.getMat('l81BeaconRed', () => new THREE.MeshStandardMaterial({
+          color: '#FF3838',
+          emissive: '#FF3838',
+          emissiveIntensity: 1.4
+        }));
+        const podiumMat = LandmarkMaterials.getMat('l81PodiumMarble', () => new THREE.MeshStandardMaterial({
+          color: '#F8FAFC',
+          roughness: 0.25,
+          metalness: 0.12
+        }));
 
-        const podium = new THREE.Mesh(new RoundedBoxGeometry(1.15, 0.14, 1.15, 4, 0.08), glassCyanMat);
-        podium.position.y = 0.07;
-        podium.receiveShadow = true;
-        group.add(podium);
+        // 1. Khối đế phức hợp TTTM Vincom Center Landmark 81 hai tầng giật cấp
+        const podiumBase = new THREE.Mesh(new RoundedBoxGeometry(1.32, 0.12, 1.12, 3, 0.04), podiumMat);
+        podiumBase.position.set(0, 0.06, 0.04);
+        podiumBase.receiveShadow = true;
 
-        // Cấu trúc bó tre truyền thống Việt Nam giật cấp vươn thẳng lên bầu trời
+        const podiumUpper = new THREE.Mesh(new RoundedBoxGeometry(1.18, 0.1, 0.98, 3, 0.03), glassCyanMat);
+        podiumUpper.position.set(0, 0.15, 0.04);
+        podiumUpper.castShadow = true;
+
+        // Mái sảnh đón vòm kính hiện đại trước cổng vào TTTM
+        const entranceCanopy = new THREE.Mesh(new RoundedBoxGeometry(0.42, 0.035, 0.22, 2, 0.015), mullionMat);
+        entranceCanopy.position.set(0, 0.14, 0.58);
+        const entranceRug = new THREE.Mesh(new THREE.PlaneGeometry(0.32, 0.16), LandmarkMaterials.getMat('l81RugBlue', () => new THREE.MeshStandardMaterial({ color: '#0984E3', roughness: 0.5 })));
+        entranceRug.rotation.x = -Math.PI / 2;
+        entranceRug.position.set(0, 0.122, 0.58);
+
+        group.add(podiumBase, podiumUpper, entranceCanopy, entranceRug);
+
+        // 2. Cấu trúc 9 cụm ống giật cấp mô phỏng Bó Tre truyền thống (Bamboo Bundle)
         const tubePositions = [
-          [-0.24, -0.24, 0.95], [0.24, -0.24, 0.95],
-          [-0.24, 0.24, 0.95], [0.24, 0.24, 0.95],
-          [0, -0.24, 1.7], [0, 0.24, 1.7],
-          [-0.24, 0, 1.7], [0.24, 0, 1.7],
-          [0, 0, 2.45]
+          // 4 Cột góc thấp nhất (Tầng 1-40, cao 1.05 units)
+          [-0.24, -0.24, 1.05], [0.24, -0.24, 1.05],
+          [-0.24, 0.24, 1.05], [0.24, 0.24, 1.05],
+          // 4 Cột cạnh vươn cao trung gian (Tầng 41-65, cao 1.82 units)
+          [0, -0.24, 1.82], [0, 0.24, 1.82],
+          [-0.24, 0, 1.82], [0.24, 0, 1.82],
+          // 1 Tháp lõi vươn lên đỉnh trời (Tầng 66-81, cao 2.58 units)
+          [0, 0, 2.58]
         ];
 
         tubePositions.forEach(([tx, tz, th]) => {
-          const colGeo = new RoundedBoxGeometry(0.22, th, 0.22, 3, 0.03);
+          // Thân ống kính phản chiếu
+          const colGeo = new RoundedBoxGeometry(0.22, th, 0.22, 3, 0.025);
           const colMesh = new THREE.Mesh(colGeo, glassCyanMat);
-          colMesh.position.set(tx, th / 2 + 0.12, tz);
+          colMesh.position.set(tx, th / 2 + 0.18, tz);
           colMesh.castShadow = true;
           group.add(colMesh);
 
-          // Đèn LED neon ở đỉnh từng đốt tre
-          const cap = new THREE.Mesh(new THREE.BoxGeometry(0.225, 0.035, 0.225), neonLedMat);
-          cap.position.set(tx, th + 0.12, tz);
-          group.add(cap);
+          // 4 Gờ gân thép đứng (Vertical Architectural Mullions) mạ crom sáng ở 4 góc cột
+          const ribGeo = new THREE.BoxGeometry(0.015, th, 0.015);
+          [[-0.108, -0.108], [0.108, -0.108], [-0.108, 0.108], [0.108, 0.108]].forEach(([rx, rz]) => {
+            const rib = new THREE.Mesh(ribGeo, mullionMat);
+            rib.position.set(tx + rx, th / 2 + 0.18, tz + rz);
+            group.add(rib);
+          });
+
+          // Đèn LED neon và đài quan sát gián đoạn ở đỉnh từng đốt tre
+          const crownCap = new THREE.Mesh(new RoundedBoxGeometry(0.23, 0.038, 0.23, 2, 0.01), neonLedMat);
+          crownCap.position.set(tx, th + 0.18, tz);
+          group.add(crownCap);
         });
 
-        // Đài quan sát Spire & Quả cầu ánh sáng pha lê trên đỉnh tháp
-        const transitionCrown = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.45, 4), glassCyanMat);
+        // 3. Hệ thống dải đèn LED neon dọc chạy dọc 4 sống lưng trung tâm tòa tháp
+        const spineGeo = new THREE.BoxGeometry(0.02, 2.52, 0.02);
+        [[0.115, 0], [-0.115, 0], [0, 0.115], [0, -0.115]].forEach(([sx, sz]) => {
+          const spineLed = new THREE.Mesh(spineGeo, neonLedMat);
+          spineLed.position.set(sx, 1.48, sz);
+          group.add(spineLed);
+        });
+
+        // 4. Đài quan sát SkyView (Tầng 79-81) & Mũi tháp Spire thuôn nhọn
+        const skyViewDeck = new THREE.Mesh(new RoundedBoxGeometry(0.26, 0.08, 0.26, 2, 0.02), mullionMat);
+        skyViewDeck.position.set(0, 2.8, 0);
+
+        const transitionCrown = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.52, 4), glassCyanMat);
         transitionCrown.rotation.y = Math.PI / 4;
-        transitionCrown.position.set(0, 2.78, 0);
+        transitionCrown.position.set(0, 3.06, 0);
 
-        const antenna = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.045, 0.72, 16), spireGoldMat);
-        antenna.position.set(0, 3.12, 0);
+        // 5. Cột ăng-ten Spire mạ vàng vút cao & Đèn báo không đỏ nhấp nháy
+        const antenna = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.042, 0.85, 16), spireGoldMat);
+        antenna.position.set(0, 3.52, 0);
 
+        const redBeacon = new THREE.Mesh(new THREE.SphereGeometry(0.045, 8, 8), beaconRedMat);
+        redBeacon.position.set(0, 3.42, 0.04);
+        redBeacon.userData = { animType: 'pulse_red' };
+
+        // Quả cầu pha lê đa giác phát sáng lấp lánh trên đỉnh Spire cao 3.98 units
         const crystalOrb = new THREE.Mesh(
-          new THREE.OctahedronGeometry(0.09, 1),
+          new THREE.OctahedronGeometry(0.095, 1),
           neonLedMat
         );
-        crystalOrb.position.set(0, 3.5, 0);
+        crystalOrb.position.set(0, 3.96, 0);
         crystalOrb.userData = { animType: 'rotate_pulse' };
 
-        group.add(transitionCrown, antenna, crystalOrb);
+        group.add(skyViewDeck, transitionCrown, antenna, redBeacon, crystalOrb);
         break;
       }
 
