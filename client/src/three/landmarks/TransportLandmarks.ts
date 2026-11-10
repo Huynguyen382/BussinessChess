@@ -433,7 +433,8 @@ export class TransportLandmarks {
       color: '#FFFFFF',
       roughness: 0.35,
       transparent: true,
-      opacity: 0.94
+      opacity: 0.94,
+      depthWrite: false
     }));
     const smokePuffs = [
       [-0.04, 0.96, 0.32, 0.13],

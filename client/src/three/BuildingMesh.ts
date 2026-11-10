@@ -31,10 +31,10 @@ export class BuildingMesh {
     bGroup.position.copy(position);
     bGroup.rotation.y = baseAngle;
 
-    // Đặt công trình ở nửa phía trước ô cờ (hướng về mặt đường/avenue),
-    // nhường không gian phía sau cho mô hình kỳ quan Landmark 3D vươn cao
+    // Đặt công trình ở nửa phía trước ô cờ (Zone A: hướng về mặt đường/avenue),
+    // hoàn toàn tách biệt với Zone B (mô hình kỳ quan Landmark 3D ở nửa sau ô cờ)
     const isSide3 = tileId > 20 && tileId < 30;
-    const buildingZ = isSide3 ? 0.35 : -0.35;
+    const buildingZ = isSide3 ? 0.72 : -0.72;
     const modelSubGroup = new THREE.Group();
     modelSubGroup.position.set(0, 0, buildingZ);
     if (isSide3) {

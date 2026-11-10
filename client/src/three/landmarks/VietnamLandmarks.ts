@@ -42,7 +42,7 @@ export class VietnamLandmarks {
         // Cần Thơ: Cầu Cần Thơ dây văng hùng vĩ & Thuyền trái cây Chợ Nổi Cái Răng
         const pylonMat = LandmarkMaterials.getMat('ctBridgePylon', () => new THREE.MeshStandardMaterial({ color: '#F1F2F6', roughness: 0.28, metalness: 0.1 }));
         const cableMat = LandmarkMaterials.getMat('ctCableGold', () => new THREE.MeshStandardMaterial({ color: '#F1C40F', metalness: 0.85, roughness: 0.2 }));
-        const waterMat = LandmarkMaterials.getMat('songHauWater', () => new THREE.MeshStandardMaterial({ color: '#0984E3', roughness: 0.08, transparent: true, opacity: 0.88 }));
+        const waterMat = LandmarkMaterials.getMat('songHauWater', () => new THREE.MeshStandardMaterial({ color: '#0984E3', roughness: 0.08, metalness: 0.15 }));
         const fruitYellow = LandmarkMaterials.getMat('fruitPineapple', () => new THREE.MeshStandardMaterial({ color: '#F39C12', roughness: 0.4 }));
         const fruitRed = LandmarkMaterials.getMat('fruitDragon', () => new THREE.MeshStandardMaterial({ color: '#E84118', roughness: 0.35 }));
         const fruitGreen = LandmarkMaterials.getMat('fruitMelon', () => new THREE.MeshStandardMaterial({ color: '#27AE60', roughness: 0.4 }));
@@ -126,8 +126,8 @@ export class VietnamLandmarks {
         const graniteLightMat = LandmarkMaterials.getMat('cmGraniteLight', () => new THREE.MeshStandardMaterial({ color: '#57606F', roughness: 0.5 }));
         const marbleMarkerMat = LandmarkMaterials.getMat('cmMarbleMarker', () => new THREE.MeshStandardMaterial({ color: '#F5F6FA', roughness: 0.28 }));
         const mudflatMat = LandmarkMaterials.getMat('cmMudflatAlluvial', () => new THREE.MeshStandardMaterial({ color: '#4E342E', roughness: 0.55, metalness: 0.08 }));
-        const oceanMat = LandmarkMaterials.getMat('cmOceanDeep', () => new THREE.MeshStandardMaterial({ color: '#0984E3', roughness: 0.12, transparent: true, opacity: 0.88 }));
-        const foamMat = LandmarkMaterials.getMat('cmSeaFoam', () => new THREE.MeshStandardMaterial({ color: '#E1F5FE', roughness: 0.25, transparent: true, opacity: 0.78 }));
+        const oceanMat = LandmarkMaterials.getMat('cmOceanDeep', () => new THREE.MeshStandardMaterial({ color: '#0984E3', roughness: 0.10, metalness: 0.15 }));
+        const foamMat = LandmarkMaterials.getMat('cmSeaFoam', () => new THREE.MeshStandardMaterial({ color: '#E1F5FE', roughness: 0.25, transparent: true, opacity: 0.78, depthWrite: false }));
         const shipWhiteMat = LandmarkMaterials.getMat('cmShipWhite', () => new THREE.MeshStandardMaterial({ color: '#F8F9FA', roughness: 0.25 }));
         const shipDeckMat = LandmarkMaterials.getMat('cmDeckTeak', () => new THREE.MeshStandardMaterial({ color: '#795548', roughness: 0.45 }));
         const shipRailMat = LandmarkMaterials.getMat('cmRailChrome', () => new THREE.MeshStandardMaterial({ color: '#DFE6E9', metalness: 0.88, roughness: 0.15 }));
@@ -406,15 +406,15 @@ export class VietnamLandmarks {
         // 1. Hệ vật liệu tối ưu theo LandmarkMaterials
         const oceanMat = LandmarkMaterials.getMat('vtOceanDeep', () => new THREE.MeshStandardMaterial({
           color: '#0984E3',
-          roughness: 0.12,
-          transparent: true,
-          opacity: 0.88
+          roughness: 0.08,
+          metalness: 0.15
         }));
         const waveFoamMat = LandmarkMaterials.getMat('vtWaveFoam', () => new THREE.MeshStandardMaterial({
           color: '#E0F7FA',
           roughness: 0.25,
           transparent: true,
-          opacity: 0.8
+          opacity: 0.8,
+          depthWrite: false
         }));
         const cliffRockMat = LandmarkMaterials.getMat('vtCliffRock', () => new THREE.MeshStandardMaterial({
           color: '#636E72',
@@ -674,15 +674,15 @@ export class VietnamLandmarks {
         }));
         const oceanCoastMat = LandmarkMaterials.getMat('ptOceanCoast', () => new THREE.MeshStandardMaterial({
           color: '#00CEC9',
-          roughness: 0.12,
-          transparent: true,
-          opacity: 0.86
+          roughness: 0.08,
+          metalness: 0.15
         }));
         const waveFoamMat = LandmarkMaterials.getMat('ptWaveFoam', () => new THREE.MeshStandardMaterial({
           color: '#E0F7FA',
           roughness: 0.25,
           transparent: true,
-          opacity: 0.8
+          opacity: 0.8,
+          depthWrite: false
         }));
         const chamBrickMat = LandmarkMaterials.getMat('ptChamBrickRed', () => new THREE.MeshStandardMaterial({
           color: '#B33927',
@@ -957,14 +957,14 @@ export class VietnamLandmarks {
         const bayWaterMat = LandmarkMaterials.getMat('ntBayWaterDeep', () => new THREE.MeshStandardMaterial({
           color: '#00CEC9',
           roughness: 0.08,
-          transparent: true,
-          opacity: 0.86
+          metalness: 0.15
         }));
         const seaFoamMat = LandmarkMaterials.getMat('ntSeaFoam', () => new THREE.MeshStandardMaterial({
           color: '#E0F7FA',
           roughness: 0.25,
           transparent: true,
-          opacity: 0.82
+          opacity: 0.82,
+          depthWrite: false
         }));
         const whiteSandMat = LandmarkMaterials.getMat('ntWhiteSand', () => new THREE.MeshStandardMaterial({
           color: '#FAF0E6',
@@ -1261,12 +1261,13 @@ export class VietnamLandmarks {
           color: '#FFFFFF',
           transparent: true,
           opacity: 0.38,
-          roughness: 0.2
+          roughness: 0.2,
+          depthWrite: false
         }));
 
         // 2. Thềm đồi ga cao nguyên bằng đá phiến
-        const stationPlinth = new THREE.Mesh(new RoundedBoxGeometry(1.36, 0.06, 1.34, 3, 0.02), plinthMat);
-        stationPlinth.position.set(0, 0.03, 0);
+        const stationPlinth = new THREE.Mesh(new RoundedBoxGeometry(1.34, 0.024, 0.94, 2, 0.01), plinthMat);
+        stationPlinth.position.set(0, 0.048, 0);
         stationPlinth.receiveShadow = true;
 
         // 3. NHÀ GA XE LỬA ĐÀ LẠT (1932) - KIẾN TRÚC ART DECO & 3 CHÓP MÁI LANGBIANG
@@ -1482,8 +1483,8 @@ export class VietnamLandmarks {
         }));
 
         // 2. Thềm đất đỏ bazan Tây Nguyên màu nâu đỏ mỡ màng
-        const ground = new THREE.Mesh(new RoundedBoxGeometry(1.36, 0.06, 1.34, 3, 0.02), basaltSoilMat);
-        ground.position.set(0, 0.03, 0);
+        const ground = new THREE.Mesh(new RoundedBoxGeometry(1.34, 0.024, 0.94, 2, 0.01), basaltSoilMat);
+        ground.position.set(0, 0.048, 0);
         ground.receiveShadow = true;
 
         // 3. NHÀ RÔNG TÂY NGUYÊN MÁI LƯỠI BÚA KHỔNG LỒ VÚT CAO
@@ -1708,10 +1709,8 @@ export class VietnamLandmarks {
         }));
         const lakeWaterMat = LandmarkMaterials.getMat('pkTnungLakeEmerald', () => new THREE.MeshStandardMaterial({
           color: '#00CEC9',
-          roughness: 0.05,
-          metalness: 0.1,
-          transparent: true,
-          opacity: 0.92
+          roughness: 0.08,
+          metalness: 0.15
         }));
         const lakeShoreMat = LandmarkMaterials.getMat('pkLakeShorePebble', () => new THREE.MeshStandardMaterial({
           color: '#8D5B4C',
@@ -1741,8 +1740,8 @@ export class VietnamLandmarks {
         }));
 
         // 2. Thềm đồi núi đất đỏ bazan Pleiku
-        const plateauBase = new THREE.Mesh(new RoundedBoxGeometry(1.36, 0.06, 1.34, 3, 0.02), basaltSoilMat);
-        plateauBase.position.set(0, 0.03, 0);
+        const plateauBase = new THREE.Mesh(new RoundedBoxGeometry(1.34, 0.024, 0.94, 2, 0.01), basaltSoilMat);
+        plateauBase.position.set(0, 0.048, 0);
         plateauBase.receiveShadow = true;
 
         // 3. BIỂN HỒ TƠ NƯNG (MIỆNG NÚI LỬA CỔ "ĐÔI MẮT PLEIKU")
@@ -1892,15 +1891,15 @@ export class VietnamLandmarks {
         // 1. Hệ vật liệu tối ưu theo LandmarkMaterials
         const oceanMat = LandmarkMaterials.getMat('qnOceanBlueDeep', () => new THREE.MeshStandardMaterial({
           color: '#0984E3',
-          roughness: 0.1,
-          transparent: true,
-          opacity: 0.88
+          roughness: 0.08,
+          metalness: 0.15
         }));
         const waveFoamMat = LandmarkMaterials.getMat('qnWaveFoamWhite', () => new THREE.MeshStandardMaterial({
           color: '#E0F7FA',
           roughness: 0.25,
           transparent: true,
-          opacity: 0.82
+          opacity: 0.82,
+          depthWrite: false
         }));
         const cliffMat = LandmarkMaterials.getMat('qnCliffStoneDark', () => new THREE.MeshStandardMaterial({
           color: '#636E72',
@@ -1947,8 +1946,8 @@ export class VietnamLandmarks {
         }));
 
         // 2. Thềm biển xanh Quy Nhơn & Bãi Đá Trứng Hoàng Hậu
-        const sea = new THREE.Mesh(new RoundedBoxGeometry(1.28, 0.05, 0.78, 3, 0.02), oceanMat);
-        sea.position.set(0.04, 0.025, 0.28);
+        const sea = new THREE.Mesh(new RoundedBoxGeometry(1.28, 0.04, 0.78, 3, 0.02), oceanMat);
+        sea.position.set(0.04, 0.042, 0.28);
         sea.receiveShadow = true;
 
         // Vạt sóng bọt biển trắng muốt vỗ bờ đá Eo Gió
@@ -2088,8 +2087,7 @@ export class VietnamLandmarks {
         const hoaiRiverWaterMat = LandmarkMaterials.getMat('haHoaiRiverEmerald', () => new THREE.MeshStandardMaterial({
           color: '#00B894',
           roughness: 0.08,
-          transparent: true,
-          opacity: 0.88
+          metalness: 0.15
         }));
         const stonePierMat = LandmarkMaterials.getMat('haStonePier', () => new THREE.MeshStandardMaterial({
           color: '#57606F',
@@ -2136,8 +2134,8 @@ export class VietnamLandmarks {
         }));
 
         // 2. DÒNG SÔNG HOÀI THƠ MỘNG & THỀM ĐÁ CỔ HAI BÊN BỜ
-        const river = new THREE.Mesh(new RoundedBoxGeometry(1.36, 0.05, 0.92, 3, 0.02), hoaiRiverWaterMat);
-        river.position.set(0, 0.025, 0);
+        const river = new THREE.Mesh(new RoundedBoxGeometry(1.34, 0.035, 0.92, 3, 0.02), hoaiRiverWaterMat);
+        river.position.set(0, 0.042, 0);
         river.receiveShadow = true;
 
         // Bờ kè đá hai bên đầu cầu
@@ -2325,13 +2323,13 @@ export class VietnamLandmarks {
           emissive: '#FFEAA7',
           emissiveIntensity: 0.95,
           transparent: true,
-          opacity: 0.85
+          opacity: 0.85,
+          depthWrite: false
         }));
         const hanRiverMat = LandmarkMaterials.getMat('dnHanRiverDeep', () => new THREE.MeshStandardMaterial({
           color: '#0984E3',
           roughness: 0.08,
-          transparent: true,
-          opacity: 0.88
+          metalness: 0.15
         }));
         const bridgeDeckMat = LandmarkMaterials.getMat('dnBridgeDeckSteel', () => new THREE.MeshStandardMaterial({
           color: '#BDC3C7',
@@ -2357,8 +2355,8 @@ export class VietnamLandmarks {
         }));
 
         // 2. DÒNG SÔNG HÀN THƠ MỘNG & BỜ KÈ BẠCH ĐẰNG
-        const hanRiver = new THREE.Mesh(new RoundedBoxGeometry(1.36, 0.05, 0.96, 3, 0.02), hanRiverMat);
-        hanRiver.position.set(0, 0.025, 0);
+        const hanRiver = new THREE.Mesh(new RoundedBoxGeometry(1.34, 0.035, 0.94, 3, 0.02), hanRiverMat);
+        hanRiver.position.set(0, 0.042, 0);
         hanRiver.receiveShadow = true;
 
         // Bờ kè bê tông hai đầu cầu
@@ -2594,7 +2592,7 @@ export class VietnamLandmarks {
         // Quảng Bình: Kỳ Quan Hang Sơn Đoòng, Hố Sụt Doline Chiếu Nắng & Măng Đá Triệu Năm
         const karstMat = LandmarkMaterials.getMat('phongNhaCaveRock', () => new THREE.MeshStandardMaterial({ color: '#57606F', roughness: 0.7 }));
         const jungleGreenMat = LandmarkMaterials.getMat('sonDoongJungle', () => new THREE.MeshStandardMaterial({ color: '#00B894', roughness: 0.42 }));
-        const riverMat = LandmarkMaterials.getMat('songSonWater', () => new THREE.MeshStandardMaterial({ color: '#16A085', roughness: 0.08, transparent: true, opacity: 0.9 }));
+        const riverMat = LandmarkMaterials.getMat('songSonWater', () => new THREE.MeshStandardMaterial({ color: '#16A085', roughness: 0.08, metalness: 0.15 }));
         const sunbeamMat = LandmarkMaterials.getMat('dolineSunbeam', () => new THREE.MeshBasicMaterial({
           color: '#FFF9C4',
           transparent: true,
@@ -2645,7 +2643,7 @@ export class VietnamLandmarks {
         // Cửa Lò: Đảo Lan Châu Hình Cóc Đón Sóng, Hải Đăng Nhỏ & Cầu Cảng Thuyền Buồm
         const rockMat = LandmarkMaterials.getMat('lanChauRock', () => new THREE.MeshStandardMaterial({ color: '#636E72', roughness: 0.68 }));
         const mossMat = LandmarkMaterials.getMat('lanChauGreen', () => new THREE.MeshStandardMaterial({ color: '#27AE60', roughness: 0.45 }));
-        const seaMat = LandmarkMaterials.getMat('cuaLoSea', () => new THREE.MeshStandardMaterial({ color: '#0984E3', roughness: 0.1, transparent: true, opacity: 0.88 }));
+        const seaMat = LandmarkMaterials.getMat('cuaLoSea', () => new THREE.MeshStandardMaterial({ color: '#0984E3', roughness: 0.08, metalness: 0.15 }));
         const woodPierMat = LandmarkMaterials.getMat('woodPierBrown', () => new THREE.MeshStandardMaterial({ color: '#5D4037', roughness: 0.6 }));
         const whiteMat = LandmarkMaterials.getMat('pureWhite', () => new THREE.MeshStandardMaterial({ color: '#FFFFFF', roughness: 0.25 }));
         const goldMat = LandmarkMaterials.getMat('shinyGold', () => new THREE.MeshStandardMaterial({ color: '#F1C40F', emissive: '#F1C40F', emissiveIntensity: 0.6 }));
@@ -2696,7 +2694,7 @@ export class VietnamLandmarks {
         const boxBlue = LandmarkMaterials.getMat('maerskBlue', () => new THREE.MeshStandardMaterial({ color: '#2980B9', roughness: 0.35 }));
         const boxGreen = LandmarkMaterials.getMat('evergreenGreen', () => new THREE.MeshStandardMaterial({ color: '#27AE60', roughness: 0.35 }));
         const boxRed = LandmarkMaterials.getMat('cmaRed', () => new THREE.MeshStandardMaterial({ color: '#C0392B', roughness: 0.35 }));
-        const riverMat = LandmarkMaterials.getMat('camRiverWater', () => new THREE.MeshStandardMaterial({ color: '#0984E3', roughness: 0.1, transparent: true, opacity: 0.86 }));
+        const riverMat = LandmarkMaterials.getMat('camRiverWater', () => new THREE.MeshStandardMaterial({ color: '#0984E3', roughness: 0.08, metalness: 0.15 }));
 
         // Mặt sông Cấm & Bến cảng
         const river = new THREE.Mesh(new RoundedBoxGeometry(1.28, 0.06, 0.85, 3, 0.03), riverMat);
@@ -2732,7 +2730,7 @@ export class VietnamLandmarks {
         // Quảng Ninh: Kỳ Quan Vịnh Hạ Long, Hòn Trống Mái & Thuyền Buồm Cánh Dơi Nâu Trầm
         const karstRockMat = LandmarkMaterials.getMat('haLongKarstSmooth', () => new THREE.MeshStandardMaterial({ color: '#57606F', roughness: 0.65 }));
         const foliageMat = LandmarkMaterials.getMat('haLongFoliageGreen', () => new THREE.MeshStandardMaterial({ color: '#00B894', roughness: 0.35 }));
-        const bayWaterMat = LandmarkMaterials.getMat('haLongEmeraldWater', () => new THREE.MeshStandardMaterial({ color: '#00B894', roughness: 0.08, transparent: true, opacity: 0.9 }));
+        const bayWaterMat = LandmarkMaterials.getMat('haLongEmeraldWater', () => new THREE.MeshStandardMaterial({ color: '#00B894', roughness: 0.08, metalness: 0.15 }));
         const sailBrownMat = LandmarkMaterials.getMat('junkBatwingSailBrown', () => new THREE.MeshStandardMaterial({ color: '#8D3B24', roughness: 0.38 }));
 
         // 1. Mặt nước vịnh xanh màu ngọc bích
@@ -2744,7 +2742,8 @@ export class VietnamLandmarks {
           color: '#E0F2FE',
           transparent: true,
           opacity: 0.38,
-          side: THREE.DoubleSide
+          side: THREE.DoubleSide,
+          depthWrite: false
         }));
         const rip1 = new THREE.Mesh(new THREE.RingGeometry(0.34, 0.44, 16), rippleRingMat);
         rip1.rotation.x = -Math.PI / 2;
@@ -2794,7 +2793,7 @@ export class VietnamLandmarks {
       case 29: {
         // Ninh Bình: Non Nước Tràng An, Đỉnh Ngọa Long (Hang Múa) & Thảm Lúa Vàng Sông Ngô Đồng
         const mountainMat = LandmarkMaterials.getMat('trangAnKarstRock', () => new THREE.MeshStandardMaterial({ color: '#34495E', roughness: 0.65 }));
-        const lakeMat = LandmarkMaterials.getMat('trangAnLakeWater', () => new THREE.MeshStandardMaterial({ color: '#00CEC9', roughness: 0.06, transparent: true, opacity: 0.92 }));
+        const lakeMat = LandmarkMaterials.getMat('trangAnLakeWater', () => new THREE.MeshStandardMaterial({ color: '#00CEC9', roughness: 0.08, metalness: 0.15 }));
         const riceGoldMat = LandmarkMaterials.getMat('ngoDongRiceGold', () => new THREE.MeshStandardMaterial({ color: '#F1C40F', roughness: 0.45 }));
         const stoneDragonMat = LandmarkMaterials.getMat('hangMuaStoneDragon', () => new THREE.MeshStandardMaterial({ color: '#DFE6E9', roughness: 0.35, metalness: 0.2 }));
 
@@ -2839,7 +2838,7 @@ export class VietnamLandmarks {
         // Hà Nội (Hồ Tây): Chùa Trấn Quốc Bảo Tháp Lục Độ Đài Sen & Cây Bồ Đề Cổ Thụ
         const pagodaTerracotta = LandmarkMaterials.getMat('tranQuocTerracotta', () => new THREE.MeshStandardMaterial({ color: '#C0392B', roughness: 0.42 }));
         const goldSpireMat = LandmarkMaterials.getMat('tranQuocGoldRoof', () => new THREE.MeshStandardMaterial({ color: '#F1C40F', roughness: 0.22, metalness: 0.18 }));
-        const lakeMat = LandmarkMaterials.getMat('westLakeWater', () => new THREE.MeshStandardMaterial({ color: '#0984E3', roughness: 0.08, transparent: true, opacity: 0.88 }));
+        const lakeMat = LandmarkMaterials.getMat('westLakeWater', () => new THREE.MeshStandardMaterial({ color: '#0984E3', roughness: 0.08, metalness: 0.15 }));
         const whiteBuddhaMat = LandmarkMaterials.getMat('whiteBuddha', () => new THREE.MeshStandardMaterial({ color: '#FFFFFF', roughness: 0.25 }));
         const bodhiLeafMat = LandmarkMaterials.getMat('bodhiCanopyGreen', () => new THREE.MeshStandardMaterial({ color: '#00B894', roughness: 0.35 }));
         const bodhiTrunkMat = LandmarkMaterials.getMat('pineTrunkBark', () => new THREE.MeshStandardMaterial({ color: '#4E342E', roughness: 0.7 }));
@@ -3141,7 +3140,8 @@ export class VietnamLandmarks {
           emissive: '#00CEC9',
           emissiveIntensity: 0.7,
           transparent: true,
-          opacity: 0.85
+          opacity: 0.85,
+          depthWrite: false
         })));
         fountainJet.position.set(0, 0.18, 0.36);
         fountainJet.userData = { animType: 'flicker' };

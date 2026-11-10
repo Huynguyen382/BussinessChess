@@ -365,7 +365,7 @@ export class BoardScene {
 
         // 3. Nhãn ô góc
         const cornerLabel = this.createCornerLabel(tile, cornerSize * 0.95, cornerSize * 0.95);
-        cornerLabel.position.y = tileHeight / 2 + 0.025;
+        cornerLabel.position.y = tileHeight / 2 + 0.004;
         cornerLabel.rotation.x = -Math.PI / 2;
         tileGroup.add(cornerLabel);
 
@@ -377,7 +377,7 @@ export class BoardScene {
         else if (i === 30) corner3D = LandmarkModels.createGoToJailCorner();
 
         if (corner3D) {
-          corner3D.position.set(0, tileHeight / 2 + 0.02, 0);
+          corner3D.position.set(0, tileHeight / 2 + 0.010, 0);
           tileGroup.add(corner3D);
           this.animatedLandmarks.push(corner3D);
           this.tileLandmarkMap.set(i, corner3D);
@@ -413,7 +413,7 @@ export class BoardScene {
         // 3. Mặt ô cờ đồ họa phẳng cao cấp (Flat-Luxury Graphic Tile) tích hợp vạch phân làn & gờ nổi
         const lm = TILE_LANDMARKS[i] || { icon: '📍', subtitle: 'Bất Động Sản' };
         const labelMesh = this.createTileLabel(tile, lm, normalWidth * 0.95, cornerSize * 0.95);
-        labelMesh.position.y = tileHeight / 2 + 0.025;
+        labelMesh.position.y = tileHeight / 2 + 0.004;
         labelMesh.rotation.x = -Math.PI / 2;
         tileGroup.add(labelMesh);
 
@@ -427,9 +427,9 @@ export class BoardScene {
         }
 
         if (landmark3D) {
-          // Đặt ở nửa sau của ô cờ (Zone B - Landmark Skyline), không bị nhà xây thêm đè lấn
-          const landmarkZ = (isSide3 ? -1 : 1) * 1.08;
-          landmark3D.position.set(0, tileHeight / 2 + 0.02, landmarkZ);
+          // Đặt ở nửa sau của ô cờ (Zone B - Landmark Skyline), hoàn toàn độc lập với Zone A xây nhà
+          const landmarkZ = (isSide3 ? -1 : 1) * 0.90;
+          landmark3D.position.set(0, tileHeight / 2 + 0.010, landmarkZ);
           landmark3D.rotation.y = isSide3 ? Math.PI : 0;
           tileGroup.add(landmark3D);
           this.animatedLandmarks.push(landmark3D);
@@ -985,11 +985,8 @@ export class BoardScene {
     // Cập nhật hoạt ảnh môi trường (đài phun nước, xe cộ, cây cối, khói cà phê, bụi nắng)
     this.environment.update(delta, elapsedTime);
 
-    // Hoạt ảnh bồng bềnh sống động & micro-animations cho các mô hình địa danh 3D trên bàn cờ
+    // Micro-animations cho các bộ phận chi tiết của các kỳ quan và mô hình trên bàn cờ
     this.animatedLandmarks.forEach((lm, idx) => {
-      const floatY = (0.18 / 2 + 0.02) + Math.sin(elapsedTime * 2.2 + idx * 0.45) * 0.016;
-      lm.position.y = floatY;
-
       // Xử lý chuyển động vi mô cho các bộ phận chi tiết của kỳ quan
       lm.traverse((child) => {
         if (child.userData && child.userData.animType) {
