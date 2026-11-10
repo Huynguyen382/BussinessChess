@@ -48,7 +48,7 @@ export class LandmarkHelpers {
 
   public static createTinyCar(colorHex: string): THREE.Group {
     const car = new THREE.Group();
-    const bodyMat = new THREE.MeshStandardMaterial({ color: colorHex, roughness: 0.22, metalness: 0.15 });
+    const bodyMat = LandmarkMaterials.getMat(`tinyCarBody_${colorHex}`, () => new THREE.MeshStandardMaterial({ color: colorHex, roughness: 0.22, metalness: 0.15 }));
     const wheelMat = LandmarkMaterials.getMat('tinyWheelRubber', () => new THREE.MeshStandardMaterial({ color: '#1E272E', roughness: 0.7 }));
     const chromeMat = LandmarkMaterials.getMat('tinyChromeBezel', () => new THREE.MeshStandardMaterial({ color: '#FFFFFF', metalness: 0.92, roughness: 0.1 }));
 
@@ -85,7 +85,7 @@ export class LandmarkHelpers {
 
   public static createWoodenBoat(colorHex: string): THREE.Group {
     const boat = new THREE.Group();
-    const woodMat = new THREE.MeshStandardMaterial({ color: colorHex, roughness: 0.52 });
+    const woodMat = LandmarkMaterials.getMat(`woodenBoatHull_${colorHex}`, () => new THREE.MeshStandardMaterial({ color: colorHex, roughness: 0.52 }));
     const bambooMat = LandmarkMaterials.getMat('bambooWoven', () => new THREE.MeshStandardMaterial({ color: '#F39C12', roughness: 0.6 }));
 
     // Vỏ ghe tam bản uốn cong vểnh hai đầu

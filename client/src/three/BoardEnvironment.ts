@@ -20,8 +20,7 @@ export class BoardEnvironment {
   public taxiAngle = 0;
   public parkTrees: THREE.Group[] = [];
 
-  // Tabletop Props Anim Objects
-  public coffeeSteam: THREE.Points | null = null;
+  // Tabletop Studio Ambient Objects
   public ambientDustMotes: THREE.Points | null = null;
 
   constructor(scene: THREE.Scene) {
@@ -29,7 +28,6 @@ export class BoardEnvironment {
     this.setupStudioEnvironment();
     this.setupBoardPlinth();
     this.setupStreetLamps();
-    this.setupTabletopProps();
     this.setupCenterDiorama();
   }
 
@@ -179,130 +177,7 @@ export class BoardEnvironment {
     this.scene.add(lampsGroup);
   }
 
-  // 4. Tabletop Props: Steaming Mug, Succulent, Gold Coins, Ledger, Banker's Lamp
-  private setupTabletopProps() {
-    const propsGroup = new THREE.Group();
-
-    // ☕ Ceramic Coffee Mug with Animated Steam
-    const mug = new THREE.Group();
-    mug.position.set(17, -0.55, -16);
-
-    const mugBody = new THREE.Mesh(
-      new THREE.CylinderGeometry(1.0, 0.9, 1.8, 24),
-      new THREE.MeshStandardMaterial({ color: '#FF7675', roughness: 0.18 })
-    );
-    mugBody.position.y = 0.9;
-    mugBody.castShadow = true;
-
-    const coffee = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.85, 0.85, 0.1, 20),
-      new THREE.MeshStandardMaterial({ color: '#3A1F13', roughness: 0.1 })
-    );
-    coffee.position.y = 1.65;
-
-    const handle = new THREE.Mesh(
-      new THREE.TorusGeometry(0.55, 0.14, 12, 20, Math.PI),
-      new THREE.MeshStandardMaterial({ color: '#FF7675', roughness: 0.18 })
-    );
-    handle.position.set(1.1, 0.9, 0);
-    handle.rotation.z = -Math.PI / 2;
-
-    mug.add(mugBody, coffee, handle);
-
-    // Steam particles
-    const steamCount = 20;
-    const steamGeo = new THREE.BufferGeometry();
-    const steamPositions = new Float32Array(steamCount * 3);
-    for (let i = 0; i < steamCount; i++) {
-      steamPositions[i * 3] = (Math.random() - 0.5) * 0.6;
-      steamPositions[i * 3 + 1] = 1.8 + Math.random() * 1.5;
-      steamPositions[i * 3 + 2] = (Math.random() - 0.5) * 0.6;
-    }
-    steamGeo.setAttribute('position', new THREE.BufferAttribute(steamPositions, 3));
-    const steamMat = new THREE.PointsMaterial({
-      size: 0.35,
-      color: '#FFFFFF',
-      transparent: true,
-      opacity: 0.45,
-      blending: THREE.AdditiveBlending
-    });
-    this.coffeeSteam = new THREE.Points(steamGeo, steamMat);
-    mug.add(this.coffeeSteam);
-    propsGroup.add(mug);
-
-    // 🎲 Leather Dice Shaker Cup
-    const diceCup = new THREE.Group();
-    diceCup.position.set(18, -0.55, 14);
-
-    const cupMat = new THREE.MeshStandardMaterial({ color: '#5D4037', roughness: 0.65 });
-    const cup = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 0.9, 2.2, 24, 1, true), cupMat);
-    cup.position.y = 1.1;
-    cup.castShadow = true;
-
-    const goldRim = new THREE.Mesh(
-      new THREE.TorusGeometry(1.2, 0.08, 8, 24),
-      new THREE.MeshStandardMaterial({ color: '#FDCB6E', metalness: 0.85, roughness: 0.2 })
-    );
-    goldRim.position.y = 2.2;
-    goldRim.rotation.x = Math.PI / 2;
-
-    diceCup.add(cup, goldRim);
-    propsGroup.add(diceCup);
-
-    // 💰 Heavy Stacks of Gold Coins
-    const coinMat = new THREE.MeshStandardMaterial({
-      color: '#F1C40F',
-      emissive: '#F39C12',
-      emissiveIntensity: 0.25,
-      metalness: 0.92,
-      roughness: 0.12
-    });
-    const coinGeo = new THREE.CylinderGeometry(0.5, 0.5, 0.1, 16);
-
-    const coinStacks = [
-      [-17, -0.55, 16, 7],
-      [-16, -0.55, 17.5, 5],
-      [-18, -0.55, 17, 9]
-    ];
-    coinStacks.forEach(([cx, cy, cz, count]) => {
-      for (let i = 0; i < count; i++) {
-        const coin = new THREE.Mesh(coinGeo, coinMat);
-        coin.position.set(cx + (Math.random() - 0.5) * 0.05, cy + i * 0.11 + 0.05, cz + (Math.random() - 0.5) * 0.05);
-        coin.rotation.y = Math.random() * Math.PI;
-        coin.castShadow = true;
-        propsGroup.add(coin);
-      }
-    });
-
-    // 📖 Open Hardcover Ledger with Brass Pen
-    const ledger = new THREE.Group();
-    ledger.position.set(-18, -0.55, -14);
-    ledger.rotation.y = Math.PI / 6;
-
-    const coverMat = new THREE.MeshStandardMaterial({ color: '#2C3E50', roughness: 0.5 });
-    const pageMat = new THREE.MeshStandardMaterial({ color: '#FDFBF7', roughness: 0.8 });
-
-    const book = new THREE.Mesh(new RoundedBoxGeometry(3.2, 0.22, 2.4, 2, 0.04), coverMat);
-    book.position.y = 0.11;
-    book.castShadow = true;
-
-    const pages = new THREE.Mesh(new RoundedBoxGeometry(3.0, 0.18, 2.2, 2, 0.02), pageMat);
-    pages.position.y = 0.18;
-
-    const pen = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.06, 0.06, 2.5, 12),
-      new THREE.MeshStandardMaterial({ color: '#FDCB6E', emissive: '#FDCB6E', emissiveIntensity: 0.3, metalness: 0.85, roughness: 0.18 })
-    );
-    pen.position.set(1.5, 0.08, 0);
-    pen.rotation.z = Math.PI / 2;
-
-    ledger.add(book, pages, pen);
-    propsGroup.add(ledger);
-
-    this.scene.add(propsGroup);
-  }
-
-  // 5. Center Park Diorama: Đài Phun Nước Đẳng Cấp, Cây Đa Tầng & Xe Taxi
+  // 4. Center Park Diorama: Đài Phun Nước Đẳng Cấp, Cây Đa Tầng & Xe Taxi
   private setupCenterDiorama() {
     const centerGroup = new THREE.Group();
 
@@ -610,22 +485,6 @@ export class BoardEnvironment {
     this.parkTrees.forEach((tree, idx) => {
       tree.rotation.z = Math.sin(elapsedTime * 1.8 + idx * 1.5) * 0.035;
     });
-
-    // Coffee Steam wafting up
-    if (this.coffeeSteam) {
-      const sPos = this.coffeeSteam.geometry.attributes.position as THREE.BufferAttribute;
-      for (let i = 0; i < sPos.count; i++) {
-        let y = sPos.getY(i) + delta * 0.6;
-        let x = sPos.getX(i) + Math.sin(elapsedTime * 2 + i) * delta * 0.2;
-        if (y > 3.6) {
-          y = 1.8;
-          x = (Math.random() - 0.5) * 0.4;
-        }
-        sPos.setY(i, y);
-        sPos.setX(i, x);
-      }
-      sPos.needsUpdate = true;
-    }
 
     // Ambient floating dust motes drift
     if (this.ambientDustMotes) {

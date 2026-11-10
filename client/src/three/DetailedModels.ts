@@ -417,10 +417,17 @@ export class DetailedModels {
     group.add(cascade2);
     waterFalls.push(cascade2);
 
-    // 9. Vương miện mạ vàng phun cột nước chính trên đỉnh
-    const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.32, 0.45, 12), goldOrnamentMat);
-    crown.position.y = 3.22;
-    group.add(crown);
+    // 9. Tượng Vua Tỷ Phú Hoàng Kim ngự trên đỉnh đài phun nước
+    const crownBase = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.34, 0.32, 12), goldOrnamentMat);
+    crownBase.position.y = 3.16;
+    const kingTorso = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.18, 0.36, 12), goldOrnamentMat);
+    kingTorso.position.y = 3.5;
+    kingTorso.castShadow = true;
+    const kingHead = new THREE.Mesh(new THREE.SphereGeometry(0.11, 12, 12), goldOrnamentMat);
+    kingHead.position.y = 3.78;
+    const kingCrown = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.14, 6), goldOrnamentMat);
+    kingCrown.position.y = 3.92;
+    group.add(crownBase, kingTorso, kingHead, kingCrown);
 
     return { group, waterRipples: ripples, waterFalls, waterJets };
   }

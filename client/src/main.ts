@@ -45,6 +45,7 @@ const inspectorTileBadge = document.getElementById('inspector-tile-badge')!;
 const inspectorLandmarkIcon = document.getElementById('inspector-landmark-icon')!;
 const inspectorTileName = document.getElementById('inspector-tile-name')!;
 const inspectorDistrictName = document.getElementById('inspector-district-name')!;
+const inspectorLandmarkSubtitle = document.getElementById('inspector-landmark-subtitle');
 const inspectorOwnerInfo = document.getElementById('inspector-owner-info')!;
 const inspectorOwnerAvatar = document.getElementById('inspector-owner-avatar')!;
 const inspectorOwnerName = document.getElementById('inspector-owner-name')!;
@@ -90,13 +91,18 @@ const btnStartGame = document.getElementById('btn-start-game')!;
 const hudPlayers = document.getElementById('hud-players')!;
 const timerFill = document.getElementById('timer-fill')!;
 const hudToast = document.getElementById('hud-toast')!;
+const turnStatusDot = document.getElementById('turn-status-dot');
+const turnStatusText = document.getElementById('turn-status-text');
 const btnRollDice = document.getElementById('btn-roll-dice')!;
 const btnEndTurn = document.getElementById('btn-end-turn')!;
 
 const propColorBar = document.getElementById('prop-color-bar')!;
+const propIcon = document.getElementById('prop-icon');
+const propBadge = document.getElementById('prop-badge');
 const propTitle = document.getElementById('prop-title')!;
 const propPrice = document.getElementById('prop-price')!;
 const propDesc = document.getElementById('prop-desc')!;
+const propRentPreview = document.getElementById('prop-rent-preview');
 const btnSkipBuy = document.getElementById('btn-skip-buy')!;
 const btnConfirmBuy = document.getElementById('btn-confirm-buy')!;
 
@@ -111,46 +117,89 @@ const victoryRankings = document.getElementById('victory-rankings')!;
 const btnPlayAgain = document.getElementById('btn-play-again')!;
 
 const LANDMARK_ICONS: Record<number, string> = {
-  0: '🚩', // Khởi hành (GO)
-  1: '🌉', // Cần Thơ (Cầu Cần Thơ)
-  2: '🎁', // Khí vận
-  3: '🦀', // Cà Mau (Mũi Cà Mau)
-  4: '💸', // Thuế thu nhập
-  5: '🚌', // Bến Xe Miền Tây
-  6: '🏖️', // Vũng Tàu (Bãi Sau)
-  7: '⚡', // Cơ hội
-  8: '⛵', // Phan Thiết (Mũi Né)
-  9: '🏝️', // Nha Trang (Vinpearl)
-  10: '🔒', // Nhà Tù
-  11: '🌲', // Đà Lạt (Hồ Xuân Hương)
-  12: '⚡', // Công Ty Điện Lực
-  13: '☕', // Buôn Ma Thuột
-  14: '⛰️', // Pleiku (Biển Hồ)
-  15: '🚂', // Ga Sài Gòn
-  16: '🌊', // Quy Nhơn (Eo Gió)
+  0: '👑',  // Khởi hành (GO - Khải Hoàn Môn Hoàng Gia)
+  1: '🛶',  // Cần Thơ (Cầu Cần Thơ & Chợ Nổi Cái Răng)
+  2: '🎁',  // Khí vận
+  3: '⛵',  // Cà Mau (Cột Mốc GPS 0001 & Con Tàu Mũi Cà Mau)
+  4: '👛',  // Thuế thu nhập
+  5: '🚂',  // Ga Miền Tây (Đầu Máy Hơi Nước Cổ Điển)
+  6: '🗼',  // Vũng Tàu (Hải Đăng Cổ Núi Nhỏ & Hoa Giấy)
+  7: '❓',  // Cơ hội
+  8: '🏜️', // Phan Thiết (Tháp Chăm Poshanư & Đồi Cát Bay)
+  9: '🪷',  // Nha Trang (Tháp Trầm Hương Búp Sen)
+  10: '🔒', // Nhà Tù (Pháo Đài Đá & Tháp Canh)
+  11: '🌸', // Đà Lạt (Ga Cổ Đà Lạt & Đồi Thông Sương Mù)
+  12: '💡', // Công Ty Điện Lực
+  13: '☕', // Buôn Ma Thuột (Nhà Rông & Cồng Chiêng)
+  14: '🌲', // Pleiku (Biển Hồ Tơ Nưng & Rừng Cao Su)
+  15: '🚂', // Ga Sài Gòn (Đầu Máy Hơi Nước Cổ Điển)
+  16: '🏯', // Quy Nhơn (Tháp Đôi Chăm Pa & Eo Gió)
   17: '🎁', // Khí vận
-  18: '🏮', // Hội An (Phố Cổ)
-  19: '🌉', // Đà Nẵng (Cầu Rồng)
-  20: '🚗', // Bãi Đỗ Xe (Free Parking)
-  21: '🏯', // Huế (Đại Nội)
-  22: '⚡', // Cơ hội
-  23: '🦇', // Phong Nha (Kẻ Bàng)
-  24: '🏖️', // Cửa Lò
-  25: '🚂', // Ga Đà Nẵng
-  26: '⚓', // Hải Phòng (Cảng Biển)
-  27: '⛵', // Hạ Long (Vịnh)
-  28: '💧', // Công Ty Nước Sạch
-  29: '🚣', // Tràng An (Ninh Bình)
-  30: '👮', // Vào Tù
-  31: '🌅', // Hồ Tây (Hà Nội)
-  32: '⛩️', // Phố Cổ (Hà Nội)
+  18: '🏮', // Hội An (Chùa Cầu & Đèn Lồng Ngũ Sắc)
+  19: '🌉', // Đà Nẵng (Cầu Rồng Sông Hàn Phun Lửa)
+  20: '⛽', // Bãi Đỗ Xe (Trạm Dừng Chân Retro Americana)
+  21: '🏯', // Huế (Ngọ Môn Đại Nội & Kỳ Đài)
+  22: '❓', // Cơ hội
+  23: '🏞️', // Quảng Bình (Kỳ Quan Hang Sơn Đoòng)
+  24: '🏝️', // Cửa Lò (Đảo Lan Châu & Cầu Cảng)
+  25: '🚂', // Ga Đà Nẵng (Đầu Máy Hơi Nước Cổ Điển)
+  26: '🌉', // Hải Phòng (Cầu Hoàng Văn Thụ & Cảng Container)
+  27: '⛵', // Quảng Ninh (Vịnh Hạ Long & Hòn Trống Mái)
+  28: '💧', // Công Ty Cấp Nước
+  29: '🐉', // Ninh Bình (Đỉnh Ngọa Long Hang Múa & Tràng An)
+  30: '🚨', // Vào Tù Ngay (Đồn Cảnh Sát & Còi Hụ)
+  31: '🪷', // Hồ Tây (Chùa Trấn Quốc & Cây Bồ Đề)
+  32: '🏮', // Phố Cổ Hà Nội (Cửa Ô Quan Chưởng)
   33: '🎁', // Khí vận
-  34: '🏛️', // Tràng Tiền (Hà Nội)
-  35: '🚂', // Ga Hà Nội
-  36: '⚡', // Cơ hội
-  37: '🗼', // Landmark 81 (TP.HCM)
+  34: '🇻🇳', // Ba Đình / Tràng Tiền (Cột Cờ Hà Nội)
+  35: '🚂', // Ga Hà Nội (Đầu Máy Hơi Nước Cổ Điển)
+  36: '❓', // Cơ hội
+  37: '🏙️', // TP.HCM (Tháp Bó Tre Landmark 81)
   38: '💎', // Thuế Xa Xỉ
-  39: '🏙️'  // Nguyễn Huệ (TP.HCM)
+  39: '🏛️'  // Đại Lộ Sài Gòn (Chợ Bến Thành & Quảng Trường)
+};
+
+const LANDMARK_SUBTITLES: Record<number, string> = {
+  0: 'Khải Hoàn Môn Hoàng Gia • Nhận +200M',
+  1: 'Cầu Cần Thơ & Chợ Nổi Cái Răng',
+  2: 'Rương Báu Hoàng Gia Dập Nổi',
+  3: 'Cột Mốc GPS 0001 & Mũi Tàu Cà Mau',
+  4: 'Kho Bạc Nhà Nước • Thuế 100M',
+  5: 'Đầu Máy Hơi Nước & Đèn Tín Hiệu Đường Sắt',
+  6: 'Hải Đăng Núi Nhỏ & Rặng Hoa Giấy Hồng',
+  7: 'Thẻ Vận Mệnh Cam Dập Chìm',
+  8: 'Tháp Chăm Poshanư & Đồi Cát Bay Cam Cháy',
+  9: 'Tháp Trầm Hương Búp Sen & Vịnh San Hô',
+  10: 'Pháo Đài Đá Xám & Đèn Pha Tháp Canh 360°',
+  11: 'Ga Cổ Đà Lạt 3 Chóp & Đồi Thông Sương Mù',
+  12: 'Tiện Ích Đô Thị • Lưới Điện Quốc Gia',
+  13: 'Nhà Rông Tây Nguyên & Dàn Cồng Chiêng',
+  14: 'Biển Hồ Tơ Nưng & Rừng Cao Su Mùa Lá Vàng',
+  15: 'Đầu Máy Hơi Nước & Đèn Tín Hiệu Đường Sắt',
+  16: 'Cặp Tháp Đôi Chăm Pa & Vách Đá Eo Gió',
+  17: 'Rương Báu Hoàng Gia Dập Nổi',
+  18: 'Chùa Cầu Hoài Phố & Đèn Lồng Ngũ Sắc',
+  19: 'Cầu Rồng Sông Hàn Phun Lửa & Khói Sáng',
+  20: 'Trạm Xăng Retro Route 66 & Siêu Xe Mui Trần',
+  21: 'Ngọ Môn 5 Cửa, Lầu Ngũ Phụng & Kỳ Đài',
+  22: 'Thẻ Vận Mệnh Cam Dập Chìm',
+  23: 'Hang Sơn Đoòng, Hố Sụt Doline & Măng Đá',
+  24: 'Đảo Lan Châu Hình Cóc & Cầu Cảng Cửa Lò',
+  25: 'Đầu Máy Hơi Nước & Đèn Tín Hiệu Đường Sắt',
+  26: 'Cầu Hoàng Văn Thụ Cánh Chim Biển & Cảng Biển',
+  27: 'Vịnh Hạ Long Hòn Trống Mái & Thuyền Cánh Dơi',
+  28: 'Tiện Ích Đô Thị • Nhà Máy Nước Tinh Khiết',
+  29: 'Đỉnh Ngọa Long Hang Múa & Lúa Vàng Tràng An',
+  30: 'Đồn Cảnh Sát Navy, Còi Hụ & Rào Chắn',
+  31: 'Bảo Tháp Lục Độ Đài Sen Chùa Trấn Quốc',
+  32: 'Cửa Ô Quan Chưởng & Mái Ngói Vảy Cá Phố Cổ',
+  33: 'Rương Báu Hoàng Gia Dập Nổi',
+  34: 'Kỳ Đài Cột Cờ Hà Nội 3 Tầng Đế Gạch Đỏ',
+  35: 'Đầu Máy Hơi Nước & Đèn Tín Hiệu Đường Sắt',
+  36: 'Thẻ Vận Mệnh Cam Dập Chìm',
+  37: 'Tòa Tháp Bó Tre Landmark 81 & Đỉnh Spire',
+  38: 'Thuế Tiêu Dùng Siêu Xa Xỉ • 100M',
+  39: 'Tháp Đồng Hồ Chợ Bến Thành & Quảng Trường'
 };
 
 const DISTRICT_NAMES: Record<number, string> = {
@@ -198,6 +247,10 @@ function showTileInspector(tileId: number, tileData?: any) {
   } else {
     inspectorDistrictName.textContent = tile.description || 'Địa điểm trên bàn cờ';
     inspectorDistrictName.style.display = 'block';
+  }
+
+  if (inspectorLandmarkSubtitle) {
+    inspectorLandmarkSubtitle.textContent = `★ ${LANDMARK_SUBTITLES[tileId] || 'Danh thắng 3D Việt Nam'}`;
   }
 
   // Check Property ownership
@@ -447,9 +500,11 @@ function bindUIEvents() {
   if (btnToggleZoom) {
     btnToggleZoom.addEventListener('click', () => {
       const isZoomed = boardScene.cameraManager.toggleZoom();
-      btnToggleZoom.textContent = isZoomed ? '🔄 Toàn Cảnh' : '🔍 Phóng To';
-      btnToggleZoom.className = isZoomed ? 'btn-chunky btn-primary' : 'btn-chunky btn-accent';
-      showToast(isZoomed ? 'Đã phóng to cận cảnh ô cờ siêu nét' : 'Đã về góc nhìn toàn cảnh bao quát');
+      btnToggleZoom.innerHTML = isZoomed
+        ? `<span class="dock-icon">🔄</span><span class="dock-label">Thu Nhỏ</span>`
+        : `<span class="dock-icon">🔍</span><span class="dock-label">Phóng To</span>`;
+      btnToggleZoom.classList.toggle('is-active', isZoomed);
+      showToast(isZoomed ? '🔍 Đã phóng to cận cảnh sa bàn 3D' : '🔄 Đã về góc nhìn toàn cảnh bao quát');
     });
   }
 
@@ -484,30 +539,39 @@ function bindUIEvents() {
   if (btnToggleCamLock) {
     btnToggleCamLock.addEventListener('click', () => {
       const isLocked = boardScene.cameraManager.toggleLock();
-      btnToggleCamLock.textContent = isLocked ? '🔒 Góc Cố Định' : '🔓 Góc Tự Do';
-      btnToggleCamLock.className = isLocked ? 'btn-chunky btn-primary' : 'btn-chunky btn-white';
-      showToast(isLocked ? 'Đã khóa góc nhìn Isometric chuẩn' : 'Đã mở khóa xoay tự do');
+      btnToggleCamLock.innerHTML = isLocked
+        ? `<span class="dock-icon">🔒</span><span class="dock-label">Góc Cố Định</span>`
+        : `<span class="dock-icon">🔓</span><span class="dock-label">Xoay Tự Do</span>`;
+      btnToggleCamLock.classList.toggle('is-active', isLocked);
+      showToast(isLocked ? '🔒 Đã khóa góc nhìn Isometric chuẩn' : '🔓 Đã mở khóa xoay & thu phóng 3D tự do');
     });
   }
 
   btnToggleFollow.addEventListener('click', () => {
     boardScene.cameraManager.toggleFollowMode();
-    btnToggleFollow.style.background = boardScene.cameraManager.isFollowMode ? '#00B894' : '#FFFFFF';
-    btnToggleFollow.style.color = boardScene.cameraManager.isFollowMode ? '#FFFFFF' : '#2D3436';
+    btnToggleFollow.classList.toggle('is-active', boardScene.cameraManager.isFollowMode);
+    showToast(boardScene.cameraManager.isFollowMode ? '🎥 Đang bám sát quân cờ di chuyển' : '🔄 Đã tắt chế độ bám sát quân cờ');
   });
 
   btnResetCam.addEventListener('click', () => {
     boardScene.cameraManager.resetOverview();
-    btnToggleFollow.style.background = '#FFFFFF';
-    btnToggleFollow.style.color = '#2D3436';
+    btnToggleFollow.classList.remove('is-active');
+    if (btnToggleZoom) {
+      btnToggleZoom.classList.remove('is-active');
+      btnToggleZoom.innerHTML = `<span class="dock-icon">🔍</span><span class="dock-label">Phóng To</span>`;
+    }
+    showToast('🔄 Đã đặt lại góc nhìn toàn cảnh');
   });
 
   btnToggleLog.addEventListener('click', () => {
-    elLogDrawer.style.display = elLogDrawer.style.display === 'none' ? 'flex' : 'none';
+    const isOpening = elLogDrawer.style.display === 'none';
+    elLogDrawer.style.display = isOpening ? 'flex' : 'none';
+    btnToggleLog.classList.toggle('is-active', isOpening);
   });
 
   btnCloseLog.addEventListener('click', () => {
     elLogDrawer.style.display = 'none';
+    btnToggleLog.classList.remove('is-active');
   });
 
   btnSkipBuy.addEventListener('click', () => {
@@ -767,17 +831,43 @@ function renderWaitingSlots(players: any[], max: number) {
   }
 }
 
+(window as any).focusPlayerOnBoard = (playerId: string) => {
+  const p = latestPlayersSnapshot.find((pl: any) => pl.id === playerId);
+  if (!p) return;
+  const tileId = typeof p.position === 'number' ? p.position : 0;
+  boardScene.highlightTile(tileId);
+  showTileInspector(tileId, boardTilesData[tileId]);
+};
+
 function updateHudPlayers(snapshot: any) {
   const curUserId = snapshot.turnState.currentUserId;
+  const props = snapshot.properties || latestPropertiesSnapshot || [];
+
   hudPlayers.innerHTML = snapshot.players.map((p: any) => {
     const isTurn = p.id === curUserId;
     const isMe = p.id === socketClient.socket.id;
+    const ownedProps = props.filter((pr: any) => pr.ownerId === p.id);
+
+    const dotsHtml = ownedProps.slice(0, 8).map((pr: any) => {
+      const tile = boardTilesData && boardTilesData[pr.tileId];
+      const dotColor = (tile && tile.districtColor) ? tile.districtColor : '#2D3436';
+      return `<span class="district-dot" style="background:${dotColor};" title="${tile ? tile.name : ''}"></span>`;
+    }).join('');
+    const extraCount = ownedProps.length > 8 ? `<span style="font-size:0.62rem;font-weight:800;color:#636E72;">+${ownedProps.length - 8}</span>` : '';
+
     return `
-      <div class="player-badge ${isTurn ? 'active-turn' : ''} ${p.isBankrupt ? 'bankrupt' : ''}" style="border-left: 5px solid ${p.color};">
-        <img class="player-avatar" src="${p.avatar}" />
+      <div class="player-badge ${isTurn ? 'active-turn' : ''} ${p.isBankrupt ? 'bankrupt' : ''}" style="border-left: 5px solid ${p.color};" onclick="window.focusPlayerOnBoard('${p.id}')" title="Nhấn để xem vị trí của ${p.username} trên bàn cờ">
+        <img class="player-avatar" src="${p.avatar}" style="border: 2px solid ${p.color};" />
         <div class="player-info">
-          <span class="player-name">${p.username} ${isMe ? '(Bạn)' : ''} ${p.inJail ? '🔒' : ''}</span>
-          <span class="player-cash">${p.balance}M <small style="color: #636E72; font-weight: 600;">(TS: ${p.netWorth}M)</small></span>
+          <div class="player-name-row">
+            <span class="player-name">${p.username} ${isMe ? '(Bạn)' : ''} ${p.inJail ? '🔒' : ''}</span>
+            ${isTurn ? '<span class="turn-badge-tag">LƯỢT ĐI</span>' : ''}
+          </div>
+          <div class="player-meta-row">
+            <span class="player-cash">💰 ${p.balance}M</span>
+            <span class="player-networth">💎 ${p.netWorth}M</span>
+          </div>
+          ${ownedProps.length > 0 ? `<div class="player-districts-dots">${dotsHtml}${extraCount}</div>` : ''}
         </div>
       </div>
     `;
@@ -785,8 +875,22 @@ function updateHudPlayers(snapshot: any) {
 }
 
 function checkMyTurn(snapshot: any) {
-  const isMyTurn = snapshot.turnState.currentUserId === socketClient.socket.id;
+  const curUserId = snapshot.turnState.currentUserId;
+  const isMyTurn = curUserId === socketClient.socket.id;
   const phase = snapshot.turnState.phase;
+  const activePlayer = snapshot.players.find((p: any) => p.id === curUserId);
+
+  if (turnStatusDot && turnStatusText && activePlayer) {
+    turnStatusDot.style.background = activePlayer.color || '#00B894';
+    turnStatusDot.style.boxShadow = `0 0 8px ${activePlayer.color || '#00B894'}`;
+    if (isMyTurn) {
+      turnStatusText.textContent = phase === 'ROLL_DICE'
+        ? '🎲 Đang tới lượt bạn — Hãy đổ xúc xắc!'
+        : '✅ Lượt của bạn — Hoàn tất giao dịch & Kết thúc lượt';
+    } else {
+      turnStatusText.textContent = `⏳ Đang chờ ${activePlayer.username} hành động...`;
+    }
+  }
 
   if (isMyTurn && !snapshot.isGameOver) {
     showToast('Lượt của bạn! 🎲');
@@ -808,24 +912,56 @@ function checkMyTurn(snapshot: any) {
   }
 }
 
+function populatePropertyDeedModal(tileId: number, costLabel: string, badgeLabel: string, descText: string, btnLabel: string, canAfford: boolean) {
+  const tile = boardTilesData && boardTilesData[tileId];
+  const color = (tile && tile.districtColor) ? tile.districtColor : '#00B894';
+  propColorBar.style.background = `linear-gradient(135deg, ${color}, #2D3436)`;
+  if (propIcon) propIcon.textContent = LANDMARK_ICONS[tileId] || '🏛️';
+  if (propBadge) propBadge.textContent = badgeLabel;
+  propPrice.textContent = costLabel;
+  propDesc.textContent = descText;
+  btnConfirmBuy.textContent = btnLabel;
+  btnConfirmBuy.style.display = canAfford ? 'inline-block' : 'none';
+
+  if (propRentPreview && tile && (tile.type === 'PROPERTY' || tile.type === 'RAILROAD' || tile.type === 'UTILITY')) {
+    propRentPreview.style.display = 'grid';
+    propRentPreview.innerHTML = `
+      <div class="prop-rent-chip"><span>Thuê cơ bản</span><b>${tile.baseRent || 25}M</b></div>
+      <div class="prop-rent-chip"><span>🏠 1-2 Nhà</span><b>${tile.rentHouse1 || 100}M - ${tile.rentHouse2 || 250}M</b></div>
+      <div class="prop-rent-chip"><span>🏨 Khách Sạn</span><b>${tile.rentHotel || 600}M</b></div>
+    `;
+  } else if (propRentPreview) {
+    propRentPreview.style.display = 'none';
+  }
+}
+
 function handleTileActionResult(action: any, isMe: boolean, player: any, pos: any) {
   if (!action) return;
 
   if (action.type === 'CAN_BUY' && isMe) {
     currentPendingTileAction = action;
     propTitle.textContent = action.tileName;
-    propPrice.textContent = `Giá: ${action.cost}M`;
-    propDesc.textContent = `Bạn đã dừng chân tại ô đất trống. Mua ô đất này để mở đầu cho đế chế bất động sản của bạn!`;
-    btnConfirmBuy.textContent = `Mua Đất (${action.cost}M)`;
-    btnConfirmBuy.style.display = action.canAfford ? 'inline-block' : 'none';
+    const sub = LANDMARK_SUBTITLES[action.tileId] || 'Bất Động Sản Chiến Lược';
+    populatePropertyDeedModal(
+      action.tileId,
+      `Giá sở hữu: ${action.cost}M`,
+      `SỔ ĐỎ ĐỊA DANH • Ô #${action.tileId}`,
+      `${sub}. Sở hữu ngay lô đất này để thu tiền thuê từ mọi đối thủ đi ngang qua!`,
+      `Mua Đất (${action.cost}M)`,
+      action.canAfford
+    );
     elPropertyModal.style.display = 'flex';
   } else if (action.type === 'CAN_UPGRADE' && isMe) {
     currentPendingTileAction = action;
-    propTitle.textContent = `${action.tileName} (Cấp ${action.level})`;
-    propPrice.textContent = `Chi phí nâng cấp: ${action.cost}M`;
-    propDesc.textContent = `Bạn sở hữu toàn bộ các ô trong khu vực! Nâng cấp nhà để tăng gấp bội tiền thuê của đối thủ.`;
-    btnConfirmBuy.textContent = `Nâng Cấp (${action.cost}M)`;
-    btnConfirmBuy.style.display = action.canAfford ? 'inline-block' : 'none';
+    propTitle.textContent = `${action.tileName} (Lên Cấp ${action.level})`;
+    populatePropertyDeedModal(
+      action.tileId,
+      `Chi phí nâng cấp: ${action.cost}M`,
+      `NÂNG CẤP CÔNG TRÌNH • CẤP ${action.level}`,
+      `Nâng cấp công trình kiến trúc trên ô đất của bạn để nhân gấp bội tiền thuê!`,
+      `Nâng Cấp (${action.cost}M)`,
+      action.canAfford
+    );
     elPropertyModal.style.display = 'flex';
   } else if (action.type === 'PAY_RENT') {
     sounds.playCoin();

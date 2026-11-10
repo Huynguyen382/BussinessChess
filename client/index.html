@@ -16,53 +16,52 @@
     <!-- 1. LOBBY VIEW (Clean Floating Card, allows full 3D tabletop diorama to be visible) -->
     <div id="lobby-view" class="lobby-overlay" style="display: flex;">
       <div id="lobby-card" class="glass-panel lobby-card">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-          <div style="font-size: 2.2rem;">🎲</div>
-          <button id="btn-toggle-lobby-view" class="btn-chunky btn-white" style="padding: 4px 10px; font-size: 0.75rem;" title="Ẩn bảng để chiêm ngưỡng bàn cờ 3D">
-            👁️ Xem Bàn Cờ 3D
+        <div class="lobby-card-top">
+          <div class="lobby-brand-badge">
+            <span class="lobby-brand-icon">🎲</span>
+            <span class="lobby-edition-tag">VIETNAM DIORAMA EDITION</span>
+          </div>
+          <button id="btn-toggle-lobby-view" class="btn-chunky btn-white btn-sm" title="Ẩn bảng để chiêm ngưỡng bàn cờ 3D">
+            👁️ Xem Sa Bàn 3D
           </button>
         </div>
-        <h1 style="color: #2D3436; font-size: 1.8rem; margin-bottom: 4px;">BUSINESS CHESS 3D</h1>
-        <p style="color: #636E72; font-size: 0.9rem; margin-bottom: 20px;">Cờ Tỷ Phú Trực Tuyến Đa Nền Tảng</p>
+        <h1 class="lobby-title">BUSINESS CHESS 3D</h1>
+        <p class="lobby-subtitle">Cờ Tỷ Phú Đại Lộ Việt Nam — Đa Nền Tảng</p>
 
-        <div style="display: flex; flex-direction: column; gap: 12px; text-align: left;">
+        <div class="lobby-form">
           <div>
-            <label style="font-weight: 700; font-size: 0.8rem; color: #2D3436; margin-bottom: 4px; display: block;">TÊN CỦA BẠN</label>
-            <input id="input-username" type="text" placeholder="Nhập tên người chơi..." value="Tỷ Phú Trẻ" 
-              style="width: 100%; padding: 11px 16px; border-radius: 14px; border: 2px solid #DFE6E9; font-size: 1rem; font-weight: 700; outline: none; font-family: inherit;" />
+            <label class="field-label" for="input-username">TÊN TỶ PHÚ CỦA BẠN</label>
+            <input id="input-username" class="field-input" type="text" placeholder="Nhập tên người chơi..." value="Tỷ Phú Trẻ" />
           </div>
 
-          <div style="display: flex; gap: 10px; margin-top: 4px;">
+          <div class="lobby-action-row">
             <button id="btn-open-create-room" class="btn-chunky btn-primary" style="flex: 1;">
               ➕ Tạo Phòng
             </button>
             <button id="btn-quick-bot-game" class="btn-chunky btn-accent" style="flex: 1;" title="Chơi thử ngay cùng 3 Bot AI">
-              🤖 Chơi Nhanh
+              🤖 Đấu Với AI
             </button>
           </div>
 
-          <div style="margin: 6px 0; display: flex; align-items: center; gap: 8px;">
-            <div style="flex: 1; height: 1px; background: #DFE6E9;"></div>
-            <span style="font-size: 0.75rem; font-weight: 700; color: #B2BEC3;">HOẶC VÀO BẰNG MÃ</span>
-            <div style="flex: 1; height: 1px; background: #DFE6E9;"></div>
+          <div class="lobby-divider">
+            <span>HOẶC VÀO PHÒNG BẰNG MÃ</span>
           </div>
 
-          <div style="display: flex; gap: 10px;">
-            <input id="input-room-code" type="text" placeholder="Mã 6 chữ số..." maxlength="6" 
-              style="flex: 1; padding: 11px 14px; border-radius: 14px; border: 2px solid #DFE6E9; font-size: 1.05rem; font-weight: 800; text-transform: uppercase; text-align: center; font-family: inherit;" />
+          <div class="lobby-join-row">
+            <input id="input-room-code" class="field-input field-code" type="text" placeholder="MÃ 6 KÝ TỰ" maxlength="6" />
             <button id="btn-join-room" class="btn-chunky btn-blue" style="padding: 11px 18px;">
-              Tham Gia
+              Vào Phòng
             </button>
           </div>
         </div>
 
         <!-- Danh sách phòng công khai -->
-        <div style="margin-top: 18px; text-align: left;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-            <span style="font-weight: 800; font-size: 0.8rem; color: #2D3436;">PHÒNG ĐANG CHỜ</span>
-            <button id="btn-refresh-rooms" class="btn-chunky btn-white" style="padding: 3px 8px; font-size: 0.7rem;">🔄 Làm mới</button>
+        <div class="lobby-rooms-section">
+          <div class="lobby-rooms-header">
+            <span class="field-label" style="margin: 0;">🟢 SẢNH PHÒNG ĐANG MỞ</span>
+            <button id="btn-refresh-rooms" class="btn-chunky btn-white btn-xs">🔄 Làm mới</button>
           </div>
-          <div id="room-list-container" style="max-height: 115px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px;">
+          <div id="room-list-container" class="room-list-box">
             <div style="font-size: 0.8rem; color: #B2BEC3; text-align: center; padding: 10px;">Đang tải danh sách...</div>
           </div>
         </div>
@@ -155,59 +154,78 @@
           <div id="timer-fill" class="timer-fill"></div>
         </div>
 
-        <!-- Top Bar with Players and Camera Controls -->
+        <!-- Top Bar with Players and Compact Control Dock -->
         <div class="top-bar">
           <div id="hud-players" class="player-badges interactive">
             <!-- Injected Player Badges -->
           </div>
 
-          <div class="interactive" style="display: flex; gap: 8px; flex-wrap: wrap;">
-            <button id="btn-toggle-zoom" class="btn-chunky btn-accent" style="padding: 8px 12px; font-size: 0.85rem;" title="Phóng to cận cảnh siêu nét">
-              🔍 Phóng To
+          <div class="hud-toolbar-dock interactive">
+            <button id="btn-toggle-zoom" class="dock-btn dock-btn-accent" title="Phóng to cận cảnh siêu nét">
+              <span class="dock-icon">🔍</span>
+              <span class="dock-label">Phóng To</span>
             </button>
-            <button id="btn-open-roster" class="btn-chunky btn-white" style="padding: 8px 12px; font-size: 0.85rem;" title="Xem toàn bộ 40 ô cờ & bất động sản">
-              🗺️ 40 Ô Cờ
+            <button id="btn-toggle-cam-lock" class="dock-btn is-active" title="Khóa/Mở tự do góc nhìn">
+              <span class="dock-icon">🔒</span>
+              <span class="dock-label">Góc Cố Định</span>
             </button>
-            <button id="btn-toggle-cam-lock" class="btn-chunky btn-primary" style="padding: 8px 12px; font-size: 0.85rem;" title="Khóa/Mở tự do góc nhìn">
-              🔒 Góc Cố Định
+            <button id="btn-toggle-follow" class="dock-btn" title="Camera bám sát quân cờ">
+              <span class="dock-icon">🎥</span>
+              <span class="dock-label">Theo Dõi</span>
             </button>
-            <button id="btn-toggle-follow" class="btn-chunky btn-white" style="padding: 8px 12px; font-size: 0.85rem;" title="Bám sát quân cờ">
-              🎥 Theo Dõi
+            <button id="btn-reset-cam" class="dock-btn" title="Đặt lại góc nhìn toàn cảnh">
+              <span class="dock-icon">🔄</span>
+              <span class="dock-label">Toàn Cảnh</span>
             </button>
-            <button id="btn-reset-cam" class="btn-chunky btn-white" style="padding: 8px 12px; font-size: 0.85rem;" title="Xem toàn cảnh">
-              🔄 Toàn Cảnh
+            <div class="dock-divider"></div>
+            <button id="btn-open-roster" class="dock-btn" title="Xem toàn bộ 40 ô cờ & bất động sản">
+              <span class="dock-icon">🗺️</span>
+              <span class="dock-label">40 Ô Cờ</span>
             </button>
-            <button id="btn-toggle-log" class="btn-chunky btn-white" style="padding: 8px 12px; font-size: 0.85rem;" title="Xem lịch sử">
-              📜 Nhật Ký
+            <button id="btn-toggle-log" class="dock-btn" title="Xem nhật ký trận đấu">
+              <span class="dock-icon">📜</span>
+              <span class="dock-label">Nhật Ký</span>
             </button>
           </div>
         </div>
       </div>
 
       <!-- Center Floating Toast/Notification -->
-      <div id="hud-toast" style="align-self: center; background: rgba(45, 52, 54, 0.85); color: white; padding: 10px 24px; border-radius: 9999px; font-weight: 800; font-size: 1rem; display: none; backdrop-filter: blur(8px); box-shadow: 0 8px 20px rgba(0,0,0,0.2);">
+      <div id="hud-toast" class="hud-toast-banner" style="display: none;">
         Lượt của bạn!
       </div>
 
       <!-- Bottom Drawer Controls -->
       <div class="bottom-drawer interactive">
-        <button id="btn-roll-dice" class="btn-chunky btn-accent action-pill" style="display: flex; gap: 10px;">
-          <span>🎲</span>
-          <span>ĐỔ XÚC XẮC</span>
-        </button>
-        <button id="btn-end-turn" class="btn-chunky btn-white action-pill" style="display: none;">
-          Kết Thúc Lượt ⏩
-        </button>
+        <div id="turn-status-pill" class="turn-status-pill">
+          <span id="turn-status-dot" class="turn-status-dot"></span>
+          <span id="turn-status-text">Đang khởi tạo bàn cờ...</span>
+        </div>
+        <div class="turn-action-buttons">
+          <button id="btn-roll-dice" class="btn-chunky btn-accent action-pill" style="display: flex; gap: 10px;">
+            <span>🎲</span>
+            <span>ĐỔ XÚC XẮC</span>
+          </button>
+          <button id="btn-end-turn" class="btn-chunky btn-white action-pill" style="display: none;">
+            Kết Thúc Lượt ⏩
+          </button>
+        </div>
       </div>
     </div>
 
     <!-- 5. PROPERTY ACTION MODAL (Bottom Sheet) -->
     <div id="property-modal" class="interactive modal-overlay" style="display: none; align-items: flex-end; padding-bottom: 24px;">
-      <div class="glass-panel modal-content" style="max-width: 440px; border-bottom-left-radius: 28px; border-bottom-right-radius: 28px;">
-        <div id="prop-color-bar" style="height: 12px; border-radius: 6px; background: #00B894; margin-bottom: 12px;"></div>
-        <h2 id="prop-title" style="color: #2D3436; font-size: 1.5rem; margin-bottom: 4px;">Hồ Tây (Hà Nội)</h2>
-        <div id="prop-price" style="font-size: 1.3rem; font-weight: 900; color: #00B894; margin-bottom: 14px;">Giá: 300M</div>
-        <p id="prop-desc" style="color: #636E72; font-size: 0.9rem; margin-bottom: 20px;">Bạn đã dừng chân tại ô đất trống này. Bạn có muốn mua để bắt đầu thu tiền thuê?</p>
+      <div class="glass-panel modal-content prop-deed-modal">
+        <div id="prop-color-bar" class="prop-deed-banner" style="background: #00B894;">
+          <span id="prop-icon" class="prop-deed-icon">🏛️</span>
+          <div class="prop-deed-titles">
+            <span id="prop-badge" class="prop-deed-badge">KHU VỰC BẤT ĐỘNG SẢN</span>
+            <h2 id="prop-title" class="prop-deed-title">Hồ Tây (Hà Nội)</h2>
+          </div>
+        </div>
+        <div id="prop-price" class="prop-deed-price">Giá: 300M</div>
+        <p id="prop-desc" class="prop-deed-desc">Bạn đã dừng chân tại ô đất trống này. Bạn có muốn mua để bắt đầu thu tiền thuê?</p>
+        <div id="prop-rent-preview" class="prop-rent-strip"></div>
         <div style="display: flex; gap: 12px;">
           <button id="btn-skip-buy" class="btn-chunky btn-white" style="flex: 1;">Bỏ Qua</button>
           <button id="btn-confirm-buy" class="btn-chunky btn-primary" style="flex: 1.4;">Mua Đất (300M)</button>
@@ -245,13 +263,13 @@
       </div>
     </div>
 
-    <!-- 8. GAME LOG DRAWER -->
-    <div id="log-drawer" class="interactive glass-panel" style="position: absolute; right: 16px; top: 70px; width: 320px; max-height: 380px; display: none; flex-direction: column; padding: 16px; z-index: 50;">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-        <span style="font-weight: 800; font-size: 0.95rem; color: #2D3436;">Nhật Ký Ván Đấu</span>
-        <button id="btn-close-log" style="background: none; border: none; font-size: 1.2rem; cursor: pointer;">✕</button>
+    <!-- 8. GAME LOG DRAWER (Anchored Bottom-Left so it never overlaps Tile Inspector on Top-Right) -->
+    <div id="log-drawer" class="interactive glass-panel log-drawer-panel" style="display: none;">
+      <div class="log-drawer-header">
+        <span style="font-weight: 800; font-size: 0.92rem; color: #2D3436;">📜 Nhật Ký Ván Đấu</span>
+        <button id="btn-close-log" class="inspector-close-btn" style="background: rgba(45,52,54,0.08); color: #2D3436;" title="Đóng nhật ký">✕</button>
       </div>
-      <div id="log-items" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
+      <div id="log-items" class="log-items-list">
         <!-- Log entries -->
       </div>
     </div>
@@ -264,10 +282,11 @@
           <button id="btn-close-inspector" class="inspector-close-btn" title="Đóng thẻ">✕</button>
         </div>
         <div style="display: flex; align-items: center; gap: 10px; margin-top: 8px;">
-          <span id="inspector-landmark-icon" style="font-size: 2rem;">🏙️</span>
+          <span id="inspector-landmark-icon" style="font-size: 2.1rem; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.25));">🏙️</span>
           <div>
             <h3 id="inspector-tile-name" style="color: #FFFFFF; font-size: 1.2rem; margin: 0; line-height: 1.2; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">Hồ Tây (Hà Nội)</h3>
-            <span id="inspector-district-name" style="color: rgba(255,255,255,0.88); font-size: 0.75rem; font-weight: 700;">Phân khu 7 • Xanh Ngọc</span>
+            <span id="inspector-district-name" style="color: rgba(255,255,255,0.92); font-size: 0.75rem; font-weight: 700; display: block;">Phân khu 7 • Xanh Ngọc</span>
+            <span id="inspector-landmark-subtitle" style="color: #FFEAA7; font-size: 0.72rem; font-weight: 800; display: block; margin-top: 2px;">★ Kỳ quan 3D Việt Nam</span>
           </div>
         </div>
       </div>

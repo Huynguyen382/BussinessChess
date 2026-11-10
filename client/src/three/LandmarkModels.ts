@@ -17,6 +17,7 @@ export { LandmarkHelpers } from './landmarks/LandmarkHelpers';
  * Đảm bảo 100% tương thích ngược với tất cả các lời gọi hiện có.
  */
 export class LandmarkModels {
+  public static getMat = LandmarkMaterials.getMat.bind(LandmarkMaterials);
   public static getContactShadowTexture = LandmarkMaterials.getContactShadowTexture.bind(LandmarkMaterials);
   public static createContactShadow = LandmarkMaterials.createContactShadow.bind(LandmarkMaterials);
 

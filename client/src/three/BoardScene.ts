@@ -231,40 +231,40 @@ export class BoardScene {
     const TILE_LANDMARKS: Record<number, { icon: string; subtitle: string }> = {
       1: { icon: '🛶', subtitle: 'Chợ Nổi Cái Răng' },
       2: { icon: '🎁', subtitle: 'Hòm Khí Vận' },
-      3: { icon: '🦀', subtitle: 'Mũi Cực Nam' },
-      4: { icon: '💸', subtitle: 'Thuế Nhà Nước' },
-      5: { icon: '🚌', subtitle: 'Đầu Mối Miền Tây' },
-      6: { icon: '🗼', subtitle: 'Ngọn Hải Đăng' },
+      3: { icon: '⛵', subtitle: 'Mũi Cực Nam Tổ Quốc' },
+      4: { icon: '👛', subtitle: 'Thuế Nhà Nước' },
+      5: { icon: '🚂', subtitle: 'Ga Đầu Mối Miền Tây' },
+      6: { icon: '🗼', subtitle: 'Hải Đăng Núi Nhỏ' },
       7: { icon: '❓', subtitle: 'Thẻ May Rủi' },
-      8: { icon: '🏄', subtitle: 'Đồi Cát Bay' },
-      9: { icon: '🏖️', subtitle: 'Vịnh Biển Đẹp' },
-      11: { icon: '🌸', subtitle: 'Xứ Ngàn Hoa' },
-      12: { icon: '⚡', subtitle: 'Lưới Điện Quốc Gia' },
-      13: { icon: '☕', subtitle: 'Thủ Phủ Cà Phê' },
-      14: { icon: '🌲', subtitle: 'Biển Hồ Rừng Xanh' },
-      15: { icon: '🚂', subtitle: 'Ga Trọng Điểm' },
-      16: { icon: '🌊', subtitle: 'Eo Gió Kỳ Co' },
+      8: { icon: '🏜️', subtitle: 'Tháp Chăm Poshanư' },
+      9: { icon: '🪷', subtitle: 'Tháp Trầm Hương' },
+      11: { icon: '🌸', subtitle: 'Ga Cổ & Rừng Thông' },
+      12: { icon: '💡', subtitle: 'Lưới Điện Quốc Gia' },
+      13: { icon: '☕', subtitle: 'Nhà Rông & Cồng Chiêng' },
+      14: { icon: '🌲', subtitle: 'Biển Hồ Tơ Nưng' },
+      15: { icon: '🚂', subtitle: 'Ga Sài Gòn' },
+      16: { icon: '🏯', subtitle: 'Tháp Đôi & Eo Gió' },
       17: { icon: '🎁', subtitle: 'Hòm Khí Vận' },
-      18: { icon: '🏮', subtitle: 'Phố Cổ Hoài Phố' },
+      18: { icon: '🏮', subtitle: 'Chùa Cầu Hội An' },
       19: { icon: '🌉', subtitle: 'Cầu Rồng Sông Hàn' },
-      21: { icon: '🏯', subtitle: 'Cố Đô Di Sản' },
+      21: { icon: '🏯', subtitle: 'Ngọ Môn Cố Đô Huế' },
       22: { icon: '❓', subtitle: 'Thẻ May Rủi' },
-      23: { icon: '🦇', subtitle: 'Hang Động Kỳ Quan' },
-      24: { icon: '🏖️', subtitle: 'Bãi Biển Xanh' },
-      25: { icon: '🚂', subtitle: 'Ga Miền Trung' },
-      26: { icon: '⚓', subtitle: 'Thành Phố Hoa Phượng' },
-      27: { icon: '⛵', subtitle: 'Kỳ Quan Vịnh Hạ Long' },
+      23: { icon: '🏞️', subtitle: 'Kỳ Quan Sơn Đoòng' },
+      24: { icon: '🏝️', subtitle: 'Đảo Lan Châu' },
+      25: { icon: '🚂', subtitle: 'Ga Đà Nẵng' },
+      26: { icon: '🌉', subtitle: 'Cầu Hoàng Văn Thụ' },
+      27: { icon: '⛵', subtitle: 'Hòn Trống Mái' },
       28: { icon: '💧', subtitle: 'Nguồn Nước Tinh Khiết' },
-      29: { icon: '🛶', subtitle: 'Non Nước Tràng An' },
-      31: { icon: '🐢', subtitle: 'Hồ Tây Ngàn Năm' },
-      32: { icon: '🏮', subtitle: '36 Phố Phường' },
+      29: { icon: '🐉', subtitle: 'Đỉnh Ngọa Long' },
+      31: { icon: '🪷', subtitle: 'Chùa Trấn Quốc' },
+      32: { icon: '🏮', subtitle: 'Cửa Ô Quan Chưởng' },
       33: { icon: '🎁', subtitle: 'Hòm Khí Vận' },
-      34: { icon: '🏛️', subtitle: 'Trung Tâm Thủ Đô' },
-      35: { icon: '🚂', subtitle: 'Ga Đầu Mối Phía Bắc' },
+      34: { icon: '🇻🇳', subtitle: 'Cột Cờ Hà Nội' },
+      35: { icon: '🚂', subtitle: 'Ga Hà Nội' },
       36: { icon: '❓', subtitle: 'Thẻ May Rủi' },
-      37: { icon: '🏙️', subtitle: 'Tháp 81 Tầng' },
-      38: { icon: '💎', subtitle: 'Thuế Tiêu Dùng' },
-      39: { icon: '👑', subtitle: 'Đại Lộ Hoàng Kim' }
+      37: { icon: '🏙️', subtitle: 'Tháp Bó Tre 81 Tầng' },
+      38: { icon: '💎', subtitle: 'Thuế Siêu Xa Xỉ' },
+      39: { icon: '🏛️', subtitle: 'Chợ Bến Thành' }
     };
 
     this.boardTiles = tiles;
@@ -272,6 +272,17 @@ export class BoardScene {
     this.tileMeshList = [];
     this.animatedLandmarks = [];
     this.tileLandmarkMap.clear();
+
+    const baseMat = LandmarkModels.getMat('boardTileBaseMat', () => new THREE.MeshStandardMaterial({
+      color: '#FCFCFC',
+      roughness: 0.28,
+      metalness: 0.04
+    }));
+    const cornerPlinthMat = LandmarkModels.getMat('boardCornerPlinthMat', () => new THREE.MeshStandardMaterial({
+      color: '#2D3436',
+      metalness: 0.75,
+      roughness: 0.3
+    }));
 
     for (let i = 0; i < 40; i++) {
       const tile = tiles[i];
@@ -332,25 +343,14 @@ export class BoardScene {
       tileGroup.rotation.y = angle;
       tileGroup.userData = { tileId: i };
 
-      const baseMat = new THREE.MeshStandardMaterial({
-        color: '#FCFCFC',
-        roughness: 0.28,
-        metalness: 0.04
-      });
-
       if (isCorner) {
         // ==========================================
-        // 🏰 Ô GÓC 3.2 x 3.2: SA BÀN ĐẠI CÔNG TRÌNH 3D
+        // 🏰 Ô GÓC 3.2 x 3.2: SA BÀN ĐẠI CÔNG TRÌNH 3D (TIER 1)
         // ==========================================
         // 1. Chân đế đá hoa cương viền dày chịu lực
-        const plinthMat = new THREE.MeshStandardMaterial({
-          color: '#2D3436',
-          metalness: 0.75,
-          roughness: 0.3
-        });
         const plinthMesh = new THREE.Mesh(
           new RoundedBoxGeometry(cornerSize * 0.99, tileHeight * 0.45, cornerSize * 0.99, 3, 0.04),
-          plinthMat
+          cornerPlinthMat
         );
         plinthMesh.position.y = -tileHeight * 0.26;
         plinthMesh.receiveShadow = true;
@@ -387,12 +387,12 @@ export class BoardScene {
         // 🏙️ Ô THƯỜNG 1.95 x 3.2: ĐẾ ĐA TẦNG & MODEL DANH THẮNG 3D
         // ==========================================
         const isSide3 = (i > 20 && i < 30);
-        const subPlinthColor = tile.districtColor || (tile.type === 'RAILROAD' ? '#2F3542' : tile.type === 'UTILITY' ? '#0984E3' : '#BDC3C7');
-        const subPlinthMat = new THREE.MeshStandardMaterial({
+        const subPlinthColor = tile.districtColor || (tile.type === 'RAILROAD' ? '#2F3542' : tile.type === 'UTILITY' ? '#0984E3' : tile.type === 'TAX' ? (i === 38 ? '#6C5CE7' : '#D63031') : '#BDC3C7');
+        const subPlinthMat = LandmarkModels.getMat(`subPlinth_${subPlinthColor}`, () => new THREE.MeshStandardMaterial({
           color: subPlinthColor,
           roughness: 0.35,
           metalness: 0.25
-        });
+        }));
 
         // 1. Đế chân giật cấp viền màu phân khu (Sub-plinth)
         const subPlinth = new THREE.Mesh(
@@ -410,45 +410,24 @@ export class BoardScene {
         tileGroup.add(baseMesh);
         this.tileMeshList.push({ mesh: baseMesh, tileId: i });
 
-        // 3. Gờ bó vỉa bo cong ngăn cách vỉa hè với lòng đường đại lộ
-        const curbZ = (isSide3 ? 1 : -1) * (cornerSize * 0.46);
-        const curb = DetailedModels.createTileCurbs(normalWidth, cornerSize, 0);
-        curb.position.set(0, tileHeight / 2 + 0.035, curbZ);
-        tileGroup.add(curb);
-
-        // 4. Bụi hoa cẩm tú cầu tí hon trang trí góc vỉa hè cho các ô phân khu màu
-        if (tile.districtColor && i % 2 === 0) {
-          const bush = DetailedModels.createFlowerBush(tile.districtColor);
-          bush.scale.set(0.62, 0.62, 0.62);
-          bush.position.set(normalWidth * 0.36, tileHeight / 2 + 0.02, curbZ * 0.82);
-          tileGroup.add(bush);
-        }
-
-        // 5. Card đồ họa độ phân giải cao bao phủ trọn vẹn bề mặt ô
+        // 3. Mặt ô cờ đồ họa phẳng cao cấp (Flat-Luxury Graphic Tile) tích hợp vạch phân làn & gờ nổi
         const lm = TILE_LANDMARKS[i] || { icon: '📍', subtitle: 'Bất Động Sản' };
         const labelMesh = this.createTileLabel(tile, lm, normalWidth * 0.95, cornerSize * 0.95);
         labelMesh.position.y = tileHeight / 2 + 0.025;
         labelMesh.rotation.x = -Math.PI / 2;
         tileGroup.add(labelMesh);
 
-        // 6. MÔ HÌNH 3D DANH THẮNG / ĐỊA DANH CHI TIẾT
+        // 4. MÔ HÌNH 3D ĐỘC BẢN: Chỉ gắn cho 22 Địa Danh (TIER 1) và 4 Ga Tàu Hỏa (TIER 3)
+        // Triệt tiêu hoàn toàn 3D Clutter tại các ô Thuế, Khí Vận, Cơ Hội, Tiện Ích (TIER 4)
         let landmark3D: THREE.Group | null = null;
         if (tile.type === 'PROPERTY') {
           landmark3D = LandmarkModels.createCityLandmark(i);
         } else if (tile.type === 'RAILROAD') {
           landmark3D = LandmarkModels.createRailroadModel(i);
-        } else if (tile.type === 'UTILITY') {
-          landmark3D = LandmarkModels.createUtilityModel(i);
-        } else if (tile.type === 'CHANCE') {
-          landmark3D = LandmarkModels.createCardTileModel(true);
-        } else if (tile.type === 'COMMUNITY_CHEST') {
-          landmark3D = LandmarkModels.createCardTileModel(false);
-        } else if (tile.type === 'TAX') {
-          landmark3D = LandmarkModels.createTaxModel(i);
         }
 
         if (landmark3D) {
-          // Đặt ở mép ngoài ô cờ (Landmark Skyline), vươn cao trong không gian
+          // Đặt ở nửa sau của ô cờ (Zone B - Landmark Skyline), không bị nhà xây thêm đè lấn
           const landmarkZ = (isSide3 ? -1 : 1) * 1.08;
           landmark3D.position.set(0, tileHeight / 2 + 0.02, landmarkZ);
           landmark3D.rotation.y = isSide3 ? Math.PI : 0;
@@ -481,12 +460,21 @@ export class BoardScene {
     const headerColor = tile.districtColor || '#0984E3';
 
     // 1. Thẻ bài nền trắng sứ sang trọng với viền màu phân khu dày 14px cực kỳ bắt mắt
-    ctx.fillStyle = '#FFFFFF';
+    const cardBgGrad = ctx.createLinearGradient(0, 0, 0, 1024);
+    cardBgGrad.addColorStop(0, '#FFFFFF');
+    cardBgGrad.addColorStop(1, '#F8FAFC');
+    ctx.fillStyle = cardBgGrad;
     this.drawRoundedRect(ctx, 10, 10, 620, 1004, 38);
     ctx.fill();
 
     ctx.strokeStyle = headerColor;
     ctx.lineWidth = 14;
+    ctx.stroke();
+
+    // Đường viền chỉ vàng kim mảnh bên trong tạo chiều sâu Luxury
+    ctx.strokeStyle = 'rgba(241, 196, 15, 0.42)';
+    ctx.lineWidth = 4;
+    this.drawRoundedRect(ctx, 24, 24, 592, 976, 30);
     ctx.stroke();
 
     if (tile.type === 'PROPERTY') {
@@ -499,11 +487,17 @@ export class BoardScene {
 
       // Dải bóng phản chiếu ánh sáng (Gloss Specular Strip)
       const glossGrad = ctx.createLinearGradient(0, 16, 0, 120);
-      glossGrad.addColorStop(0, 'rgba(255, 255, 255, 0.45)');
+      glossGrad.addColorStop(0, 'rgba(255, 255, 255, 0.48)');
       glossGrad.addColorStop(1, 'rgba(255, 255, 255, 0.0)');
       ctx.fillStyle = glossGrad;
       this.drawRoundedRect(ctx, 20, 20, 600, 90, 20);
       ctx.fill();
+
+      // Khung viền mảnh đánh dấu Zone A (Khu quy hoạch xây dựng BĐS)
+      ctx.strokeStyle = 'rgba(45, 52, 54, 0.08)';
+      ctx.lineWidth = 3;
+      this.drawRoundedRect(ctx, 44, 400, 552, 405, 24);
+      ctx.stroke();
 
       // Dòng phân khu
       ctx.fillStyle = '#FFFFFF';
@@ -603,26 +597,51 @@ export class BoardScene {
 
     } else if (tile.type === 'UTILITY') {
       // ==========================================
-      // ⚡ DỊCH VỤ CÔNG (Điện Lực / Cấp Nước)
+      // ⚡ TIER 4 FLAT-LUXURY: TIỆN ÍCH CÔNG CỘNG (Điện Lực 12 / Cấp Nước 28)
       // ==========================================
-      const utilColor = tile.name.includes('Điện') ? '#F39C12' : '#0984E3';
-      ctx.fillStyle = utilColor;
+      const isElectric = tile.name.includes('Điện');
+      const utilColor = isElectric ? '#F39C12' : '#00CEC9';
+      const utilDark = isElectric ? '#D35400' : '#0984E3';
+
+      // Khung viền sang trọng
+      ctx.strokeStyle = utilColor;
+      ctx.lineWidth = 14;
+      this.drawRoundedRect(ctx, 10, 10, 620, 1004, 38);
+      ctx.stroke();
+
+      const bannerGrad = ctx.createLinearGradient(0, 16, 0, 336);
+      bannerGrad.addColorStop(0, utilColor);
+      bannerGrad.addColorStop(1, utilDark);
+      ctx.fillStyle = bannerGrad;
       this.drawRoundedRect(ctx, 16, 16, 608, 320, 28);
       ctx.fill();
 
       ctx.fillStyle = '#FFFFFF';
       ctx.font = '900 36px system-ui, sans-serif';
-      ctx.fillText('TIỆN ÍCH ĐÔ THỊ', 320, 85);
+      ctx.fillText('★ TIỆN ÍCH ĐÔ THỊ ★', 320, 85);
 
       ctx.font = '900 66px "Fredoka", sans-serif';
       ctx.fillText(tile.name, 320, 205);
 
-      ctx.font = '130px "Segoe UI Emoji", "Apple Color Emoji", sans-serif';
-      ctx.fillText(tile.name.includes('Điện') ? '⚡' : '💧', 320, 560);
+      // Huy hiệu tròn dập nổi phát sáng (Bóng đèn vàng ấm / Giọt nước pha lê xanh ngọc)
+      const badgeGrad = ctx.createRadialGradient(320, 550, 20, 320, 550, 145);
+      badgeGrad.addColorStop(0, isElectric ? '#FFF9C4' : '#E0F7FA');
+      badgeGrad.addColorStop(1, isElectric ? '#FFEAA7' : '#81ECEC');
+      ctx.fillStyle = badgeGrad;
+      ctx.beginPath();
+      ctx.arc(320, 550, 140, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.strokeStyle = utilDark;
+      ctx.lineWidth = 10;
+      ctx.stroke();
+
+      ctx.font = '135px "Segoe UI Emoji", "Apple Color Emoji", sans-serif';
+      ctx.fillText(isElectric ? '💡' : '💧', 320, 565);
 
       ctx.fillStyle = '#2D3436';
       ctx.font = '900 36px system-ui, sans-serif';
-      ctx.fillText(landmark.subtitle, 320, 740);
+      ctx.fillText(landmark.subtitle, 320, 745);
 
       ctx.fillStyle = '#1E272E';
       this.drawRoundedRect(ctx, 80, 830, 480, 130, 65);
@@ -637,31 +656,40 @@ export class BoardScene {
 
     } else if (tile.type === 'CHANCE') {
       // ==========================================
-      // ❓ CƠ HỘI (May Rủi)
+      // ❓ TIER 4 FLAT-LUXURY: CƠ HỘI (Thẻ Bài Cam Rực Rỡ Dập Chìm)
       // ==========================================
       const chanceGrad = ctx.createLinearGradient(0, 0, 0, 1024);
-      chanceGrad.addColorStop(0, '#FF7675');
-      chanceGrad.addColorStop(1, '#E84393');
+      chanceGrad.addColorStop(0, '#FF9F43');
+      chanceGrad.addColorStop(1, '#E17055');
       ctx.fillStyle = chanceGrad;
       this.drawRoundedRect(ctx, 16, 16, 608, 992, 28);
       ctx.fill();
 
-      ctx.fillStyle = '#FFFFFF';
-      ctx.font = '900 48px system-ui, sans-serif';
-      ctx.fillText('★ THẺ BÀI ★', 320, 130);
+      // Khung viền kim tuyến vàng dập chìm
+      ctx.strokeStyle = '#FFEAA7';
+      ctx.lineWidth = 8;
+      this.drawRoundedRect(ctx, 42, 42, 556, 940, 22);
+      ctx.stroke();
 
-      ctx.font = '900 88px "Fredoka", sans-serif';
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = '900 44px system-ui, sans-serif';
+      ctx.fillText('★ THẺ VẬN MỆNH ★', 320, 130);
+
+      ctx.font = '900 86px "Fredoka", sans-serif';
       ctx.fillText('CƠ HỘI', 320, 240);
 
-      // Vòng tròn vàng chứa dấu chấm hỏi
+      // Huy hiệu tròn dập nổi chứa dấu chấm hỏi
       ctx.fillStyle = '#FFFFFF';
       ctx.beginPath();
-      ctx.arc(320, 550, 160, 0, Math.PI * 2);
+      ctx.arc(320, 550, 165, 0, Math.PI * 2);
       ctx.fill();
+      ctx.strokeStyle = '#F1C40F';
+      ctx.lineWidth = 12;
+      ctx.stroke();
 
-      ctx.fillStyle = '#E84393';
-      ctx.font = '900 190px "Fredoka", sans-serif';
-      ctx.fillText('?', 320, 560);
+      ctx.fillStyle = '#E17055';
+      ctx.font = '900 200px "Fredoka", sans-serif';
+      ctx.fillText('?', 320, 565);
 
       ctx.fillStyle = '#FFEAA7';
       ctx.font = '900 44px system-ui, sans-serif';
@@ -669,24 +697,38 @@ export class BoardScene {
 
     } else if (tile.type === 'COMMUNITY_CHEST') {
       // ==========================================
-      // 🎁 KHÍ VẬN (Kho Báu)
+      // 🎁 TIER 4 FLAT-LUXURY: KHÍ VẬN (Thẻ Bài Xanh Hoàng Gia Dập Chìm)
       // ==========================================
       const chestGrad = ctx.createLinearGradient(0, 0, 0, 1024);
-      chestGrad.addColorStop(0, '#F39C12');
-      chestGrad.addColorStop(1, '#D35400');
+      chestGrad.addColorStop(0, '#0984E3');
+      chestGrad.addColorStop(1, '#1E3799');
       ctx.fillStyle = chestGrad;
       this.drawRoundedRect(ctx, 16, 16, 608, 992, 28);
       ctx.fill();
 
-      ctx.fillStyle = '#FFFFFF';
-      ctx.font = '900 48px system-ui, sans-serif';
-      ctx.fillText('★ RƯƠNG VÀNG ★', 320, 130);
+      // Khung viền hoàng kim dập chìm
+      ctx.strokeStyle = '#F1C40F';
+      ctx.lineWidth = 8;
+      this.drawRoundedRect(ctx, 42, 42, 556, 940, 22);
+      ctx.stroke();
 
-      ctx.font = '900 88px "Fredoka", sans-serif';
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = '900 44px system-ui, sans-serif';
+      ctx.fillText('★ RƯƠNG HOÀNG GIA ★', 320, 130);
+
+      ctx.font = '900 86px "Fredoka", sans-serif';
       ctx.fillText('KHÍ VẬN', 320, 240);
 
-      ctx.font = '180px "Segoe UI Emoji", "Apple Color Emoji", sans-serif';
-      ctx.fillText('🎁', 320, 550);
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.16)';
+      ctx.beginPath();
+      ctx.arc(320, 550, 165, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#FDCB6E';
+      ctx.lineWidth = 10;
+      ctx.stroke();
+
+      ctx.font = '175px "Segoe UI Emoji", "Apple Color Emoji", sans-serif';
+      ctx.fillText('🎁', 320, 560);
 
       ctx.fillStyle = '#FFEAA7';
       ctx.font = '900 44px system-ui, sans-serif';
@@ -694,33 +736,62 @@ export class BoardScene {
 
     } else if (tile.type === 'TAX') {
       // ==========================================
-      // 💸 THUẾ THU NHẬP / THUẾ XA XỈ
+      // 💎 TIER 4 FLAT-LUXURY: Ô THUẾ (Viền Đỏ/Tím Sang Trọng & Vector Dập Nổi)
       // ==========================================
-      ctx.fillStyle = '#D63031';
+      const isLuxuryTax = tile.id === 38;
+      const taxPrimary = isLuxuryTax ? '#6C5CE7' : '#D63031';
+      const taxSecondary = isLuxuryTax ? '#341F97' : '#B71540';
+
+      ctx.strokeStyle = taxPrimary;
+      ctx.lineWidth = 14;
+      this.drawRoundedRect(ctx, 10, 10, 620, 1004, 38);
+      ctx.stroke();
+
+      const taxGrad = ctx.createLinearGradient(0, 16, 0, 336);
+      taxGrad.addColorStop(0, taxPrimary);
+      taxGrad.addColorStop(1, taxSecondary);
+      ctx.fillStyle = taxGrad;
       this.drawRoundedRect(ctx, 16, 16, 608, 320, 28);
       ctx.fill();
 
       ctx.fillStyle = '#FFFFFF';
       ctx.font = '900 36px system-ui, sans-serif';
-      ctx.fillText('KHO BẠC NHÀ NƯỚC', 320, 85);
+      ctx.fillText(isLuxuryTax ? '★ THUẾ TIÊU DÙNG ★' : '★ KHO BẠC NHÀ NƯỚC ★', 320, 85);
 
       ctx.font = '900 66px "Fredoka", sans-serif';
       ctx.fillText(tile.name, 320, 205);
 
-      ctx.font = '150px "Segoe UI Emoji", "Apple Color Emoji", sans-serif';
-      ctx.fillText('💸', 320, 560);
+      // Huy hiệu Vector 2D dập nổi (Ví vàng hoặc Kim cương)
+      ctx.fillStyle = isLuxuryTax ? '#F3E5F5' : '#FFF8E1';
+      ctx.beginPath();
+      ctx.arc(320, 550, 140, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#F1C40F';
+      ctx.lineWidth = 10;
+      ctx.stroke();
+
+      ctx.font = '140px "Segoe UI Emoji", "Apple Color Emoji", sans-serif';
+      ctx.fillText(isLuxuryTax ? '💎' : '👛', 320, 565);
+
+      ctx.fillStyle = '#2D3436';
+      ctx.font = '900 36px system-ui, sans-serif';
+      ctx.fillText(landmark.subtitle, 320, 745);
 
       ctx.fillStyle = '#FFEAEA';
       this.drawRoundedRect(ctx, 80, 830, 480, 130, 65);
       ctx.fill();
-      ctx.strokeStyle = '#D63031';
+      ctx.strokeStyle = taxPrimary;
       ctx.lineWidth = 6;
       ctx.stroke();
 
-      ctx.fillStyle = '#D63031';
+      ctx.fillStyle = taxPrimary;
       ctx.font = '900 66px "Fredoka", sans-serif';
       ctx.fillText('-100M', 320, 895);
     }
+
+    // Vạch kẻ phân làn & gờ nổi tích hợp tự nhiên vào mép ô cờ
+    ctx.fillStyle = 'rgba(45, 52, 54, 0.12)';
+    ctx.fillRect(40, 996, 560, 12);
 
     const texture = new THREE.CanvasTexture(canvas);
     texture.generateMipmaps = true;
