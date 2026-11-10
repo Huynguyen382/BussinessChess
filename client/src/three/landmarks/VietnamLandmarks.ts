@@ -1198,66 +1198,223 @@ export class VietnamLandmarks {
       // PHÂN KHU 3: ĐÀ LẠT, BUÔN MA THUỘT, PLEIKU (Rose Pink)
       // =====================================================
       case 11: {
-        // Đà Lạt: Ga Xe Lửa Đà Lạt 3 chóp nhọn Langbiang & Rừng thông sương mù
-        const wallMat = LandmarkMaterials.getMat('dalatOchre', () => new THREE.MeshStandardMaterial({ color: '#F39C12', roughness: 0.38 }));
-        const roofMat = LandmarkMaterials.getMat('dalatRoofRed', () => new THREE.MeshStandardMaterial({ color: '#D35400', roughness: 0.28 }));
-        const glassMat = LandmarkMaterials.getMat('stainedGlass', () => new THREE.MeshStandardMaterial({ color: '#74B9FF', emissive: '#0984E3', emissiveIntensity: 0.4 }));
+        // Đà Lạt: Ga Cổ 3 Chóp Langbiang, Đường Ray Răng Cưa Thụy Sĩ, Toa Tàu Cổ, Rừng Thông & Cẩm Tú Cầu
+        // 1. Hệ vật liệu tối ưu theo LandmarkMaterials
+        const plinthMat = LandmarkMaterials.getMat('dlPlinthPlateau', () => new THREE.MeshStandardMaterial({
+          color: '#57606F',
+          roughness: 0.65
+        }));
+        const wallMat = LandmarkMaterials.getMat('dlStationOchre', () => new THREE.MeshStandardMaterial({
+          color: '#F39C12',
+          roughness: 0.38
+        }));
+        const roofMat = LandmarkMaterials.getMat('dlRoofTerracotta', () => new THREE.MeshStandardMaterial({
+          color: '#D35400',
+          roughness: 0.3
+        }));
+        const stainedGlassMat = LandmarkMaterials.getMat('dlStainedGlassArt', () => new THREE.MeshStandardMaterial({
+          color: '#74B9FF',
+          emissive: '#0984E3',
+          emissiveIntensity: 0.45,
+          roughness: 0.15
+        }));
+        const clockDialMat = LandmarkMaterials.getMat('dlClockDialWhite', () => new THREE.MeshStandardMaterial({
+          color: '#FFFDF9',
+          roughness: 0.2
+        }));
+        const brassBezelMat = LandmarkMaterials.getMat('dlBrassBezel', () => new THREE.MeshStandardMaterial({
+          color: '#F1C40F',
+          metalness: 0.88,
+          roughness: 0.18
+        }));
+        const railSteelMat = LandmarkMaterials.getMat('dlCogRailSteel', () => new THREE.MeshStandardMaterial({
+          color: '#718093',
+          metalness: 0.82,
+          roughness: 0.28
+        }));
+        const cogRackMat = LandmarkMaterials.getMat('dlCogRackGold', () => new THREE.MeshStandardMaterial({
+          color: '#F1C40F',
+          metalness: 0.88,
+          roughness: 0.16
+        }));
+        const trainWoodMat = LandmarkMaterials.getMat('dlVintageCoachWood', () => new THREE.MeshStandardMaterial({
+          color: '#84422A',
+          roughness: 0.42
+        }));
+        const trainRoofMat = LandmarkMaterials.getMat('dlVintageCoachRoof', () => new THREE.MeshStandardMaterial({
+          color: '#2C3E50',
+          roughness: 0.35
+        }));
+        const hydrangeaBlueMat = LandmarkMaterials.getMat('dlHydrangeaBlue', () => new THREE.MeshStandardMaterial({
+          color: '#74B9FF',
+          emissive: '#0984E3',
+          emissiveIntensity: 0.2,
+          roughness: 0.35
+        }));
+        const hydrangeaPinkMat = LandmarkMaterials.getMat('dlHydrangeaPink', () => new THREE.MeshStandardMaterial({
+          color: '#FD79A8',
+          emissive: '#E84393',
+          emissiveIntensity: 0.2,
+          roughness: 0.35
+        }));
+        const mistMat = LandmarkMaterials.getMat('dlMistCloudPlateau', () => new THREE.MeshStandardMaterial({
+          color: '#FFFFFF',
+          transparent: true,
+          opacity: 0.38,
+          roughness: 0.2
+        }));
 
-        // Thân nhà ga 3 gian đối xứng bằng bê tông màu đất nung
-        const body = new THREE.Mesh(new RoundedBoxGeometry(1.05, 0.46, 0.58, 4, 0.05), wallMat);
-        body.position.set(0, 0.28, 0);
+        // 2. Thềm đồi ga cao nguyên bằng đá phiến
+        const stationPlinth = new THREE.Mesh(new RoundedBoxGeometry(1.36, 0.06, 1.34, 3, 0.02), plinthMat);
+        stationPlinth.position.set(0, 0.03, 0);
+        stationPlinth.receiveShadow = true;
+
+        // 3. NHÀ GA XE LỬA ĐÀ LẠT (1932) - KIẾN TRÚC ART DECO & 3 CHÓP MÁI LANGBIANG
+        const stationGroup = new THREE.Group();
+        stationGroup.position.set(-0.06, 0.06, -0.2);
+
+        // Khối nhà ga chính 3 gian đối xứng bằng bê tông màu vàng đất nung
+        const body = new THREE.Mesh(new RoundedBoxGeometry(1.08, 0.48, 0.52, 4, 0.04), wallMat);
+        body.position.y = 0.24;
         body.castShadow = true;
+        body.receiveShadow = true;
 
-        // 3 Mái chóp tam giác nhọn đặc trưng mô phỏng dãy núi Langbiang
-        const makeGable = (gx: number, gy: number, gh: number, gw: number) => {
+        // Mái sảnh đón khách vươn dài phía trước (Canopy)
+        const frontCanopy = new THREE.Mesh(new RoundedBoxGeometry(1.16, 0.04, 0.2, 2, 0.01), roofMat);
+        frontCanopy.position.set(0, 0.46, 0.24);
+        frontCanopy.castShadow = true;
+
+        // 3 Mái chóp tam giác nhọn đặc trưng mô phỏng 3 đỉnh núi Langbiang huyền thoại
+        const makeLangbiangGable = (gx: number, gy: number, gh: number, gw: number) => {
           const gable = new THREE.Mesh(new THREE.ConeGeometry(gw, gh, 4), roofMat);
           gable.rotation.y = Math.PI / 4;
-          gable.position.set(gx, gy, 0);
+          gable.position.set(gx, gy, 0.08);
           gable.castShadow = true;
           return gable;
         };
-        const gL = makeGable(-0.32, 0.72, 0.55, 0.28);
-        const gM = makeGable(0, 0.84, 0.74, 0.32); // Chóp giữa cao ngất
-        const gR = makeGable(0.32, 0.72, 0.55, 0.28);
 
-        // Kính màu nghệ thuật hình hoa văn ở mặt tiền
-        const glassWin = new THREE.Mesh(new THREE.CircleGeometry(0.12, 16), glassMat);
-        glassWin.position.set(0, 0.65, 0.3);
+        const gL = makeLangbiangGable(-0.34, 0.72, 0.54, 0.28);
+        const gM = makeLangbiangGable(0, 0.86, 0.76, 0.34); // Chóp giữa vút cao nhất
+        const gR = makeLangbiangGable(0.34, 0.72, 0.54, 0.28);
 
-        // Mặt đồng hồ nhà ga tròn cổ điển
-        const clock = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.02, 16), LandmarkMaterials.getMat('stationClockFace', () => new THREE.MeshStandardMaterial({ color: '#FFFDF9' })));
-        clock.rotation.x = Math.PI / 2;
-        clock.position.set(0, 0.42, 0.3);
+        // Ô kính màu Stained Glass tròn hoa văn nghệ thuật mặt tiền
+        const glassWin = new THREE.Mesh(new THREE.CircleGeometry(0.125, 20), stainedGlassMat);
+        glassWin.position.set(0, 0.68, 0.29);
 
-        // Đường ray răng cưa Thụy Sĩ đặc trưng trước nhà ga Đà Lạt
-        const trackGeo = new THREE.BoxGeometry(0.85, 0.02, 0.035);
-        const railSteelMat = LandmarkMaterials.getMat('cogRailSteel', () => new THREE.MeshStandardMaterial({ color: '#718093', metalness: 0.82, roughness: 0.28 }));
-        const track1 = new THREE.Mesh(trackGeo, railSteelMat);
-        track1.position.set(0, 0.05, 0.35);
-        const track2 = new THREE.Mesh(trackGeo, railSteelMat);
-        track2.position.set(0, 0.05, 0.43);
-        const cogRack = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.028, 0.02), LandmarkMaterials.getMat('cogRackBrass', () => new THREE.MeshStandardMaterial({ color: '#F1C40F', metalness: 0.88, roughness: 0.16 })));
-        cogRack.position.set(0, 0.055, 0.39);
-        group.add(track1, track2, cogRack);
+        // Mặt đồng hồ nhà ga cổ tròn kiểu Pháp hiển thị giờ tàu
+        const clockBezel = new THREE.Mesh(new THREE.TorusGeometry(0.085, 0.012, 6, 16), brassBezelMat);
+        clockBezel.position.set(0, 0.44, 0.285);
 
-        // 2 Cây thông 3 tầng tán lá giữa làn sương mù mờ ảo Đà Lạt
+        const clockFace = new THREE.Mesh(new THREE.CircleGeometry(0.08, 16), clockDialMat);
+        clockFace.position.set(0, 0.44, 0.286);
+
+        // Cửa vòm đón khách trung tâm
+        const portal = new THREE.Mesh(new RoundedBoxGeometry(0.2, 0.26, 0.04, 2, 0.01), roofMat);
+        portal.position.set(0, 0.13, 0.26);
+
+        stationGroup.add(body, frontCanopy, gL, gM, gR, glassWin, clockBezel, clockFace, portal);
+
+        // 4. ĐƯỜNG RAY RĂNG CƯA THỤY SĨ & TOA TÀU GỖ CỔ ĐIỂN ĐÀ LẠT
+        const railwayGroup = new THREE.Group();
+        railwayGroup.position.set(0, 0.06, 0.28);
+
+        // Nền đá dăm rải đường ray
+        const ballast = new THREE.Mesh(new RoundedBoxGeometry(1.24, 0.02, 0.32, 1, 0.01), plinthMat);
+        ballast.position.y = 0.01;
+
+        // 2 Thanh ray kim loại sáng bóng
+        const trackL = new THREE.Mesh(new THREE.BoxGeometry(1.24, 0.024, 0.025), railSteelMat);
+        trackL.position.set(0, 0.024, -0.065);
+        const trackR = new THREE.Mesh(new THREE.BoxGeometry(1.24, 0.024, 0.025), railSteelMat);
+        trackR.position.set(0, 0.024, 0.065);
+
+        // Thanh răng cưa Thụy Sĩ bánh răng leo dốc (Cog rack) ở giữa ray
+        const cogRack = new THREE.Mesh(new THREE.BoxGeometry(1.24, 0.03, 0.024), cogRackMat);
+        cogRack.position.set(0, 0.028, 0);
+
+        // Tà vẹt gỗ nâu sẫm
+        for (let s = -0.54; s <= 0.54; s += 0.18) {
+          const tie = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.014, 0.24), trainWoodMat);
+          tie.position.set(s, 0.016, 0);
+          railwayGroup.add(tie);
+        }
+
+        // Toa tàu gỗ cổ điển phong cách Đông Dương đậu trên đường ray
+        const vintageCoach = new THREE.Group();
+        vintageCoach.position.set(0.18, 0.05, 0);
+
+        // Thân toa tàu bằng gỗ màu nâu hạt dẻ
+        const coachBody = new THREE.Mesh(new RoundedBoxGeometry(0.48, 0.16, 0.17, 2, 0.01), trainWoodMat);
+        coachBody.position.y = 0.09;
+        coachBody.castShadow = true;
+
+        // Mái cong toa tàu màu xanh than
+        const coachRoof = new THREE.Mesh(new RoundedBoxGeometry(0.52, 0.03, 0.19, 2, 0.01), trainRoofMat);
+        coachRoof.position.y = 0.185;
+
+        // Cửa sổ kính dọc thân toa tàu
+        [-0.14, 0, 0.14].forEach(wx => {
+          const coachWinL = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.055, 0.174), stainedGlassMat);
+          coachWinL.position.set(wx, 0.1, 0);
+          vintageCoach.add(coachWinL);
+        });
+
+        // Bánh xe thép toa tàu
+        [[-0.15, 0.03, 0.08], [0.15, 0.03, 0.08], [-0.15, 0.03, -0.08], [0.15, 0.03, -0.08]].forEach(([wx, wy, wz]) => {
+          const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.018, 10), railSteelMat);
+          wheel.rotation.x = Math.PI / 2;
+          wheel.position.set(wx, wy, wz);
+          vintageCoach.add(wheel);
+        });
+
+        vintageCoach.add(coachBody, coachRoof);
+        railwayGroup.add(ballast, trackL, trackR, cogRack, vintageCoach);
+
+        // 5. CỤM THÔNG BA LÁ CAO NGUYÊN & LÀN SƯƠNG MÙ BẢNG LẢNG
+        const pineForest = new THREE.Group();
         const pine1 = LandmarkHelpers.createMiniPineTree();
-        pine1.position.set(0.48, 0.06, 0.24);
+        pine1.position.set(-0.46, 0.06, 0.16);
+        pine1.scale.set(0.85, 0.85, 0.85);
+
         const pine2 = LandmarkHelpers.createMiniPineTree();
-        pine2.scale.set(0.65, 0.65, 0.65);
-        pine2.position.set(-0.48, 0.06, 0.2);
+        pine2.position.set(0.48, 0.06, -0.25);
+        pine2.scale.set(0.72, 0.72, 0.72);
 
-        const mistMat = LandmarkMaterials.getMat('dalatMistCloud', () => new THREE.MeshStandardMaterial({
-          color: '#FFFFFF',
-          transparent: true,
-          opacity: 0.42,
-          roughness: 0.2
-        }));
-        const mist = new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.68, 0.06, 16), mistMat);
-        mist.position.set(0, 0.14, 0.12);
-        mist.userData = { animType: 'float_wave' };
+        const pine3 = LandmarkHelpers.createMiniPineTree();
+        pine3.position.set(0.44, 0.06, 0.38);
+        pine3.scale.set(0.52, 0.52, 0.52);
 
-        group.add(body, gL, gM, gR, glassWin, clock, pine1, pine2, mist);
+        pineForest.add(pine1, pine2, pine3);
+
+        // Làn sương mù mờ ảo bồng bềnh đặc sản Đà Lạt
+        const mistCloud = new THREE.Mesh(new THREE.CylinderGeometry(0.68, 0.78, 0.05, 20), mistMat);
+        mistCloud.position.set(0, 0.12, 0.08);
+        mistCloud.userData = { animType: 'float_wave' };
+
+        // 6. KHÓM HOA CẨM TÚ CẦU ĐÀ LẠT RỰC RỠ SẮC XANH - HỒNG
+        const flowerGroup = new THREE.Group();
+        const flowerBushes: Array<{ pos: [number, number, number]; mat: THREE.Material }> = [
+          { pos: [-0.32, 0.08, 0.14], mat: hydrangeaBlueMat },
+          { pos: [-0.24, 0.08, 0.16], mat: hydrangeaPinkMat },
+          { pos: [-0.38, 0.08, 0.36], mat: hydrangeaBlueMat },
+          { pos: [0.34, 0.08, 0.14], mat: hydrangeaPinkMat },
+          { pos: [0.44, 0.08, 0.12], mat: hydrangeaBlueMat }
+        ];
+
+        flowerBushes.forEach(({ pos, mat }) => {
+          const bloom = new THREE.Mesh(new THREE.DodecahedronGeometry(0.045, 1), mat);
+          bloom.position.set(pos[0], pos[1], pos[2]);
+          flowerGroup.add(bloom);
+        });
+
+        group.add(
+          stationPlinth,
+          stationGroup,
+          railwayGroup,
+          pineForest,
+          mistCloud,
+          flowerGroup
+        );
         break;
       }
 
