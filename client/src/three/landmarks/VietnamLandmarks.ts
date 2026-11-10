@@ -402,81 +402,262 @@ export class VietnamLandmarks {
       // PHÂN KHU 2: VŨNG TÀU, PHAN THIẾT, NHA TRANG (Light Blue)
       // =====================================================
       case 6: {
-        // Vũng Tàu: Hải Đăng Cổ Núi Nhỏ trên đỉnh Tao Phùng & Rặng Hoa Giấy Hồng
-        const mountainMat = LandmarkMaterials.getMat('vtMountainGreen', () => new THREE.MeshStandardMaterial({ color: '#00B894', roughness: 0.55 }));
-        const stoneTowerMat = LandmarkMaterials.getMat('vtTowerWhite', () => new THREE.MeshStandardMaterial({ color: '#F8F9FA', roughness: 0.25 }));
-        const domeRedMat = LandmarkMaterials.getMat('vtDomeRed', () => new THREE.MeshStandardMaterial({ color: '#C0392B', roughness: 0.28 }));
-        const bougainvilleaMat = LandmarkMaterials.getMat('vtBougainvilleaPink', () => new THREE.MeshStandardMaterial({
-          color: '#FD79A8',
-          emissive: '#E84393',
-          emissiveIntensity: 0.35,
-          roughness: 0.3
+        // Vũng Tàu: Hải Đăng Cổ Núi Nhỏ (1862), Trận Địa Pháo Cổ, Nhà Quản Đăng Pháp & Dốc Hoa Giấy
+        // 1. Hệ vật liệu tối ưu theo LandmarkMaterials
+        const oceanMat = LandmarkMaterials.getMat('vtOceanDeep', () => new THREE.MeshStandardMaterial({
+          color: '#0984E3',
+          roughness: 0.12,
+          transparent: true,
+          opacity: 0.88
+        }));
+        const waveFoamMat = LandmarkMaterials.getMat('vtWaveFoam', () => new THREE.MeshStandardMaterial({
+          color: '#E0F7FA',
+          roughness: 0.25,
+          transparent: true,
+          opacity: 0.8
+        }));
+        const cliffRockMat = LandmarkMaterials.getMat('vtCliffRock', () => new THREE.MeshStandardMaterial({
+          color: '#636E72',
+          roughness: 0.72
+        }));
+        const mountainGreenMat = LandmarkMaterials.getMat('vtMountainGreen', () => new THREE.MeshStandardMaterial({
+          color: '#00B894',
+          roughness: 0.55
+        }));
+        const roadMat = LandmarkMaterials.getMat('vtHillRoadAsphalt', () => new THREE.MeshStandardMaterial({
+          color: '#4B6584',
+          roughness: 0.65
+        }));
+        const stoneTowerMat = LandmarkMaterials.getMat('vtTowerWhite', () => new THREE.MeshStandardMaterial({
+          color: '#F8F9FA',
+          roughness: 0.22
+        }));
+        const domeRedMat = LandmarkMaterials.getMat('vtDomeRed', () => new THREE.MeshStandardMaterial({
+          color: '#C0392B',
+          roughness: 0.28
         }));
         const lanternGlowMat = LandmarkMaterials.getMat('vtLanternGlow', () => new THREE.MeshStandardMaterial({
           color: '#FFF275',
           emissive: '#F1C40F',
-          emissiveIntensity: 1.3,
+          emissiveIntensity: 1.35,
           roughness: 0.1
         }));
+        const frenchWallMat = LandmarkMaterials.getMat('vtFrenchWallCream', () => new THREE.MeshStandardMaterial({
+          color: '#F5CD79',
+          roughness: 0.42
+        }));
+        const frenchRoofMat = LandmarkMaterials.getMat('vtFrenchRoofTerracotta', () => new THREE.MeshStandardMaterial({
+          color: '#D35400',
+          roughness: 0.35
+        }));
+        const metalChromeMat = LandmarkMaterials.getMat('vtGalleryChrome', () => new THREE.MeshStandardMaterial({
+          color: '#DFE6E9',
+          metalness: 0.88,
+          roughness: 0.15
+        }));
+        const cannonIronMat = LandmarkMaterials.getMat('vtCannonIron', () => new THREE.MeshStandardMaterial({
+          color: '#1E272E',
+          metalness: 0.85,
+          roughness: 0.24
+        }));
+        const cannonGoldMat = LandmarkMaterials.getMat('vtCannonGold', () => new THREE.MeshStandardMaterial({
+          color: '#F1C40F',
+          metalness: 0.88,
+          roughness: 0.18
+        }));
+        const bougainvilleaMat = LandmarkMaterials.getMat('vtBougainvilleaPink', () => new THREE.MeshStandardMaterial({
+          color: '#FD79A8',
+          emissive: '#E84393',
+          emissiveIntensity: 0.38,
+          roughness: 0.3
+        }));
+        const bougainvilleaLeafMat = LandmarkMaterials.getMat('vtBougainvilleaLeaf', () => new THREE.MeshStandardMaterial({
+          color: '#2ECC71',
+          roughness: 0.4
+        }));
+        const windowTintMat = LandmarkMaterials.getMat('vtWindowTint', () => new THREE.MeshStandardMaterial({
+          color: '#2C3E50',
+          roughness: 0.1,
+          metalness: 0.8
+        }));
 
-        // 1. Mỏm núi đá xanh biếc
-        const mountGeo = new THREE.SphereGeometry(0.65, 22, 16);
-        const mount = new THREE.Mesh(mountGeo, mountainMat);
-        mount.scale.set(1.25, 0.45, 1.15);
-        mount.position.set(0, 0.14, 0);
+        // 2. Thềm biển Đông & Vách đá Núi Nhỏ (Tao Phùng)
+        const sea = new THREE.Mesh(new RoundedBoxGeometry(0.85, 0.05, 0.72, 3, 0.02), oceanMat);
+        sea.position.set(0.32, 0.025, 0.34);
+
+        const waveFoam = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.028, 6, 20, Math.PI * 0.85), waveFoamMat);
+        waveFoam.rotation.x = Math.PI / 2;
+        waveFoam.position.set(0.28, 0.052, 0.26);
+        waveFoam.userData = { animType: 'float_wave' };
+
+        // Mỏm Núi Nhỏ vách đá xanh biếc
+        const mount = new THREE.Mesh(new THREE.SphereGeometry(0.68, 22, 16), mountainGreenMat);
+        mount.scale.set(1.22, 0.48, 1.12);
+        mount.position.set(-0.06, 0.12, -0.04);
         mount.receiveShadow = true;
 
-        // 2. Tháp đá hình trụ côn màu trắng sữa cao 1.5 units
-        const tower = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.35, 1.28, 24), stoneTowerMat);
-        tower.position.set(0, 0.82, 0);
+        const cliffBase = new THREE.Mesh(new RoundedBoxGeometry(0.72, 0.14, 0.48, 2, 0.04), cliffRockMat);
+        cliffBase.position.set(0.18, 0.07, 0.14);
+        cliffBase.receiveShadow = true;
+
+        // Con đường dốc uốn lượn ven sườn núi lên đỉnh hải đăng
+        const hillRoad = new THREE.Mesh(new THREE.TorusGeometry(0.52, 0.045, 4, 24, Math.PI * 0.7), roadMat);
+        hillRoad.rotation.x = Math.PI / 2;
+        hillRoad.rotation.z = -0.4;
+        hillRoad.position.set(-0.08, 0.16, 0.02);
+
+        // 3. NGỌN HẢI ĐĂNG CỔ VŨNG TÀU (XÂY DỰNG NĂM 1862)
+        const lighthouseGroup = new THREE.Group();
+        lighthouseGroup.position.set(-0.12, 0.16, -0.06);
+
+        // Thềm đế tháp đá hoa cương tròn
+        const towerPlinth = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.48, 0.12, 24), stoneTowerMat);
+        towerPlinth.position.y = 0.22;
+        towerPlinth.receiveShadow = true;
+
+        // Tháp đá hình trụ côn màu trắng muốt cao 1.35m
+        const tower = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.36, 1.32, 24), stoneTowerMat);
+        tower.position.y = 0.94;
         tower.castShadow = true;
+        tower.receiveShadow = true;
 
-        // Vành ban công đài quan sát bát giác
-        const gallery = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.36, 0.08, 8), stoneTowerMat);
-        gallery.position.set(0, 1.46, 0);
+        // Các ô cửa sổ vòm đón gió biển dọc thân tháp
+        [0.54, 0.88, 1.22].forEach((wy, idx) => {
+          const win = new THREE.Mesh(new RoundedBoxGeometry(0.04, 0.08, 0.015, 2, 0.003), windowTintMat);
+          win.position.set(0, wy, 0.31 - idx * 0.04);
+          lighthouseGroup.add(win);
+        });
 
-        // Lồng đèn kính bát giác & luồng sáng vàng ấm
-        const lanternRoom = new THREE.Mesh(new THREE.CylinderGeometry(0.23, 0.23, 0.22, 8), lanternGlowMat);
-        lanternRoom.position.set(0, 1.6, 0);
+        // Đường hầm vòm kiên cố kiểu Pháp nối vào chân tháp
+        const tunnelArc = new THREE.Mesh(new RoundedBoxGeometry(0.18, 0.22, 0.28, 3, 0.02), stoneTowerMat);
+        tunnelArc.position.set(-0.28, 0.26, -0.08);
+
+        // Ban công đài quan sát bát giác (Observation Gallery)
+        const gallery = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.38, 0.07, 8), stoneTowerMat);
+        gallery.position.y = 1.62;
+
+        // Lan can hoa sắt bảo vệ ban công
+        const rail = new THREE.Mesh(new THREE.CylinderGeometry(0.375, 0.375, 0.08, 16, 1, true), metalChromeMat);
+        rail.position.y = 1.69;
+
+        // Lồng đèn kính bát giác thấu kính Fresnel & luồng sáng vàng ấm
+        const lanternRoom = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 0.24, 8), lanternGlowMat);
+        lanternRoom.position.y = 1.77;
         lanternRoom.userData = { animType: 'lighthouse' };
 
-        // Mái vòm đỏ trên đỉnh
-        const dome = new THREE.Mesh(new THREE.SphereGeometry(0.25, 18, 14, 0, Math.PI * 2, 0, Math.PI / 2), domeRedMat);
-        dome.position.set(0, 1.71, 0);
+        // Mái vòm bán cầu màu đỏ thắm trên đỉnh tháp
+        const dome = new THREE.Mesh(new THREE.SphereGeometry(0.26, 18, 14, 0, Math.PI * 2, 0, Math.PI / 2), domeRedMat);
+        dome.position.y = 1.89;
+        dome.castShadow = true;
 
-        // Luồng sáng đèn pha hải đăng hình nón quét góc 180 độ ra biển
+        // Cột thu lôi dát vàng đỉnh tháp
+        const spire = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.016, 0.24, 8), cannonGoldMat);
+        spire.position.y = 2.16;
+
+        const spireBall = new THREE.Mesh(new THREE.SphereGeometry(0.028, 8, 8), cannonGoldMat);
+        spireBall.position.y = 2.29;
+
+        // Luồng sáng đèn pha hải đăng 360 độ quét ra biển đêm
         const beaconConeMat = LandmarkMaterials.getMat('vtBeaconLightCone', () => new THREE.MeshBasicMaterial({
           color: '#FFEAA7',
           transparent: true,
-          opacity: 0.35,
+          opacity: 0.32,
           side: THREE.DoubleSide,
           depthWrite: false,
           blending: THREE.AdditiveBlending
         }));
         const beaconArm = new THREE.Group();
-        beaconArm.position.set(0, 1.6, 0);
+        beaconArm.position.y = 1.77;
         beaconArm.userData = { animType: 'spin_y' };
-        const beamCone = new THREE.Mesh(new THREE.ConeGeometry(0.44, 1.35, 16, 1, true), beaconConeMat);
-        beamCone.rotation.x = Math.PI / 2.25;
-        beamCone.position.set(0, 0, 0.68);
-        beaconArm.add(beamCone);
-        group.add(beaconArm);
 
-        // 3. Chân tháp phủ rặng hoa giấy màu hồng tươi rực rỡ
-        const bougainvilleaOffsets = [
-          [-0.36, 0.28, 0.22, 0.16],
-          [-0.22, 0.32, 0.34, 0.14],
-          [0.28, 0.28, 0.28, 0.17],
-          [0.38, 0.24, -0.12, 0.15]
+        const beamCone = new THREE.Mesh(new THREE.ConeGeometry(0.48, 1.45, 18, 1, true), beaconConeMat);
+        beamCone.rotation.x = Math.PI / 2.22;
+        beamCone.position.set(0, 0, 0.72);
+        beaconArm.add(beamCone);
+
+        lighthouseGroup.add(
+          towerPlinth, tower, tunnelArc,
+          gallery, rail, lanternRoom, dome, spire, spireBall,
+          beaconArm
+        );
+
+        // 4. NHÀ CÔNG VỤ QUẢN ĐĂNG CỔ KÍNH KIỂU PHÁP
+        const houseGroup = new THREE.Group();
+        houseGroup.position.set(-0.46, 0.26, -0.22);
+        houseGroup.rotation.y = 0.35;
+
+        const houseBody = new THREE.Mesh(new RoundedBoxGeometry(0.36, 0.24, 0.26, 3, 0.02), frenchWallMat);
+        houseBody.position.y = 0.12;
+        houseBody.castShadow = true;
+
+        const houseRoof = new THREE.Mesh(new THREE.ConeGeometry(0.32, 0.16, 4), frenchRoofMat);
+        houseRoof.rotation.y = Math.PI / 4;
+        houseRoof.position.y = 0.32;
+        houseRoof.scale.set(1.15, 1.0, 0.95);
+        houseRoof.castShadow = true;
+
+        const houseDoor = new THREE.Mesh(new RoundedBoxGeometry(0.06, 0.12, 0.015, 1, 0.002), domeRedMat);
+        houseDoor.position.set(0, 0.06, 0.132);
+
+        houseGroup.add(houseBody, houseRoof, houseDoor);
+
+        // 5. TRẬN ĐỊA PHÁO CỔ NÚI NHỎ HƯỚNG RA BIỂN ĐÔNG
+        const cannonGroup = new THREE.Group();
+        cannonGroup.position.set(0.24, 0.18, 0.06);
+        cannonGroup.rotation.y = 0.55; // Nòng pháo giương hướng ra biển khơi
+
+        // Bệ pháo xoay bằng đá hoa cương
+        const cannonBase = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.14, 0.04, 16), cliffRockMat);
+        cannonBase.position.y = 0.02;
+
+        // Giá đỡ pháo bằng sắt đen
+        const cannonCarriage = new THREE.Mesh(new RoundedBoxGeometry(0.12, 0.08, 0.16, 2, 0.01), cannonIronMat);
+        cannonCarriage.position.y = 0.08;
+
+        // Nòng pháo gang cổ điển vươn cao
+        const cannonBarrel = new THREE.Mesh(new THREE.CylinderGeometry(0.026, 0.042, 0.28, 12), cannonIronMat);
+        cannonBarrel.rotation.x = Math.PI / 2 - 0.22;
+        cannonBarrel.position.set(0, 0.12, 0.06);
+        cannonBarrel.castShadow = true;
+
+        // Vành đồng miệng nòng pháo
+        const cannonMuzzle = new THREE.Mesh(new THREE.TorusGeometry(0.028, 0.006, 6, 12), cannonGoldMat);
+        cannonMuzzle.rotation.x = Math.PI / 2 - 0.22;
+        cannonMuzzle.position.set(0, 0.15, 0.18);
+
+        cannonGroup.add(cannonBase, cannonCarriage, cannonBarrel, cannonMuzzle);
+
+        // 6. DỐC HOA GIẤY NÚI NHỎ RỰC RỠ (ĐẶC SẢN VŨNG TÀU)
+        const bougainvilleaCluster = new THREE.Group();
+        const flowerSpots = [
+          [-0.34, 0.32, 0.18, 0.16, 0.2],
+          [-0.22, 0.36, 0.32, 0.14, 0.15],
+          [-0.04, 0.32, 0.36, 0.15, -0.1],
+          [0.12, 0.26, 0.28, 0.13, 0.3],
+          [0.34, 0.22, -0.06, 0.15, 0.4],
+          [-0.38, 0.28, -0.05, 0.12, -0.3]
         ];
-        bougainvilleaOffsets.forEach(([bx, by, bz, br]) => {
-          const blossom = new THREE.Mesh(new THREE.SphereGeometry(br, 12, 10), bougainvilleaMat);
-          blossom.scale.set(1.2, 0.75, 1.2);
-          blossom.position.set(bx, by, bz);
-          group.add(blossom);
+
+        flowerSpots.forEach(([fx, fy, fz, fr, rot]) => {
+          // Thảm lá xanh nền
+          const leaves = new THREE.Mesh(new THREE.SphereGeometry(fr * 0.9, 10, 8), bougainvilleaLeafMat);
+          leaves.scale.set(1.2, 0.65, 1.1);
+          leaves.position.set(fx, fy - 0.02, fz);
+
+          // Rặng hoa giấy hồng tím rực rỡ
+          const blossom = new THREE.Mesh(new THREE.SphereGeometry(fr, 12, 10), bougainvilleaMat);
+          blossom.scale.set(1.25, 0.72, 1.25);
+          blossom.position.set(fx, fy, fz);
+          blossom.rotation.y = rot;
+
+          bougainvilleaCluster.add(leaves, blossom);
         });
 
-        group.add(mount, tower, gallery, lanternRoom, dome);
+        group.add(
+          sea, waveFoam, mount, cliffBase, hillRoad,
+          lighthouseGroup, houseGroup,
+          cannonGroup, bougainvilleaCluster
+        );
         break;
       }
 
