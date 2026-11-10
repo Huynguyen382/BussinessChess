@@ -122,7 +122,7 @@ const LANDMARK_ICONS: Record<number, string> = {
   2: '🎁',  // Khí vận
   3: '⛵',  // Cà Mau (Cột Mốc GPS 0001 & Con Tàu Mũi Cà Mau)
   4: '👛',  // Thuế thu nhập
-  5: '🚂',  // Ga Miền Tây (Đầu Máy Hơi Nước Cổ Điển)
+  5: '🚌',  // Bến Xe Miền Tây (Xe Khách Liên Tỉnh & Nhà Ga Hiện Đại)
   6: '🗼',  // Vũng Tàu (Hải Đăng Cổ Núi Nhỏ & Hoa Giấy)
   7: '❓',  // Cơ hội
   8: '🏜️', // Phan Thiết (Tháp Chăm Poshanư & Đồi Cát Bay)

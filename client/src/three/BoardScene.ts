@@ -233,7 +233,7 @@ export class BoardScene {
       2: { icon: '🎁', subtitle: 'Hòm Khí Vận' },
       3: { icon: '⛵', subtitle: 'Mũi Cực Nam Tổ Quốc' },
       4: { icon: '👛', subtitle: 'Thuế Nhà Nước' },
-      5: { icon: '🚂', subtitle: 'Ga Đầu Mối Miền Tây' },
+      5: { icon: '🚌', subtitle: 'Bến Xe Khách Miền Tây' },
       6: { icon: '🗼', subtitle: 'Hải Đăng Núi Nhỏ' },
       7: { icon: '❓', subtitle: 'Thẻ May Rủi' },
       8: { icon: '🏜️', subtitle: 'Tháp Chăm Poshanư' },
