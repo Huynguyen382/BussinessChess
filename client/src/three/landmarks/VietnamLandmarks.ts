@@ -1419,56 +1419,279 @@ export class VietnamLandmarks {
       }
 
       case 13: {
-        // Buôn Ma Thuột: Nhà Rông Tây Nguyên mái lưỡi búa vút cao & Dàn Cồng Chiêng 3 chiếc
-        const thatchMat = LandmarkMaterials.getMat('rongThatchGold', () => new THREE.MeshStandardMaterial({ color: '#C99716', roughness: 0.72 }));
-        const woodMat = LandmarkMaterials.getMat('rongTimberDark', () => new THREE.MeshStandardMaterial({ color: '#4E342E', roughness: 0.6 }));
-        const brocadeRedMat = LandmarkMaterials.getMat('rongBrocadeRed', () => new THREE.MeshStandardMaterial({ color: '#C0392B', roughness: 0.4 }));
-        const gongBrassMat = LandmarkMaterials.getMat('gongBrass', () => new THREE.MeshStandardMaterial({ color: '#F1C40F', metalness: 0.88, roughness: 0.15 }));
+        // Buôn Ma Thuột: Nhà Rông Đại Ngàn, Dàn Cồng Chiêng UNESCO, Lửa Trại, Voi Bản Đôn & Cây Cà Phê Robusta
+        // 1. Hệ vật liệu tối ưu theo LandmarkMaterials
+        const basaltSoilMat = LandmarkMaterials.getMat('bmtBasaltSoil', () => new THREE.MeshStandardMaterial({
+          color: '#5C382A',
+          roughness: 0.72
+        }));
+        const thatchMat = LandmarkMaterials.getMat('bmtThatchGold', () => new THREE.MeshStandardMaterial({
+          color: '#D4A017',
+          roughness: 0.75
+        }));
+        const timberDarkMat = LandmarkMaterials.getMat('bmtTimberLim', () => new THREE.MeshStandardMaterial({
+          color: '#4E342E',
+          roughness: 0.58
+        }));
+        const brocadeRedMat = LandmarkMaterials.getMat('bmtBrocadeRed', () => new THREE.MeshStandardMaterial({
+          color: '#C0392B',
+          roughness: 0.38
+        }));
+        const brocadeWhiteMat = LandmarkMaterials.getMat('bmtBrocadeWhite', () => new THREE.MeshStandardMaterial({
+          color: '#F8F9FA',
+          roughness: 0.35
+        }));
+        const gongBrassMat = LandmarkMaterials.getMat('bmtGongBrassShiny', () => new THREE.MeshStandardMaterial({
+          color: '#F1C40F',
+          metalness: 0.9,
+          roughness: 0.15,
+          emissive: '#D35400',
+          emissiveIntensity: 0.2
+        }));
+        const fireFlameMat = LandmarkMaterials.getMat('bmtBonfireFlame', () => new THREE.MeshStandardMaterial({
+          color: '#FF7675',
+          emissive: '#FF3838',
+          emissiveIntensity: 1.35,
+          roughness: 0.2
+        }));
+        const fireWoodMat = LandmarkMaterials.getMat('bmtFireWood', () => new THREE.MeshStandardMaterial({
+          color: '#2D3436',
+          roughness: 0.85
+        }));
+        const elephantGrayMat = LandmarkMaterials.getMat('bmtElephantStoneGray', () => new THREE.MeshStandardMaterial({
+          color: '#636E72',
+          roughness: 0.65
+        }));
+        const ivoryTuskMat = LandmarkMaterials.getMat('bmtIvoryTuskWhite', () => new THREE.MeshStandardMaterial({
+          color: '#FFFDF9',
+          roughness: 0.2
+        }));
+        const coffeeBerryMat = LandmarkMaterials.getMat('bmtCoffeeBerryRed', () => new THREE.MeshStandardMaterial({
+          color: '#C0392B',
+          emissive: '#E74C3C',
+          emissiveIntensity: 0.25,
+          roughness: 0.2
+        }));
+        const coffeeFoliageMat = LandmarkMaterials.getMat('bmtCoffeeLeafGreen', () => new THREE.MeshStandardMaterial({
+          color: '#1B5E20',
+          roughness: 0.38
+        }));
+        const jarClayMat = LandmarkMaterials.getMat('bmtJarClayBrown', () => new THREE.MeshStandardMaterial({
+          color: '#8E44AD',
+          roughness: 0.6
+        }));
 
-        // Sàn nhà sàn bằng gỗ lim nâng cao trên các cột trụ vững chắc
-        const floor = new THREE.Mesh(new RoundedBoxGeometry(0.85, 0.08, 0.54, 2, 0.02), woodMat);
-        floor.position.set(-0.08, 0.28, -0.05);
+        // 2. Thềm đất đỏ bazan Tây Nguyên màu nâu đỏ mỡ màng
+        const ground = new THREE.Mesh(new RoundedBoxGeometry(1.36, 0.06, 1.34, 3, 0.02), basaltSoilMat);
+        ground.position.set(0, 0.03, 0);
+        ground.receiveShadow = true;
 
-        for (let x = -0.4; x <= 0.24; x += 0.32) {
-          for (let z = -0.23; z <= 0.13; z += 0.36) {
-            const stilt = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.04, 0.28, 10), woodMat);
-            stilt.position.set(x, 0.14, z);
-            group.add(stilt);
-          }
+        // 3. NHÀ RÔNG TÂY NGUYÊN MÁI LƯỠI BÚA KHỔNG LỒ VÚT CAO
+        const rongGroup = new THREE.Group();
+        rongGroup.position.set(-0.12, 0.06, -0.12);
+
+        // Sàn gỗ lim nâng cao trên 8 cột trụ vững chắc
+        const floor = new THREE.Mesh(new RoundedBoxGeometry(0.88, 0.07, 0.54, 3, 0.02), timberDarkMat);
+        floor.position.set(0, 0.26, 0);
+        floor.castShadow = true;
+        floor.receiveShadow = true;
+
+        // 8 Cột gỗ lim tròn chống đỡ sàn
+        for (let x = -0.36; x <= 0.36; x += 0.24) {
+          [-0.2, 0.2].forEach(z => {
+            const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.034, 0.26, 10), timberDarkMat);
+            pillar.position.set(x, 0.13, z);
+            rongGroup.add(pillar);
+          });
         }
 
-        // Mái nhà rông hình lưỡi búa khổng lồ cao 1.55 units có đai hoa văn thổ cẩm
-        const roof = new THREE.Mesh(new THREE.ConeGeometry(0.52, 1.55, 4), thatchMat);
+        // Vách nhà bằng gỗ & tre đan
+        const walls = new THREE.Mesh(new RoundedBoxGeometry(0.78, 0.22, 0.44, 2, 0.01), timberDarkMat);
+        walls.position.set(0, 0.39, 0);
+
+        // Mái Nhà Rông hình lưỡi búa khổng lồ cao 1.6m vút nhọn kiêu hãnh rẽ gió đại ngàn
+        const roof = new THREE.Mesh(new THREE.ConeGeometry(0.58, 1.65, 4), thatchMat);
         roof.rotation.y = Math.PI / 4;
-        roof.scale.set(0.85, 1.0, 0.5);
-        roof.position.set(-0.08, 1.08, -0.05);
+        roof.scale.set(0.85, 1.0, 0.46);
+        roof.position.set(0, 1.15, 0);
         roof.castShadow = true;
 
-        const brocadeBand = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.06, 0.28), brocadeRedMat);
-        brocadeBand.position.set(-0.08, 0.92, -0.05);
+        // Dải hoa văn thổ cẩm đỏ - trắng truyền thống chạy ngang mái nhà rông
+        const brocadeBandRed = new THREE.Mesh(new THREE.BoxGeometry(0.54, 0.08, 0.29), brocadeRedMat);
+        brocadeBandRed.position.set(0, 0.98, 0);
 
-        const stairs = new THREE.Mesh(new RoundedBoxGeometry(0.12, 0.32, 0.04, 2, 0.01), woodMat);
-        stairs.position.set(-0.08, 0.16, 0.28);
-        stairs.rotation.x = 0.35;
+        const brocadeBandWhite = new THREE.Mesh(new THREE.BoxGeometry(0.545, 0.02, 0.295), brocadeWhiteMat);
+        brocadeBandWhite.position.set(0, 0.98, 0);
 
-        // Giá treo 3 chiếc Cồng Chiêng đồng vàng óng ánh
-        const rackPostL = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.025, 0.42, 8), woodMat);
-        rackPostL.position.set(0.18, 0.21, 0.28);
-        const rackPostR = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.025, 0.42, 8), woodMat);
-        rackPostR.position.set(0.54, 0.21, 0.28);
-        const rackBeam = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.42, 8), woodMat);
-        rackBeam.rotation.z = Math.PI / 2;
-        rackBeam.position.set(0.36, 0.4, 0.28);
-
-        [0.25, 0.36, 0.47].forEach((gx, idx) => {
-          const r = 0.055 - idx * 0.008;
-          const gong = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 0.025, 14), gongBrassMat);
-          gong.rotation.x = Math.PI / 2;
-          gong.position.set(gx, 0.26, 0.28);
-          group.add(gong);
+        // 2 Sừng trâu (Kơ-pan) vươn cao ở hai đầu đỉnh nóc nhà rông
+        [-0.2, 0.2].forEach(hx => {
+          const horn = new THREE.Mesh(new THREE.ConeGeometry(0.035, 0.18, 6), gongBrassMat);
+          horn.rotation.z = (hx > 0 ? -1 : 1) * 0.35;
+          horn.position.set(hx, 1.95, 0);
+          rongGroup.add(horn);
         });
 
-        group.add(floor, roof, brocadeBand, stairs, rackPostL, rackPostR, rackBeam);
+        // Cầu thang gỗ đẽo hình bầu sữa mẹ (đặc trưng chế độ mẫu hệ Ê Đê)
+        const stairs = new THREE.Mesh(new RoundedBoxGeometry(0.12, 0.32, 0.04, 2, 0.01), timberDarkMat);
+        stairs.position.set(0, 0.15, 0.32);
+        stairs.rotation.x = 0.45;
+
+        // Bầu sữa mẹ chạm khắc trên đầu cầu thang
+        [-0.032, 0.032].forEach(sx => {
+          const breast = new THREE.Mesh(new THREE.SphereGeometry(0.022, 8, 8), timberDarkMat);
+          breast.position.set(sx, 0.28, 0.26);
+          rongGroup.add(breast);
+        });
+
+        rongGroup.add(floor, walls, roof, brocadeBandRed, brocadeBandWhite, stairs);
+
+        // 4. GIÁ TREO DÀN CỒNG CHIÊNG TÂY NGUYÊN (UNESCO)
+        const gongRack = new THREE.Group();
+        gongRack.position.set(0.24, 0.06, 0.28);
+
+        // Cột giá gỗ mun
+        const postL = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.022, 0.42, 8), timberDarkMat);
+        postL.position.set(-0.2, 0.21, 0);
+        const postR = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.022, 0.42, 8), timberDarkMat);
+        postR.position.set(0.2, 0.21, 0);
+
+        const xBeam = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.44, 8), timberDarkMat);
+        xBeam.rotation.z = Math.PI / 2;
+        xBeam.position.set(0, 0.4, 0);
+
+        // 3 Chiếc Cồng Chiêng (Chiêng Mẹ, Chiêng Con, Chiêng Núi) bằng đồng thau vàng óng
+        const gongs: Array<{ x: number; r: number }> = [
+          { x: -0.12, r: 0.065 },
+          { x: 0, r: 0.054 },
+          { x: 0.12, r: 0.044 }
+        ];
+        gongs.forEach(({ x, r }) => {
+          const gBody = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 0.024, 16), gongBrassMat);
+          gBody.rotation.x = Math.PI / 2;
+          gBody.position.set(x, 0.26, 0);
+
+          // Núm chiêng tròn trung tâm
+          const gBoss = new THREE.Mesh(new THREE.SphereGeometry(r * 0.35, 10, 10), gongBrassMat);
+          gBoss.position.set(x, 0.26, 0.015);
+
+          // Dây treo da trâu
+          const cord = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.003, 0.14, 4), timberDarkMat);
+          cord.position.set(x, 0.33, 0);
+
+          gongRack.add(gBody, gBoss, cord);
+        });
+        gongRack.add(postL, postR, xBeam);
+
+        // 5. ĐỐNG LỬA TRẠI BẬP BÙNG ĐẠI NGÀN (LỬA ĐÊM XOANG TÂY NGUYÊN)
+        const bonfireGroup = new THREE.Group();
+        bonfireGroup.position.set(-0.16, 0.06, 0.36);
+
+        // Bó củi gỗ xếp chéo
+        for (let l = 0; l < 4; l++) {
+          const a = (l / 4) * Math.PI;
+          const log = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.016, 0.16, 6), fireWoodMat);
+          log.rotation.z = Math.cos(a) * 0.4;
+          log.rotation.x = Math.sin(a) * 0.4;
+          log.position.set(Math.cos(a) * 0.02, 0.02, Math.sin(a) * 0.02);
+          bonfireGroup.add(log);
+        }
+
+        // Ngọn lửa hồng đỏ bập bùng phát sáng nhấp nháy
+        const flame = new THREE.Mesh(new THREE.ConeGeometry(0.055, 0.14, 8), fireFlameMat);
+        flame.position.y = 0.08;
+        flame.userData = { animType: 'flicker' };
+        bonfireGroup.add(flame);
+
+        // 6. CHÚ VOI RỪNG BẢN ĐÔN DŨNG MÃNH TÍ HON
+        const elephantGroup = new THREE.Group();
+        elephantGroup.position.set(-0.48, 0.06, 0.08);
+        elephantGroup.rotation.y = 0.65; // Đứng gác hướng buôn làng
+
+        // Thân voi bằng đá bazan xám
+        const elBody = new THREE.Mesh(new RoundedBoxGeometry(0.24, 0.16, 0.16, 3, 0.03), elephantGrayMat);
+        elBody.position.y = 0.13;
+        elBody.castShadow = true;
+
+        // Đầu voi & vòi voi vươn cao đón chào
+        const elHead = new THREE.Mesh(new THREE.SphereGeometry(0.07, 10, 8), elephantGrayMat);
+        elHead.position.set(0.12, 0.16, 0);
+
+        const elTrunk = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.026, 0.13, 8), elephantGrayMat);
+        elTrunk.rotation.z = -Math.PI / 3;
+        elTrunk.position.set(0.18, 0.14, 0);
+
+        // 2 Ngà voi cong trắng muốt
+        [-0.03, 0.03].forEach(tz => {
+          const tusk = new THREE.Mesh(new THREE.ConeGeometry(0.01, 0.09, 6), ivoryTuskMat);
+          tusk.rotation.z = -Math.PI / 2.5;
+          tusk.position.set(0.17, 0.11, tz);
+          elephantGroup.add(tusk);
+        });
+
+        // 4 Chân voi to vững chắc
+        [
+          [0.08, 0.05, 0.06],
+          [0.08, 0.05, -0.06],
+          [-0.08, 0.05, 0.06],
+          [-0.08, 0.05, -0.06]
+        ].forEach(([ex, ey, ez]) => {
+          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.024, 0.028, 0.1, 8), elephantGrayMat);
+          leg.position.set(ex, ey, ez);
+          elephantGroup.add(leg);
+        });
+
+        elephantGroup.add(elBody, elHead, elTrunk);
+
+        // 7. CÂY CÀ PHÊ ROBUSTA TRĨU QUẢ CHÍN ĐỎ & CHÉ RƯỢU CẦN
+        const coffeeGroup = new THREE.Group();
+        coffeeGroup.position.set(0.48, 0.06, -0.22);
+
+        const cTrunk = new THREE.Mesh(new THREE.CylinderGeometry(0.024, 0.036, 0.42, 8), timberDarkMat);
+        cTrunk.position.y = 0.21;
+        coffeeGroup.add(cTrunk);
+
+        // Tán lá xanh đậm Robusta
+        [
+          [0, 0.38, 0, 0.24],
+          [0, 0.52, 0, 0.18],
+          [0, 0.62, 0, 0.12]
+        ].forEach(([cx, cy, cz, cr]) => {
+          const foliage = new THREE.Mesh(new THREE.SphereGeometry(cr, 10, 8), coffeeFoliageMat);
+          foliage.scale.set(1.2, 0.65, 1.2);
+          foliage.position.set(cx, cy, cz);
+          coffeeGroup.add(foliage);
+        });
+
+        // Chùm quả cà phê đỏ mọng xen kẽ
+        const berries: Array<[number, number, number]> = [
+          [0.16, 0.36, 0.08],
+          [-0.14, 0.38, -0.09],
+          [0.08, 0.48, -0.12],
+          [-0.09, 0.5, 0.11]
+        ];
+        berries.forEach(([bx, by, bz]) => {
+          const berry = new THREE.Mesh(new THREE.SphereGeometry(0.026, 6, 6), coffeeBerryMat);
+          berry.position.set(bx, by, bz);
+          coffeeGroup.add(berry);
+        });
+
+        // Ché rượu cần gốm nung cắm cần trúc bên hiên
+        const wineJar = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.035, 0.11, 10), jarClayMat);
+        wineJar.position.set(0.24, 0.11, 0.08);
+
+        const cane = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.004, 0.18, 4), gongBrassMat);
+        cane.rotation.z = 0.35;
+        cane.position.set(0.26, 0.17, 0.08);
+
+        group.add(
+          ground,
+          rongGroup,
+          gongRack,
+          bonfireGroup,
+          elephantGroup,
+          coffeeGroup,
+          wineJar, cane
+        );
         break;
       }
 
