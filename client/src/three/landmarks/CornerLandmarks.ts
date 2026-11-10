@@ -288,6 +288,7 @@ export class CornerLandmarks {
     // Dải đèn neon xanh cyan phát sáng viền quanh mái che
     const neonTrim = new THREE.Mesh(new RoundedBoxGeometry(1.6, 0.04, 0.96, 2, 0.02), cyanNeonMat);
     neonTrim.position.set(-0.18, 1.41, -0.52);
+    neonTrim.userData = { animType: 'flicker' };
 
     // 2. Cột bơm xăng cổ điển Route 66 hình trụ thủy tinh có đồng hồ kim chỉ số
     const pumpIsland = new THREE.Mesh(new RoundedBoxGeometry(1.25, 0.08, 0.42, 2, 0.02), whiteMat);

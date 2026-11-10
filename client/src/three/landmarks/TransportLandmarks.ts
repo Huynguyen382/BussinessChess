@@ -111,9 +111,12 @@ export class TransportLandmarks {
       [-0.08, 1.12, 0.24, 0.17],
       [0.01, 1.30, 0.14, 0.21]
     ];
-    smokePuffs.forEach(([sx, sy, sz, sr]) => {
+    smokePuffs.forEach(([sx, sy, sz, sr], idx) => {
       const puff = new THREE.Mesh(new THREE.SphereGeometry(sr, 14, 12), smokeMat);
       puff.position.set(sx, sy, sz);
+      if (idx === 2) {
+        puff.userData = { animType: 'flicker' };
+      }
       group.add(puff);
     });
 

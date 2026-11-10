@@ -51,6 +51,17 @@ export class VietnamLandmarks {
         const river = new THREE.Mesh(new RoundedBoxGeometry(1.3, 0.08, 0.9, 3, 0.03), waterMat);
         river.position.set(0, 0.04, 0);
 
+        // Mặt đường thảm nhựa và vạch kẻ tim đường trên mặt cầu Cần Thơ
+        const bridgeRoadMat = LandmarkMaterials.getMat('ctBridgeRoad', () => new THREE.MeshStandardMaterial({ color: '#2F3542', roughness: 0.72 }));
+        const roadDeck = new THREE.Mesh(new THREE.PlaneGeometry(1.24, 0.18), bridgeRoadMat);
+        roadDeck.rotation.x = -Math.PI / 2;
+        roadDeck.position.set(0, 0.512, -0.15);
+
+        const bridgeLine = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 0.015), LandmarkMaterials.getMat('laneYellow', () => new THREE.MeshBasicMaterial({ color: '#F1C40F' })));
+        bridgeLine.rotation.x = -Math.PI / 2;
+        bridgeLine.position.set(0, 0.515, -0.15);
+        group.add(roadDeck, bridgeLine);
+
         // 2. Trụ tháp cầu dây văng chữ Y ngược thanh thoát cao 1.5 units
         const pylonL = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.085, 1.45, 16), pylonMat);
         pylonL.position.set(-0.28, 0.72, -0.15);
@@ -198,6 +209,24 @@ export class VietnamLandmarks {
         // Mái vòm đỏ trên đỉnh
         const dome = new THREE.Mesh(new THREE.SphereGeometry(0.25, 18, 14, 0, Math.PI * 2, 0, Math.PI / 2), domeRedMat);
         dome.position.set(0, 1.71, 0);
+
+        // Luồng sáng đèn pha hải đăng hình nón quét góc 180 độ ra biển
+        const beaconConeMat = LandmarkMaterials.getMat('vtBeaconLightCone', () => new THREE.MeshBasicMaterial({
+          color: '#FFEAA7',
+          transparent: true,
+          opacity: 0.35,
+          side: THREE.DoubleSide,
+          depthWrite: false,
+          blending: THREE.AdditiveBlending
+        }));
+        const beaconArm = new THREE.Group();
+        beaconArm.position.set(0, 1.6, 0);
+        beaconArm.userData = { animType: 'spin_y' };
+        const beamCone = new THREE.Mesh(new THREE.ConeGeometry(0.44, 1.35, 16, 1, true), beaconConeMat);
+        beamCone.rotation.x = Math.PI / 2.25;
+        beamCone.position.set(0, 0, 0.68);
+        beaconArm.add(beamCone);
+        group.add(beaconArm);
 
         // 3. Chân tháp phủ rặng hoa giấy màu hồng tươi rực rỡ
         const bougainvilleaOffsets = [
@@ -649,6 +678,15 @@ export class VietnamLandmarks {
           opacity: 0.85
         }));
 
+        // Mặt nước sông Hàn xanh biếc gợn sóng dưới chân cầu
+        const hanRiver = new THREE.Mesh(new RoundedBoxGeometry(1.3, 0.06, 0.88, 3, 0.02), LandmarkMaterials.getMat('hanRiverWater', () => new THREE.MeshStandardMaterial({
+          color: '#0984E3',
+          roughness: 0.08,
+          transparent: true,
+          opacity: 0.88
+        })));
+        hanRiver.position.set(0, 0.04, 0);
+
         // Mặt cầu nhịp dầm thép bắc qua sông Hàn
         const bridgeDeck = new THREE.Mesh(new RoundedBoxGeometry(1.3, 0.08, 0.48, 3, 0.02), LandmarkMaterials.getMat('bridgeSteelDeck', () => new THREE.MeshStandardMaterial({ color: '#BDC3C7', metalness: 0.7 })));
         bridgeDeck.position.set(0, 0.16, 0);
@@ -706,7 +744,7 @@ export class VietnamLandmarks {
         tail.rotation.z = Math.PI / 3;
         tail.position.set(-0.55, 0.32, 0);
 
-        group.add(bridgeDeck, lane, head, hornL, hornR, flameGroup, tail);
+        group.add(hanRiver, bridgeDeck, lane, head, hornL, hornR, flameGroup, tail);
         break;
       }
 
@@ -1024,31 +1062,31 @@ export class VietnamLandmarks {
         const lotusBase = new THREE.Mesh(new THREE.CylinderGeometry(0.58, 0.66, 0.14, 24), LandmarkMaterials.getMat('lotusStoneBase', () => new THREE.MeshStandardMaterial({ color: '#BDC3C7' })));
         lotusBase.position.set(-0.1, 0.08, 0);
 
-        // Bảo tháp Lục Độ Đài Sen màu đỏ son hình lục giác cao 1.5 units, mỗi tầng có tượng Phật đá trắng
-        const makeTier = (py: number, rTier: number, h: number) => {
-          const body = new THREE.Mesh(new THREE.CylinderGeometry(rTier * 0.9, rTier, h, 6), pagodaTerracotta);
-          body.position.set(-0.1, py, 0);
-          body.castShadow = true;
+        // Bảo tháp Lục Độ Đài Sen 11 tầng lục giác màu đỏ son cao 1.55 units theo đúng chuẩn Mục 4
+        // Mỗi tầng có mái lợp ngói hoàng lưu ly đua ra và tượng Phật bằng đá trắng quý giá trong các hốc vòm
+        let currentY = 0.16;
+        for (let t = 0; t < 11; t++) {
+          const ratio = t / 10;
+          const rTier = 0.45 - ratio * 0.31; // 0.45 ở tầng 1 thuôn dần về 0.14 ở tầng 11
+          const h = 0.095 - ratio * 0.025;   // ~0.095 xuống ~0.07
 
-          const eave = new THREE.Mesh(new THREE.CylinderGeometry(rTier * 0.65, rTier * 1.32, 0.055, 6), goldSpireMat);
-          eave.position.set(-0.1, py + h / 2 + 0.025, 0);
+          const body = new THREE.Mesh(new THREE.CylinderGeometry(rTier * 0.88, rTier, h, 6), pagodaTerracotta);
+          body.position.set(-0.1, currentY + h / 2, 0);
+          if (t === 0) body.castShadow = true;
 
-          const buddha = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 8), whiteBuddhaMat);
-          buddha.position.set(-0.1, py, rTier * 0.86);
+          const eave = new THREE.Mesh(new THREE.CylinderGeometry(rTier * 0.65, rTier * 1.35, 0.032, 6), goldSpireMat);
+          eave.position.set(-0.1, currentY + h + 0.016, 0);
+
+          const buddha = new THREE.Mesh(new THREE.SphereGeometry(0.024 + (1 - ratio) * 0.014, 6, 6), whiteBuddhaMat);
+          buddha.position.set(-0.1, currentY + h * 0.48, rTier * 0.88);
 
           group.add(body, eave, buddha);
-        };
+          currentY += h + 0.028;
+        }
 
-        makeTier(0.26, 0.42, 0.22);
-        makeTier(0.50, 0.35, 0.20);
-        makeTier(0.72, 0.28, 0.18);
-        makeTier(0.92, 0.22, 0.16);
-        makeTier(1.10, 0.16, 0.14);
-        makeTier(1.26, 0.12, 0.12);
-
-        // Đỉnh tháp Cửu Phẩm Liên Hoa cao tới 1.5 units
-        const lotusCrown = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.26, 12), goldSpireMat);
-        lotusCrown.position.set(-0.1, 1.46, 0);
+        // Đỉnh tháp Cửu Phẩm Liên Hoa cao tới 1.55 units (Đài sen 9 tầng & hồ lô ngọc)
+        const lotusCrown = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.22, 12), goldSpireMat);
+        lotusCrown.position.set(-0.1, currentY + 0.11, 0);
 
         // Cây Bồ Đề xum xuê tỏa bóng mát bên cạnh Bảo Tháp
         const bodhiTrunk = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.065, 0.48, 10), bodhiTrunkMat);
