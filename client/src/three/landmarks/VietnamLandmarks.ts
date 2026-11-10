@@ -2083,68 +2083,212 @@ export class VietnamLandmarks {
       }
 
       case 18: {
-        // Hội An: Chùa Cầu Hoài Phố sơn son thếp vàng & Dãy Đèn Lồng Ngũ Sắc
-        const bridgeWoodMat = LandmarkMaterials.getMat('chuaCauVermilionWood', () => new THREE.MeshStandardMaterial({ color: '#B3391E', roughness: 0.45 }));
-        const goldTrimMat = LandmarkMaterials.getMat('shinyGold', () => new THREE.MeshStandardMaterial({ color: '#F1C40F', metalness: 0.85, roughness: 0.2 }));
-        const tileRoofMat = LandmarkMaterials.getMat('chuaCauTile', () => new THREE.MeshStandardMaterial({ color: '#4A5568', roughness: 0.62 }));
-        const canalWaterMat = LandmarkMaterials.getMat('hoaiRiverWater', () => new THREE.MeshStandardMaterial({ color: '#00B894', roughness: 0.1, transparent: true, opacity: 0.88 }));
+        // Hội An: Chùa Cầu Lai Viễn Kiều (1593), Tường Vàng Phố Cổ, Đèn Lồng Lụa Ngũ Sắc & Thuyền Hoa Đăng Sông Hoài
+        // 1. Hệ vật liệu tối ưu theo LandmarkMaterials
+        const hoaiRiverWaterMat = LandmarkMaterials.getMat('haHoaiRiverEmerald', () => new THREE.MeshStandardMaterial({
+          color: '#00B894',
+          roughness: 0.08,
+          transparent: true,
+          opacity: 0.88
+        }));
+        const stonePierMat = LandmarkMaterials.getMat('haStonePier', () => new THREE.MeshStandardMaterial({
+          color: '#57606F',
+          roughness: 0.72
+        }));
+        const bridgeWoodVermilionMat = LandmarkMaterials.getMat('haVermilionWood', () => new THREE.MeshStandardMaterial({
+          color: '#A32A15',
+          roughness: 0.42
+        }));
+        const timberDarkMat = LandmarkMaterials.getMat('haTimberDark', () => new THREE.MeshStandardMaterial({
+          color: '#3E2723',
+          roughness: 0.6
+        }));
+        const yinYangTileMat = LandmarkMaterials.getMat('haYinYangMossTile', () => new THREE.MeshStandardMaterial({
+          color: '#374151',
+          roughness: 0.68
+        }));
+        const goldPlaqueMat = LandmarkMaterials.getMat('haGoldPlaque', () => new THREE.MeshStandardMaterial({
+          color: '#F1C40F',
+          metalness: 0.9,
+          roughness: 0.15,
+          emissive: '#D35400',
+          emissiveIntensity: 0.25
+        }));
+        const yellowWallMat = LandmarkMaterials.getMat('haYellowHouseWall', () => new THREE.MeshStandardMaterial({
+          color: '#F5CD79',
+          roughness: 0.4
+        }));
+        const bougainvilleaPinkMat = LandmarkMaterials.getMat('haBougainvilleaPink', () => new THREE.MeshStandardMaterial({
+          color: '#FD79A8',
+          emissive: '#E84393',
+          emissiveIntensity: 0.35,
+          roughness: 0.3
+        }));
+        const hoaDangGlowMat = LandmarkMaterials.getMat('haHoaDangGlow', () => new THREE.MeshStandardMaterial({
+          color: '#FFEAA7',
+          emissive: '#F1C40F',
+          emissiveIntensity: 1.25,
+          roughness: 0.1
+        }));
+        const boatWoodMat = LandmarkMaterials.getMat('haSampanWood', () => new THREE.MeshStandardMaterial({
+          color: '#6D4C41',
+          roughness: 0.65
+        }));
 
-        // Dòng kênh Hoài Phố xanh mát
-        const canal = new THREE.Mesh(new RoundedBoxGeometry(1.26, 0.06, 0.78, 2, 0.02), canalWaterMat);
-        canal.position.set(0, 0.03, 0);
+        // 2. DÒNG SÔNG HOÀI THƠ MỘNG & THỀM ĐÁ CỔ HAI BÊN BỜ
+        const river = new THREE.Mesh(new RoundedBoxGeometry(1.36, 0.05, 0.92, 3, 0.02), hoaiRiverWaterMat);
+        river.position.set(0, 0.025, 0);
+        river.receiveShadow = true;
 
-        // Thân cầu gỗ uốn cong sơn son thếp vàng
-        const bridgeArch = new THREE.Mesh(new RoundedBoxGeometry(1.18, 0.2, 0.56, 3, 0.04), bridgeWoodMat);
-        bridgeArch.position.set(0, 0.18, 0);
-        const goldRail = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.04, 0.58), goldTrimMat);
-        goldRail.position.set(0, 0.29, 0);
-
-        // Gian chùa giữa cầu & mái lợp ngói âm dương rêu phong
-        const temple = new THREE.Mesh(new RoundedBoxGeometry(0.76, 0.38, 0.48, 3, 0.03), bridgeWoodMat);
-        temple.position.set(0, 0.44, 0);
-        temple.castShadow = true;
-
-        const roof = new THREE.Mesh(new THREE.ConeGeometry(0.68, 0.38, 4), tileRoofMat);
-        roof.rotation.y = Math.PI / 4;
-        roof.scale.set(1.24, 0.68, 0.96);
-        roof.position.set(0, 0.76, 0);
-        roof.castShadow = true;
-
-        // Dãy đèn lồng vải lụa quả trám ngũ sắc (đỏ, vàng, xanh, tím, hồng) hai bên mạn cầu
-        const lanternColors = ['#FF4757', '#F1C40F', '#00CEC9', '#A29BFE', '#FD79A8'];
-        lanternColors.forEach((hex, idx) => {
-          const lMat = LandmarkMaterials.getMat(`hoiAnLantern_${hex}`, () => new THREE.MeshStandardMaterial({
-            color: hex,
-            emissive: hex,
-            emissiveIntensity: 0.9,
-            roughness: 0.2
-          }));
-          const lx = -0.44 + idx * 0.22;
-          const lanternFront = new THREE.Mesh(new THREE.OctahedronGeometry(0.065, 1), lMat);
-          lanternFront.scale.set(0.85, 1.2, 0.85);
-          lanternFront.position.set(lx, 0.48, 0.28);
-          lanternFront.userData = { animType: 'lighthouse' };
-          const lanternBack = new THREE.Mesh(new THREE.OctahedronGeometry(0.065, 1), lMat);
-          lanternBack.scale.set(0.85, 1.2, 0.85);
-          lanternBack.position.set(lx, 0.48, -0.28);
-          lanternBack.userData = { animType: 'lighthouse' };
-          group.add(lanternFront, lanternBack);
+        // Bờ kè đá hai bên đầu cầu
+        [-0.56, 0.56].forEach(kx => {
+          const quay = new THREE.Mesh(new RoundedBoxGeometry(0.24, 0.08, 0.96, 2, 0.02), stonePierMat);
+          quay.position.set(kx, 0.04, 0);
+          quay.receiveShadow = true;
+          group.add(quay);
         });
 
-        // Hoa đăng thả trôi lấp lánh trên dòng sông Hoài
-        const hoaDangMat = LandmarkMaterials.getMat('hoiAnHoaDangGlow', () => new THREE.MeshStandardMaterial({
-          color: '#FFF275',
-          emissive: '#F1C40F',
-          emissiveIntensity: 1.1
-        }));
-        [[-0.36, 0.07, 0.32], [0.18, 0.07, 0.34], [0.42, 0.07, -0.3]].forEach(([hx, hy, hz]) => {
-          const hd = new THREE.Mesh(new THREE.OctahedronGeometry(0.038, 0), hoaDangMat);
-          hd.position.set(hx, hy, hz);
+        // 3. CHÙA CẦU LAI VIỄN KIỀU (THẾ KỶ 17) - DI SẢN KIẾN TRÚC GỖ SƠN SON THẾP VÀNG
+        const bridgeGroup = new THREE.Group();
+        bridgeGroup.position.set(0, 0.05, 0);
+
+        // 2 Mố trụ cầu bằng đá sa thạch nâng đỡ vòm cầu trong lòng sông
+        [-0.26, 0.26].forEach(px => {
+          const pier = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.065, 0.16, 12), stonePierMat);
+          pier.position.set(px, 0.08, 0);
+          bridgeGroup.add(pier);
+        });
+
+        // Thân cầu gỗ uốn cong hình cánh cung sơn son thếp vàng
+        const bridgeArch = new THREE.Mesh(new RoundedBoxGeometry(1.14, 0.14, 0.54, 4, 0.03), bridgeWoodVermilionMat);
+        bridgeArch.position.y = 0.18;
+        bridgeArch.castShadow = true;
+        bridgeArch.receiveShadow = true;
+
+        // Dải lan can tay vịn gỗ lim viền vàng kim
+        [-0.24, 0.24].forEach(rz => {
+          const handrail = new THREE.Mesh(new THREE.BoxGeometry(1.12, 0.028, 0.035), goldPlaqueMat);
+          handrail.position.set(0, 0.26, rz);
+          bridgeGroup.add(handrail);
+        });
+
+        // Gian chùa thờ Bắc Đế Trấn Vũ tọa lạc giữa cầu
+        const templeHouse = new THREE.Mesh(new RoundedBoxGeometry(0.72, 0.32, 0.46, 3, 0.02), bridgeWoodVermilionMat);
+        templeHouse.position.set(0, 0.38, 0);
+        templeHouse.castShadow = true;
+
+        // Mái ngói âm dương rêu phong uốn cong vút 4 góc kiểu mái thuyền
+        const roof = new THREE.Mesh(new THREE.ConeGeometry(0.64, 0.34, 4), yinYangTileMat);
+        roof.rotation.y = Math.PI / 4;
+        roof.scale.set(1.24, 0.65, 0.94);
+        roof.position.set(0, 0.66, 0);
+        roof.castShadow = true;
+
+        // Hoành phi thếp vàng sơn son "LAI VIỄN KIỀU" trên mái chùa
+        const plaque = new THREE.Mesh(new RoundedBoxGeometry(0.18, 0.055, 0.02, 2, 0.004), goldPlaqueMat);
+        plaque.position.set(0, 0.52, 0.235);
+
+        // Tượng Thần Khỉ (Thân) và Thần Chó (Tuất) bằng gỗ đứng chầu hai đầu cầu
+        // Đầu cầu phía Tây (Tượng Khỉ)
+        const monkeyStatue = new THREE.Mesh(new THREE.SphereGeometry(0.035, 8, 6), timberDarkMat);
+        monkeyStatue.scale.set(0.8, 1.2, 0.8);
+        monkeyStatue.position.set(-0.48, 0.28, 0.18);
+        // Đầu cầu phía Đông (Tượng Chó)
+        const dogStatue = new THREE.Mesh(new THREE.ConeGeometry(0.032, 0.08, 6), timberDarkMat);
+        dogStatue.position.set(0.48, 0.28, 0.18);
+
+        bridgeGroup.add(bridgeArch, templeHouse, roof, plaque, monkeyStatue, dogStatue);
+
+        // 4. NHÀ CỔ TƯỜNG VÀNG PHỐ HỘI & HOA GIẤY RỦ BÓNG HAI BÊN ĐẦU CẦU
+        const townGroup = new THREE.Group();
+        // Nhà cổ góc Tây
+        const houseW = new THREE.Mesh(new RoundedBoxGeometry(0.24, 0.36, 0.32, 2, 0.02), yellowWallMat);
+        houseW.position.set(-0.56, 0.22, -0.28);
+        houseW.castShadow = true;
+        const roofW = new THREE.Mesh(new THREE.ConeGeometry(0.24, 0.16, 4), yinYangTileMat);
+        roofW.rotation.y = Math.PI / 4;
+        roofW.position.set(-0.56, 0.48, -0.28);
+
+        // Nhà cổ góc Đông
+        const houseE = new THREE.Mesh(new RoundedBoxGeometry(0.24, 0.36, 0.32, 2, 0.02), yellowWallMat);
+        houseE.position.set(0.56, 0.22, 0.28);
+        houseE.castShadow = true;
+        const roofE = new THREE.Mesh(new THREE.ConeGeometry(0.24, 0.16, 4), yinYangTileMat);
+        roofE.rotation.y = Math.PI / 4;
+        roofE.position.set(0.56, 0.48, 0.28);
+
+        // Rặng hoa giấy hồng rủ bóng trên hiên nhà cổ
+        const bougainvillea = new THREE.Mesh(new THREE.SphereGeometry(0.08, 10, 8), bougainvilleaPinkMat);
+        bougainvillea.scale.set(1.4, 0.7, 1.2);
+        bougainvillea.position.set(-0.48, 0.42, -0.2);
+
+        townGroup.add(houseW, roofW, houseE, roofE, bougainvillea);
+
+        // 5. DÃY ĐÈN LỒNG LỤA PHỐ HỘI NGŨ SẮC LUNG LINH
+        const lanternGroup = new THREE.Group();
+        const lanternColors = ['#FF4757', '#F1C40F', '#00CEC9', '#A29BFE', '#FD79A8'];
+        lanternColors.forEach((hex, idx) => {
+          const lMat = LandmarkMaterials.getMat(`haSilkLantern_${hex}`, () => new THREE.MeshStandardMaterial({
+            color: hex,
+            emissive: hex,
+            emissiveIntensity: 0.95,
+            roughness: 0.25
+          }));
+          const lx = -0.4 + idx * 0.2;
+
+          // Đèn lồng mạn trước
+          const lFront = new THREE.Mesh(new THREE.OctahedronGeometry(0.05, 1), lMat);
+          lFront.scale.set(0.85, 1.25, 0.85);
+          lFront.position.set(lx, 0.38, 0.28);
+          lFront.userData = { animType: 'lighthouse' };
+
+          // Đèn lồng mạn sau
+          const lBack = new THREE.Mesh(new THREE.OctahedronGeometry(0.05, 1), lMat);
+          lBack.scale.set(0.85, 1.25, 0.85);
+          lBack.position.set(lx, 0.38, -0.28);
+          lBack.userData = { animType: 'lighthouse' };
+
+          lanternGroup.add(lFront, lBack);
+        });
+
+        // 6. THUYỀN GỖ NHỎ & HOA ĐĂNG THẢ TRÔI TRÊN SÔNG HOÀI
+        const boatSampan = new THREE.Group();
+        boatSampan.position.set(0.18, 0.045, -0.32);
+        boatSampan.rotation.y = -0.25;
+        boatSampan.userData = { animType: 'float_wave' };
+
+        const boatHull = new THREE.Mesh(new RoundedBoxGeometry(0.24, 0.035, 0.08, 2, 0.005), boatWoodMat);
+        boatHull.position.y = 0.015;
+        const boatBow = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.09, 4), boatWoodMat);
+        boatBow.rotation.x = Math.PI / 2;
+        boatBow.position.set(0, 0.015, 0.14);
+        const lanternOnBoat = new THREE.Mesh(new THREE.OctahedronGeometry(0.035, 1), hoaDangGlowMat);
+        lanternOnBoat.position.set(0, 0.06, 0.02);
+
+        boatSampan.add(boatHull, boatBow, lanternOnBoat);
+
+        // Những đóa hoa đăng sen bập bồng trôi trên mặt nước
+        const hoaDangList: Array<{ x: number; z: number }> = [
+          { x: -0.32, z: 0.32 },
+          { x: -0.08, z: 0.35 },
+          { x: 0.28, z: 0.33 },
+          { x: -0.36, z: -0.3 },
+          { x: 0.42, z: -0.26 }
+        ];
+        hoaDangList.forEach(({ x, z }) => {
+          const hd = new THREE.Mesh(new THREE.OctahedronGeometry(0.036, 0), hoaDangGlowMat);
+          hd.position.set(x, 0.052, z);
           hd.userData = { animType: 'float_wave' };
           group.add(hd);
         });
 
-        group.add(canal, bridgeArch, goldRail, temple, roof);
+        group.add(
+          river,
+          bridgeGroup,
+          townGroup,
+          lanternGroup,
+          boatSampan
+        );
         break;
       }
 
