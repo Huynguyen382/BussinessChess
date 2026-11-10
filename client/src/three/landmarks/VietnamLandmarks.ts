@@ -1696,48 +1696,191 @@ export class VietnamLandmarks {
       }
 
       case 14: {
-        // Pleiku: Biển Hồ Tơ Nưng xanh biếc vách đá bazan nâu đỏ & Rừng cao su mùa lá vàng
-        const basaltRedMat = LandmarkMaterials.getMat('pleikuBasaltRed', () => new THREE.MeshStandardMaterial({ color: '#8D3B24', roughness: 0.68 }));
-        const lakeMat = LandmarkMaterials.getMat('tnungLakeBlue', () => new THREE.MeshStandardMaterial({ color: '#00CEC9', roughness: 0.06, transparent: true, opacity: 0.92 }));
-        const rubberTrunkMat = LandmarkMaterials.getMat('rubberTreeTrunk', () => new THREE.MeshStandardMaterial({ color: '#D2B48C', roughness: 0.6 }));
-        const autumnGoldFoliage = LandmarkMaterials.getMat('rubberAutumnGold', () => new THREE.MeshStandardMaterial({
+        // Pleiku: Biển Hồ Tơ Nưng ("Đôi Mắt Pleiku"), Rừng Cao Su Chư Păh Mùa Lá Vàng, Đồi Chè & Thuyền Độc Mộc
+        // 1. Hệ vật liệu tối ưu theo LandmarkMaterials
+        const basaltSoilMat = LandmarkMaterials.getMat('pkBasaltSoilRed', () => new THREE.MeshStandardMaterial({
+          color: '#6E3826',
+          roughness: 0.75
+        }));
+        const basaltRockMat = LandmarkMaterials.getMat('pkBasaltCliffDark', () => new THREE.MeshStandardMaterial({
+          color: '#4A2A1E',
+          roughness: 0.82
+        }));
+        const lakeWaterMat = LandmarkMaterials.getMat('pkTnungLakeEmerald', () => new THREE.MeshStandardMaterial({
+          color: '#00CEC9',
+          roughness: 0.05,
+          metalness: 0.1,
+          transparent: true,
+          opacity: 0.92
+        }));
+        const lakeShoreMat = LandmarkMaterials.getMat('pkLakeShorePebble', () => new THREE.MeshStandardMaterial({
+          color: '#8D5B4C',
+          roughness: 0.7
+        }));
+        const rubberBarkMat = LandmarkMaterials.getMat('pkRubberBarkGray', () => new THREE.MeshStandardMaterial({
+          color: '#B2BEC3',
+          roughness: 0.65
+        }));
+        const autumnGoldMat = LandmarkMaterials.getMat('pkAutumnLeafGold', () => new THREE.MeshStandardMaterial({
           color: '#F39C12',
           emissive: '#E67E22',
-          emissiveIntensity: 0.2,
-          roughness: 0.35
+          emissiveIntensity: 0.25,
+          roughness: 0.38
+        }));
+        const teaGreenMat = LandmarkMaterials.getMat('pkTeaRowGreen', () => new THREE.MeshStandardMaterial({
+          color: '#27AE60',
+          roughness: 0.45
+        }));
+        const timberMat = LandmarkMaterials.getMat('pkTimberPavilion', () => new THREE.MeshStandardMaterial({
+          color: '#4E342E',
+          roughness: 0.58
+        }));
+        const dugoutCanoeMat = LandmarkMaterials.getMat('pkDugoutCanoeWood', () => new THREE.MeshStandardMaterial({
+          color: '#5D4037',
+          roughness: 0.68
         }));
 
-        // 1. Miệng núi lửa cổ hình oval vách đá bazan màu nâu đỏ & mặt nước xanh biếc phẳng lặng
-        const caldera = new THREE.Mesh(new THREE.CylinderGeometry(0.52, 0.72, 0.36, 24), basaltRedMat);
-        caldera.scale.set(1.18, 1.0, 0.88);
-        caldera.position.set(-0.1, 0.18, 0.05);
-        caldera.castShadow = true;
+        // 2. Thềm đồi núi đất đỏ bazan Pleiku
+        const plateauBase = new THREE.Mesh(new RoundedBoxGeometry(1.36, 0.06, 1.34, 3, 0.02), basaltSoilMat);
+        plateauBase.position.set(0, 0.03, 0);
+        plateauBase.receiveShadow = true;
 
-        const lake = new THREE.Mesh(new THREE.CylinderGeometry(0.46, 0.46, 0.04, 24), lakeMat);
-        lake.scale.set(1.18, 1.0, 0.88);
-        lake.position.set(-0.1, 0.35, 0.05);
+        // 3. BIỂN HỒ TƠ NƯNG (MIỆNG NÚI LỬA CỔ "ĐÔI MẮT PLEIKU")
+        const calderaGroup = new THREE.Group();
+        calderaGroup.position.set(-0.1, 0.06, 0.02);
 
-        // 2. Hàng cây cao su thân thẳng tắp phân nhánh đều đặn đang mùa rụng lá vàng ruộm
+        // Vách miệng núi lửa cổ bằng đá bazan nâu đỏ
+        const craterRim = new THREE.Mesh(new THREE.CylinderGeometry(0.52, 0.74, 0.28, 28), basaltRockMat);
+        craterRim.scale.set(1.18, 1.0, 0.92);
+        craterRim.position.y = 0.14;
+        craterRim.castShadow = true;
+        craterRim.receiveShadow = true;
+
+        // Bờ thoải ven miệng hồ
+        const craterInner = new THREE.Mesh(new THREE.CylinderGeometry(0.46, 0.48, 0.08, 24), lakeShoreMat);
+        craterInner.scale.set(1.18, 1.0, 0.92);
+        craterInner.position.y = 0.26;
+
+        // Mặt nước Biển Hồ Tơ Nưng phẳng lặng như gương soi, xanh ngọc bích sâu thẳm
+        const lakeMirror = new THREE.Mesh(new THREE.CylinderGeometry(0.44, 0.44, 0.04, 28), lakeWaterMat);
+        lakeMirror.scale.set(1.18, 1.0, 0.92);
+        lakeMirror.position.y = 0.28;
+
+        // Thuyền độc mộc người Jrai lững lờ trôi trên Biển Hồ
+        const dugoutCanoe = new THREE.Group();
+        dugoutCanoe.position.set(0.06, 0.31, 0.04);
+        dugoutCanoe.rotation.y = 0.4;
+        dugoutCanoe.userData = { animType: 'float_wave' };
+
+        const canoeHull = new THREE.Mesh(new RoundedBoxGeometry(0.24, 0.03, 0.06, 2, 0.005), dugoutCanoeMat);
+        canoeHull.position.y = 0.015;
+        const canoeProw = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.08, 4), dugoutCanoeMat);
+        canoeProw.rotation.x = Math.PI / 2;
+        canoeProw.position.set(0, 0.015, 0.14);
+        const canoePaddle = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.003, 0.14, 4), timberMat);
+        canoePaddle.rotation.z = Math.PI / 3;
+        canoePaddle.position.set(0.03, 0.03, 0);
+
+        dugoutCanoe.add(canoeHull, canoeProw, canoePaddle);
+
+        // Đài vọng cảnh Biển Hồ (Viewpoint Pavilion) vươn ra mép vách đá
+        const pavilionGroup = new THREE.Group();
+        pavilionGroup.position.set(-0.48, 0.26, -0.16);
+        pavilionGroup.rotation.y = 0.6;
+
+        const pavDeck = new THREE.Mesh(new RoundedBoxGeometry(0.24, 0.03, 0.2, 2, 0.01), timberMat);
+        pavDeck.position.y = 0.02;
+
+        const pavPillar1 = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.16, 6), timberMat);
+        pavPillar1.position.set(-0.08, 0.1, -0.06);
+        const pavPillar2 = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.16, 6), timberMat);
+        pavPillar2.position.set(0.08, 0.1, -0.06);
+        const pavPillar3 = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.16, 6), timberMat);
+        pavPillar3.position.set(-0.08, 0.1, 0.06);
+        const pavPillar4 = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.16, 6), timberMat);
+        pavPillar4.position.set(0.08, 0.1, 0.06);
+
+        const pavRoof = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.12, 4), basaltSoilMat);
+        pavRoof.rotation.y = Math.PI / 4;
+        pavRoof.position.y = 0.22;
+        pavRoof.castShadow = true;
+
+        pavilionGroup.add(pavDeck, pavPillar1, pavPillar2, pavPillar3, pavPillar4, pavRoof);
+
+        calderaGroup.add(craterRim, craterInner, lakeMirror, dugoutCanoe, pavilionGroup);
+
+        // 4. RỪNG CAO SU CHƯ PĂH MÙA THAY LÁ VÀNG RUỘM
+        const rubberForest = new THREE.Group();
         const makeRubberTree = (tx: number, tz: number, h: number) => {
           const tGroup = new THREE.Group();
-          const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.042, h, 10), rubberTrunkMat);
+          tGroup.position.set(tx, 0.06, tz);
+
+          // Thân cây cao su thẳng tắp màu vỏ xám trắng
+          const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.026, 0.038, h, 8), rubberBarkMat);
           trunk.position.y = h / 2;
           trunk.castShadow = true;
-          const crown1 = new THREE.Mesh(new THREE.SphereGeometry(0.18, 14, 12), autumnGoldFoliage);
-          crown1.scale.set(1.1, 0.75, 1.1);
-          crown1.position.set(0, h + 0.06, 0);
-          const crown2 = new THREE.Mesh(new THREE.SphereGeometry(0.13, 12, 10), autumnGoldFoliage);
-          crown2.position.set(0.08, h + 0.18, 0);
-          tGroup.add(trunk, crown1, crown2);
-          tGroup.position.set(tx, 0.08, tz);
+
+          // Vết rạch cạo mủ xoắn ốc quanh thân cây
+          const spiralCut = new THREE.Mesh(new THREE.TorusGeometry(0.032, 0.004, 4, 12, Math.PI), timberMat);
+          spiralCut.rotation.x = Math.PI / 2.5;
+          spiralCut.position.y = h * 0.42;
+
+          // Chén hứng mủ cao su tí hon
+          const latexCup = new THREE.Mesh(new THREE.ConeGeometry(0.014, 0.02, 6), timberMat);
+          latexCup.position.set(0.035, h * 0.38, 0);
+
+          // Tán lá cao su vàng rực mùa trút lá
+          const crownLower = new THREE.Mesh(new THREE.SphereGeometry(0.16, 12, 10), autumnGoldMat);
+          crownLower.scale.set(1.15, 0.7, 1.15);
+          crownLower.position.y = h + 0.04;
+
+          const crownUpper = new THREE.Mesh(new THREE.SphereGeometry(0.12, 10, 8), autumnGoldMat);
+          crownUpper.scale.set(1.05, 0.75, 1.05);
+          crownUpper.position.set(0.04, h + 0.15, 0);
+
+          tGroup.add(trunk, spiralCut, latexCup, crownLower, crownUpper);
           return tGroup;
         };
 
-        const rt1 = makeRubberTree(0.44, -0.18, 0.72);
-        const rt2 = makeRubberTree(0.48, 0.18, 0.62);
-        const rt3 = makeRubberTree(-0.48, -0.22, 0.66);
+        const rt1 = makeRubberTree(0.48, -0.22, 0.68);
+        const rt2 = makeRubberTree(0.52, 0.14, 0.62);
+        const rt3 = makeRubberTree(0.38, 0.38, 0.54);
+        const rt4 = makeRubberTree(-0.46, -0.42, 0.58);
 
-        group.add(caldera, lake, rt1, rt2, rt3);
+        // Thảm lá vàng rụng phủ kín mặt đất
+        const fallenLeaves: Array<{ x: number; z: number; r: number }> = [
+          { x: 0.46, z: -0.2, r: 0.14 },
+          { x: 0.5, z: 0.16, r: 0.12 },
+          { x: 0.36, z: 0.36, r: 0.11 }
+        ];
+        fallenLeaves.forEach(({ x, z, r }) => {
+          const leafCarpet = new THREE.Mesh(new THREE.CircleGeometry(r, 10), autumnGoldMat);
+          leafCarpet.rotation.x = -Math.PI / 2;
+          leafCarpet.position.set(x, 0.065, z);
+          rubberForest.add(leafCarpet);
+        });
+
+        rubberForest.add(rt1, rt2, rt3, rt4);
+
+        // 5. ĐỒI CHÈ BIỂN HỒ XANH MƯỚT (BIỂN HỒ CHÈ TRĂM TUỔI)
+        const teaHillGroup = new THREE.Group();
+        teaHillGroup.position.set(-0.28, 0.06, 0.44);
+
+        // 3 Luống chè uốn lượn hình cánh cung nhấp nhô
+        [-0.08, 0, 0.08].forEach((offsetZ, idx) => {
+          const teaRidge = new THREE.Mesh(new THREE.TorusGeometry(0.24 + idx * 0.08, 0.032, 6, 16, Math.PI * 0.7), teaGreenMat);
+          teaRidge.rotation.x = Math.PI / 2;
+          teaRidge.rotation.z = -0.3;
+          teaRidge.position.set(0, 0.02, offsetZ);
+          teaHillGroup.add(teaRidge);
+        });
+
+        group.add(
+          plateauBase,
+          calderaGroup,
+          rubberForest,
+          teaHillGroup
+        );
         break;
       }
 
