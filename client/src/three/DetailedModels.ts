@@ -425,9 +425,36 @@ export class DetailedModels {
     kingTorso.castShadow = true;
     const kingHead = new THREE.Mesh(new THREE.SphereGeometry(0.11, 12, 12), goldOrnamentMat);
     kingHead.position.y = 3.78;
-    const kingCrown = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.14, 6), goldOrnamentMat);
-    kingCrown.position.y = 3.92;
-    group.add(crownBase, kingTorso, kingHead, kingCrown);
+    const kingCrown = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.16, 8), goldOrnamentMat);
+    kingCrown.position.y = 3.94;
+
+    // Áo choàng nhung đỏ hoàng gia viền vàng lượn sóng phía sau
+    const royalCapeMat = new THREE.MeshStandardMaterial({
+      color: '#D63031',
+      roughness: 0.58,
+      side: THREE.DoubleSide
+    });
+    const cape = new THREE.Mesh(new RoundedBoxGeometry(0.36, 0.44, 0.08, 2, 0.02), royalCapeMat);
+    cape.position.set(0, 3.44, -0.14);
+    cape.rotation.x = -0.18;
+
+    // Quyền trượng tỷ phú mạ vàng đỉnh ngọc lục bảo
+    const scepter = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.48, 8), goldOrnamentMat);
+    scepter.position.set(0.22, 3.54, 0.08);
+    const diamondMat = new THREE.MeshStandardMaterial({
+      color: '#00CEC9',
+      emissive: '#00CEC9',
+      emissiveIntensity: 0.8,
+      roughness: 0.1
+    });
+    const scepterGem = new THREE.Mesh(new THREE.OctahedronGeometry(0.065, 0), diamondMat);
+    scepterGem.position.set(0.22, 3.8, 0.08);
+
+    // Quả cầu tài lộc hoàng gia ở tay trái
+    const moneyOrb = new THREE.Mesh(new THREE.SphereGeometry(0.065, 10, 10), goldOrnamentMat);
+    moneyOrb.position.set(-0.2, 3.48, 0.06);
+
+    group.add(crownBase, kingTorso, kingHead, kingCrown, cape, scepter, scepterGem, moneyOrb);
 
     return { group, waterRipples: ripples, waterFalls, waterJets };
   }

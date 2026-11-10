@@ -333,18 +333,22 @@ export class VietnamLandmarks {
         seaBay.position.set(0, 0.05, 0);
         group.add(seaBay);
 
-        // Rạn san hô ngọc bích & đàn cá nhỏ dưới làn nước trong
+        // Rạn san hô ngọc bích & đàn cá nhỏ tung tăng bơi lội dưới làn nước trong
         [[0.38, 0.06, 0.24], [0.46, 0.05, -0.12], [-0.42, 0.06, 0.26]].forEach(([cx, cy, cz]) => {
           const coral = new THREE.Mesh(new THREE.DodecahedronGeometry(0.065, 0), coralJadeMat);
           coral.position.set(cx, cy, cz);
           group.add(coral);
         });
-        [[0.25, 0.08, 0.3], [-0.28, 0.08, 0.28]].forEach(([fx, fy, fz]) => {
+
+        const schoolOfFish = new THREE.Group();
+        schoolOfFish.userData = { animType: 'float_wave' };
+        [[0.25, 0.08, 0.3], [-0.28, 0.08, 0.28], [0.15, 0.07, 0.18]].forEach(([fx, fy, fz]) => {
           const fish = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.09, 6), fishGoldMat);
           fish.rotation.z = Math.PI / 2;
           fish.position.set(fx, fy, fz);
-          group.add(fish);
+          schoolOfFish.add(fish);
         });
+        group.add(schoolOfFish);
 
         // 2. Tháp Trầm Hương: Biểu tượng búp sen 3 tầng màu hồng cam cách điệu vươn cao trên bờ vịnh
         const plazaBase = new THREE.Mesh(new THREE.CylinderGeometry(0.48, 0.56, 0.16, 16), towerWhiteMat);
@@ -416,6 +420,17 @@ export class VietnamLandmarks {
         clock.rotation.x = Math.PI / 2;
         clock.position.set(0, 0.42, 0.3);
 
+        // Đường ray răng cưa Thụy Sĩ đặc trưng trước nhà ga Đà Lạt
+        const trackGeo = new THREE.BoxGeometry(0.85, 0.02, 0.035);
+        const railSteelMat = LandmarkMaterials.getMat('cogRailSteel', () => new THREE.MeshStandardMaterial({ color: '#718093', metalness: 0.82, roughness: 0.28 }));
+        const track1 = new THREE.Mesh(trackGeo, railSteelMat);
+        track1.position.set(0, 0.05, 0.35);
+        const track2 = new THREE.Mesh(trackGeo, railSteelMat);
+        track2.position.set(0, 0.05, 0.43);
+        const cogRack = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.028, 0.02), LandmarkMaterials.getMat('cogRackBrass', () => new THREE.MeshStandardMaterial({ color: '#F1C40F', metalness: 0.88, roughness: 0.16 })));
+        cogRack.position.set(0, 0.055, 0.39);
+        group.add(track1, track2, cogRack);
+
         // 2 Cây thông 3 tầng tán lá giữa làn sương mù mờ ảo Đà Lạt
         const pine1 = LandmarkHelpers.createMiniPineTree();
         pine1.position.set(0.48, 0.06, 0.24);
@@ -431,6 +446,7 @@ export class VietnamLandmarks {
         }));
         const mist = new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.68, 0.06, 16), mistMat);
         mist.position.set(0, 0.14, 0.12);
+        mist.userData = { animType: 'float_wave' };
 
         group.add(body, gL, gM, gR, glassWin, clock, pine1, pine2, mist);
         break;
@@ -852,6 +868,7 @@ export class VietnamLandmarks {
         const sunRay = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.32, 0.85, 14, 1, true), sunbeamMat);
         sunRay.position.set(-0.05, 0.52, -0.02);
         sunRay.rotation.z = -0.18;
+        sunRay.userData = { animType: 'flicker' };
 
         // 2. Cột măng đá (Stalagmite) & thạch nhũ hàng triệu năm tuổi vươn cao
         const stalagmite1 = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.58, 12), stalagmiteMat);
@@ -964,6 +981,21 @@ export class VietnamLandmarks {
         // 1. Mặt nước vịnh xanh màu ngọc bích
         const water = new THREE.Mesh(new RoundedBoxGeometry(1.3, 0.08, 0.88, 3, 0.03), bayWaterMat);
         water.position.set(0, 0.04, 0);
+
+        // Vòng sóng nước lăn tăn quanh chân Hòn Trống và Hòn Mái
+        const rippleRingMat = LandmarkMaterials.getMat('haLongRippleMat', () => new THREE.MeshBasicMaterial({
+          color: '#E0F2FE',
+          transparent: true,
+          opacity: 0.38,
+          side: THREE.DoubleSide
+        }));
+        const rip1 = new THREE.Mesh(new THREE.RingGeometry(0.34, 0.44, 16), rippleRingMat);
+        rip1.rotation.x = -Math.PI / 2;
+        rip1.position.set(-0.28, 0.082, -0.15);
+        const rip2 = new THREE.Mesh(new THREE.RingGeometry(0.3, 0.4, 16), rippleRingMat);
+        rip2.rotation.x = -Math.PI / 2;
+        rip2.position.set(0.26, 0.082, -0.12);
+        group.add(rip1, rip2);
 
         // 2. Hòn Trống Mái: Hai khối đá hình đôi gà trống - mái nghiêng đầu vào nhau
         const makeKarstIslet = (ix: number, iz: number, h: number, r: number, tilt: number) => {
