@@ -952,86 +952,245 @@ export class VietnamLandmarks {
       }
 
       case 9: {
-        // Nha Trang: Tháp Trầm Hương Búp Sen 3 Tầng Hồng Cam & Vịnh San Hô Xanh Trong
-        const bayWaterMat = LandmarkMaterials.getMat('ntCoralBayWater', () => new THREE.MeshStandardMaterial({
+        // Nha Trang: Tháp Trầm Hương Búp Sen Hồng Cam, Vịnh San Hô Hòn Mun, Du Thuyền & Cây Dừa Biển
+        // 1. Hệ vật liệu tối ưu theo LandmarkMaterials
+        const bayWaterMat = LandmarkMaterials.getMat('ntBayWaterDeep', () => new THREE.MeshStandardMaterial({
           color: '#00CEC9',
           roughness: 0.08,
           transparent: true,
           opacity: 0.86
         }));
-        const lotusPinkOrangeMat = LandmarkMaterials.getMat('tramHuongLotus', () => new THREE.MeshStandardMaterial({
+        const seaFoamMat = LandmarkMaterials.getMat('ntSeaFoam', () => new THREE.MeshStandardMaterial({
+          color: '#E0F7FA',
+          roughness: 0.25,
+          transparent: true,
+          opacity: 0.82
+        }));
+        const whiteSandMat = LandmarkMaterials.getMat('ntWhiteSand', () => new THREE.MeshStandardMaterial({
+          color: '#FAF0E6',
+          roughness: 0.68
+        }));
+        const plazaStoneMat = LandmarkMaterials.getMat('ntPlazaStoneWhite', () => new THREE.MeshStandardMaterial({
+          color: '#F5F6FA',
+          roughness: 0.32
+        }));
+        const lotusPetalMat = LandmarkMaterials.getMat('ntLotusPetalPink', () => new THREE.MeshStandardMaterial({
           color: '#FF7675',
           emissive: '#E17055',
-          emissiveIntensity: 0.22,
-          roughness: 0.28
-        }));
-        const towerWhiteMat = LandmarkMaterials.getMat('tramHuongBaseWhite', () => new THREE.MeshStandardMaterial({
-          color: '#FFFDF9',
+          emissiveIntensity: 0.28,
           roughness: 0.25
         }));
-        const coreCrystalMat = LandmarkMaterials.getMat('tramHuongSpireCrystal', () => new THREE.MeshStandardMaterial({
+        const lotusCoreMat = LandmarkMaterials.getMat('ntLotusCoreGlass', () => new THREE.MeshStandardMaterial({
+          color: '#FFEAA7',
+          roughness: 0.15,
+          metalness: 0.75
+        }));
+        const crystalOrbMat = LandmarkMaterials.getMat('ntCrystalOrbAmber', () => new THREE.MeshStandardMaterial({
           color: '#FFEAA7',
           emissive: '#F1C40F',
-          emissiveIntensity: 0.9,
+          emissiveIntensity: 1.1,
+          roughness: 0.1,
+          metalness: 0.9
+        }));
+        const coralGreenMat = LandmarkMaterials.getMat('ntCoralJade', () => new THREE.MeshStandardMaterial({
+          color: '#00B894',
+          roughness: 0.4
+        }));
+        const coralRedMat = LandmarkMaterials.getMat('ntCoralRed', () => new THREE.MeshStandardMaterial({
+          color: '#E17055',
+          roughness: 0.45
+        }));
+        const fishOrangeMat = LandmarkMaterials.getMat('ntFishOrange', () => new THREE.MeshStandardMaterial({
+          color: '#FF9F43',
+          emissive: '#EE5253',
+          emissiveIntensity: 0.35,
+          roughness: 0.2
+        }));
+        const boatWhiteMat = LandmarkMaterials.getMat('ntBoatWhite', () => new THREE.MeshStandardMaterial({
+          color: '#F8F9FA',
+          roughness: 0.22
+        }));
+        const boatBlueMat = LandmarkMaterials.getMat('ntBoatBlue', () => new THREE.MeshStandardMaterial({
+          color: '#0984E3',
+          roughness: 0.25
+        }));
+        const glassDarkMat = LandmarkMaterials.getMat('ntGlassDark', () => new THREE.MeshStandardMaterial({
+          color: '#1E272E',
+          metalness: 0.85,
           roughness: 0.1
         }));
-        const coralJadeMat = LandmarkMaterials.getMat('coralJade', () => new THREE.MeshStandardMaterial({ color: '#00B894', roughness: 0.4 }));
-        const fishGoldMat = LandmarkMaterials.getMat('fishOrange', () => new THREE.MeshStandardMaterial({ color: '#FF9F43', emissive: '#FF9F43', emissiveIntensity: 0.4 }));
 
-        // 1. Mặt nước vịnh biển Nha Trang xanh trong vắt nhìn thấy rạn san hô ngọc bích và đàn cá
-        const seaBay = new THREE.Mesh(new RoundedBoxGeometry(1.3, 0.1, 0.92, 3, 0.03), bayWaterMat);
-        seaBay.position.set(0, 0.05, 0);
-        group.add(seaBay);
+        // 2. THỀM ĐỊA HÌNH: VỊNH BIỂN NHA TRANG & BÃI CÁT TRẮNG TRẦN PHÚ
+        // Mặt nước biển vịnh Nha Trang xanh ngọc bích trong suốt
+        const seaBay = new THREE.Mesh(new RoundedBoxGeometry(0.88, 0.05, 1.28, 3, 0.02), bayWaterMat);
+        seaBay.position.set(0.28, 0.025, 0.06);
+        seaBay.receiveShadow = true;
 
-        // Rạn san hô ngọc bích & đàn cá nhỏ tung tăng bơi lội dưới làn nước trong
-        [[0.38, 0.06, 0.24], [0.46, 0.05, -0.12], [-0.42, 0.06, 0.26]].forEach(([cx, cy, cz]) => {
-          const coral = new THREE.Mesh(new THREE.DodecahedronGeometry(0.065, 0), coralJadeMat);
-          coral.position.set(cx, cy, cz);
-          group.add(coral);
+        // Vạt sóng bọt biển trắng vỗ bờ cát Trần Phú
+        const coastFoam = new THREE.Mesh(new THREE.TorusGeometry(0.55, 0.026, 6, 24, Math.PI * 0.95), seaFoamMat);
+        coastFoam.rotation.x = Math.PI / 2;
+        coastFoam.rotation.z = -Math.PI / 2.2;
+        coastFoam.position.set(-0.06, 0.052, 0.06);
+        coastFoam.userData = { animType: 'float_wave' };
+
+        // Dải cát trắng mịn cong lưỡi liềm ôm bờ vịnh
+        const beachSand = new THREE.Mesh(new RoundedBoxGeometry(0.54, 0.06, 1.34, 3, 0.03), whiteSandMat);
+        beachSand.position.set(-0.16, 0.03, 0);
+        beachSand.receiveShadow = true;
+
+        // Thềm quảng trường 2/4 lát đá hoa cương trắng xám
+        const plazaBase = new THREE.Mesh(new RoundedBoxGeometry(0.68, 0.07, 0.78, 3, 0.02), plazaStoneMat);
+        plazaBase.position.set(-0.36, 0.038, -0.22);
+        plazaBase.receiveShadow = true;
+
+        // 3. THÁP TRẦM HƯƠNG - BÚP SEN 3 TẦNG HỒNG CAM KIÊU SA
+        const towerGroup = new THREE.Group();
+        towerGroup.position.set(-0.32, 0.07, -0.2);
+
+        // Bệ hoa viên tròn 2 cấp bằng cẩm thạch trắng
+        const baseRing1 = new THREE.Mesh(new THREE.CylinderGeometry(0.44, 0.48, 0.08, 24), plazaStoneMat);
+        baseRing1.position.y = 0.04;
+        baseRing1.receiveShadow = true;
+
+        const baseRing2 = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.4, 0.06, 24), plazaStoneMat);
+        baseRing2.position.y = 0.1;
+        baseRing2.receiveShadow = true;
+
+        // Lõi tháp kính vàng kim hổ phách
+        const towerCore = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.18, 1.35, 16), lotusCoreMat);
+        towerCore.position.y = 0.75;
+        towerCore.castShadow = true;
+
+        // TẦNG 1: 6 Cánh sen lớn vươn rộng che chở
+        const petalTier1 = new THREE.Group();
+        petalTier1.position.y = 0.32;
+        for (let p = 0; p < 6; p++) {
+          const a = (p / 6) * Math.PI * 2;
+          const petal = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.48, 4), lotusPetalMat);
+          petal.scale.set(0.65, 1.0, 1.3);
+          petal.position.set(Math.cos(a) * 0.22, 0, Math.sin(a) * 0.22);
+          petal.rotation.y = -a;
+          petal.rotation.z = Math.sin(a) * 0.18;
+          petal.rotation.x = Math.cos(a) * -0.18;
+          petal.castShadow = true;
+          petalTier1.add(petal);
+        }
+
+        // TẦNG 2: 6 Cánh sen vừa e ấp xếp so le
+        const petalTier2 = new THREE.Group();
+        petalTier2.position.y = 0.72;
+        for (let p = 0; p < 6; p++) {
+          const a = (p / 6) * Math.PI * 2 + Math.PI / 6;
+          const petal = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.42, 4), lotusPetalMat);
+          petal.scale.set(0.6, 1.0, 1.25);
+          petal.position.set(Math.cos(a) * 0.16, 0, Math.sin(a) * 0.16);
+          petal.rotation.y = -a;
+          petal.rotation.z = Math.sin(a) * 0.14;
+          petal.rotation.x = Math.cos(a) * -0.14;
+          petal.castShadow = true;
+          petalTier2.add(petal);
+        }
+
+        // TẦNG 3: Búp sen vút nhọn thanh thoát
+        const petalTier3 = new THREE.Group();
+        petalTier3.position.y = 1.1;
+        for (let p = 0; p < 4; p++) {
+          const a = (p / 4) * Math.PI * 2;
+          const petal = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.38, 4), lotusPetalMat);
+          petal.scale.set(0.55, 1.0, 1.2);
+          petal.position.set(Math.cos(a) * 0.09, 0, Math.sin(a) * 0.09);
+          petal.rotation.y = -a;
+          petalTier3.add(petal);
+        }
+
+        // Quả cầu ngọc thấu kính pha lê Trầm Hương xoay phát sáng trên đỉnh tháp
+        const spireOrb = new THREE.Mesh(new THREE.OctahedronGeometry(0.11, 2), crystalOrbMat);
+        spireOrb.position.y = 1.48;
+        spireOrb.userData = { animType: 'rotate_pulse' };
+
+        towerGroup.add(baseRing1, baseRing2, towerCore, petalTier1, petalTier2, petalTier3, spireOrb);
+
+        // 4. KHU BẢO TỒN VỊNH SAN HÔ HÒN MUN & ĐÀN CÁ NHIỆT ĐỚI
+        const coralGroup = new THREE.Group();
+        coralGroup.position.set(0.32, 0.05, 0.18);
+
+        // Các cụm san hô ngọc bích, san hô quạt và san hô vàng đa dạng
+        const coralSpots: Array<{ pos: [number, number, number]; mat: THREE.Material; rad: number }> = [
+          { pos: [0.08, 0.02, 0.12], mat: coralGreenMat, rad: 0.065 },
+          { pos: [-0.14, 0.02, 0.22], mat: coralRedMat, rad: 0.055 },
+          { pos: [0.18, 0.02, -0.18], mat: crystalOrbMat, rad: 0.045 },
+          { pos: [-0.08, 0.02, -0.28], mat: coralGreenMat, rad: 0.05 }
+        ];
+        coralSpots.forEach(({ pos, mat, rad }) => {
+          const coral = new THREE.Mesh(new THREE.DodecahedronGeometry(rad, 1), mat);
+          coral.position.set(pos[0], pos[1], pos[2]);
+          coralGroup.add(coral);
         });
 
+        // Đàn cá nhỏ nhiệt đới ngũ sắc bơi lội mềm mại
         const schoolOfFish = new THREE.Group();
         schoolOfFish.userData = { animType: 'float_wave' };
-        [[0.25, 0.08, 0.3], [-0.28, 0.08, 0.28], [0.15, 0.07, 0.18]].forEach(([fx, fy, fz]) => {
-          const fish = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.09, 6), fishGoldMat);
-          fish.rotation.z = Math.PI / 2;
+        const fishCoords = [
+          [0.24, 0.09, 0.26, 0.2],
+          [0.38, 0.08, 0.04, -0.4],
+          [0.16, 0.09, -0.12, 0.5],
+          [0.32, 0.085, -0.28, -0.1]
+        ];
+        fishCoords.forEach(([fx, fy, fz, rz]) => {
+          const fish = new THREE.Mesh(new THREE.ConeGeometry(0.024, 0.075, 6), fishOrangeMat);
+          fish.rotation.z = Math.PI / 2 + rz;
           fish.position.set(fx, fy, fz);
           schoolOfFish.add(fish);
         });
-        group.add(schoolOfFish);
 
-        // 2. Tháp Trầm Hương: Biểu tượng búp sen 3 tầng màu hồng cam cách điệu vươn cao trên bờ vịnh
-        const plazaBase = new THREE.Mesh(new THREE.CylinderGeometry(0.48, 0.56, 0.16, 16), towerWhiteMat);
-        plazaBase.position.set(-0.05, 0.14, -0.06);
-        plazaBase.receiveShadow = true;
+        // 5. CANO DU THUYỀN THỂ THAO CAO TỐC LƯỚT SÓNG VỊNH NHA TRANG
+        const speedBoat = new THREE.Group();
+        speedBoat.position.set(0.38, 0.065, 0.34);
+        speedBoat.rotation.y = -0.55; // Lướt sóng hướng ra khơi
 
-        const makeLotusPetalTier = (ty: number, radius: number, height: number, count: number) => {
-          const tierGroup = new THREE.Group();
-          tierGroup.position.set(-0.05, ty, -0.06);
-          const core = new THREE.Mesh(new THREE.CylinderGeometry(radius * 0.65, radius * 0.78, height, 12), lotusPinkOrangeMat);
-          core.castShadow = true;
-          tierGroup.add(core);
+        // Thân cano màu trắng ngọc vuốt nhọn
+        const hull = new THREE.Mesh(new RoundedBoxGeometry(0.24, 0.06, 0.11, 2, 0.01), boatWhiteMat);
+        hull.position.y = 0.03;
+        hull.castShadow = true;
 
-          for (let p = 0; p < count; p++) {
-            const angle = (p / count) * Math.PI * 2;
-            const petal = new THREE.Mesh(new THREE.ConeGeometry(radius * 0.38, height * 0.95, 4), lotusPinkOrangeMat);
-            petal.position.set(Math.cos(angle) * radius * 0.68, 0, Math.sin(angle) * radius * 0.68);
-            petal.rotation.y = -angle;
-            tierGroup.add(petal);
-          }
-          return tierGroup;
-        };
+        const bow = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.14, 4), boatWhiteMat);
+        bow.rotation.x = Math.PI / 2;
+        bow.rotation.y = Math.PI / 4;
+        bow.position.set(0, 0.03, 0.15);
 
-        const tier1 = makeLotusPetalTier(0.42, 0.38, 0.46, 5);
-        const tier2 = makeLotusPetalTier(0.84, 0.3, 0.42, 5);
-        const tier3 = makeLotusPetalTier(1.22, 0.22, 0.38, 5);
+        // Đường chỉ viền xanh biển thể thao
+        const stripe = new THREE.Mesh(new RoundedBoxGeometry(0.22, 0.012, 0.115, 1, 0.002), boatBlueMat);
+        stripe.position.set(0, 0.045, 0.02);
 
-        // Quả cầu trầm hương phát sáng trên đỉnh búp sen
-        const spireOrb = new THREE.Mesh(new THREE.OctahedronGeometry(0.14, 1), coreCrystalMat);
-        spireOrb.position.set(-0.05, 1.54, -0.06);
-        spireOrb.userData = { animType: 'rotate_pulse' };
+        // Kính chắn gió thể thao đen bóng
+        const windshield = new THREE.Mesh(new RoundedBoxGeometry(0.08, 0.03, 0.09, 1, 0.003), glassDarkMat);
+        windshield.position.set(0, 0.068, 0.04);
 
-        group.add(plazaBase, tier1, tier2, tier3, spireOrb);
+        // Vệt bọt nước rẽ sóng sau đuôi cano
+        const wakeFoam = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.18, 3), seaFoamMat);
+        wakeFoam.rotation.x = -Math.PI / 2;
+        wakeFoam.position.set(0, 0.01, -0.16);
+
+        speedBoat.add(hull, bow, stripe, windshield, wakeFoam);
+
+        // 6. HÀNG DỪA BIỂN DUYÊN DÁNG VEN BỜ CÁT TRẦN PHÚ
+        const palmTree = LandmarkHelpers.createMiniPalmTree();
+        palmTree.position.set(-0.44, 0.06, 0.36);
+        palmTree.scale.set(0.68, 0.68, 0.68);
+        palmTree.rotation.z = -0.15; // Nghiêng bóng ra biển
+
+        const palmTree2 = LandmarkHelpers.createMiniPalmTree();
+        palmTree2.position.set(-0.48, 0.06, 0.08);
+        palmTree2.scale.set(0.52, 0.52, 0.52);
+        palmTree2.rotation.z = -0.1;
+
+        group.add(
+          seaBay, coastFoam, beachSand, plazaBase,
+          towerGroup,
+          coralGroup, schoolOfFish,
+          speedBoat,
+          palmTree, palmTree2
+        );
         break;
       }
 
