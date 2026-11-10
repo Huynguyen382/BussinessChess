@@ -2293,99 +2293,231 @@ export class VietnamLandmarks {
       }
 
       case 19: {
-        // Đà Nẵng: Cầu Rồng Vàng Sông Hàn (metalness: 0.9) Phun Lửa & Hạt Khói Sáng
-        const dragonGoldMat = LandmarkMaterials.getMat('dragonGoldGleam', () => new THREE.MeshStandardMaterial({
+        // Đà Nẵng: Cầu Rồng Vàng Thời Lý (metalness: 0.9) Phun Lửa & Khói Sáng, Trụ Bê Tông & Du Thuyền Sông Hàn
+        // 1. Hệ vật liệu tối ưu theo LandmarkMaterials
+        const dragonGoldMat = LandmarkMaterials.getMat('dnDragonGoldGleam', () => new THREE.MeshStandardMaterial({
           color: '#F1C40F',
           emissive: '#F39C12',
           emissiveIntensity: 0.45,
-          metalness: 0.9,
+          metalness: 0.92,
           roughness: 0.14
         }));
-        const flameCoreMat = LandmarkMaterials.getMat('dragonFlameCore', () => new THREE.MeshStandardMaterial({
+        const dragonEyeJadeMat = LandmarkMaterials.getMat('dnDragonEyeJade', () => new THREE.MeshStandardMaterial({
+          color: '#00E676',
+          emissive: '#00E676',
+          emissiveIntensity: 1.2,
+          roughness: 0.1
+        }));
+        const flameCoreMat = LandmarkMaterials.getMat('dnDragonFlameCore', () => new THREE.MeshStandardMaterial({
           color: '#FF4757',
           emissive: '#FF3838',
-          emissiveIntensity: 1.5
+          emissiveIntensity: 1.5,
+          roughness: 0.2
         }));
-        const flameOuterMat = LandmarkMaterials.getMat('dragonFlameOuter', () => new THREE.MeshStandardMaterial({
+        const flameOuterMat = LandmarkMaterials.getMat('dnDragonFlameOuter', () => new THREE.MeshStandardMaterial({
           color: '#FFA502',
           emissive: '#FFA502',
-          emissiveIntensity: 1.2
+          emissiveIntensity: 1.2,
+          roughness: 0.25
         }));
-        const sparkSmokeMat = LandmarkMaterials.getMat('dragonSparkSmoke', () => new THREE.MeshStandardMaterial({
+        const sparkSmokeMat = LandmarkMaterials.getMat('dnDragonSparkSmoke', () => new THREE.MeshStandardMaterial({
           color: '#FFF275',
           emissive: '#FFEAA7',
-          emissiveIntensity: 0.9,
+          emissiveIntensity: 0.95,
           transparent: true,
           opacity: 0.85
         }));
-
-        // Mặt nước sông Hàn xanh biếc gợn sóng dưới chân cầu
-        const hanRiver = new THREE.Mesh(new RoundedBoxGeometry(1.3, 0.06, 0.88, 3, 0.02), LandmarkMaterials.getMat('hanRiverWater', () => new THREE.MeshStandardMaterial({
+        const hanRiverMat = LandmarkMaterials.getMat('dnHanRiverDeep', () => new THREE.MeshStandardMaterial({
           color: '#0984E3',
           roughness: 0.08,
           transparent: true,
           opacity: 0.88
-        })));
-        hanRiver.position.set(0, 0.04, 0);
+        }));
+        const bridgeDeckMat = LandmarkMaterials.getMat('dnBridgeDeckSteel', () => new THREE.MeshStandardMaterial({
+          color: '#BDC3C7',
+          metalness: 0.72,
+          roughness: 0.3
+        }));
+        const pierConcreteMat = LandmarkMaterials.getMat('dnPierConcrete', () => new THREE.MeshStandardMaterial({
+          color: '#7F8C8D',
+          roughness: 0.65
+        }));
+        const laneYellowMat = LandmarkMaterials.getMat('dnLaneYellow', () => new THREE.MeshBasicMaterial({
+          color: '#F1C40F'
+        }));
+        const cruiseWhiteMat = LandmarkMaterials.getMat('dnCruiseWhite', () => new THREE.MeshStandardMaterial({
+          color: '#F8F9FA',
+          roughness: 0.22
+        }));
+        const cruiseGlassMat = LandmarkMaterials.getMat('dnCruiseGlass', () => new THREE.MeshStandardMaterial({
+          color: '#74B9FF',
+          emissive: '#0984E3',
+          emissiveIntensity: 0.5,
+          roughness: 0.1
+        }));
 
-        // Mặt cầu nhịp dầm thép bắc qua sông Hàn
-        const bridgeDeck = new THREE.Mesh(new RoundedBoxGeometry(1.3, 0.08, 0.48, 3, 0.02), LandmarkMaterials.getMat('bridgeSteelDeck', () => new THREE.MeshStandardMaterial({ color: '#BDC3C7', metalness: 0.7 })));
-        bridgeDeck.position.set(0, 0.16, 0);
+        // 2. DÒNG SÔNG HÀN THƠ MỘNG & BỜ KÈ BẠCH ĐẰNG
+        const hanRiver = new THREE.Mesh(new RoundedBoxGeometry(1.36, 0.05, 0.96, 3, 0.02), hanRiverMat);
+        hanRiver.position.set(0, 0.025, 0);
+        hanRiver.receiveShadow = true;
 
-        const lane = new THREE.Mesh(new THREE.PlaneGeometry(1.28, 0.03), LandmarkMaterials.getMat('laneYellow', () => new THREE.MeshBasicMaterial({ color: '#F1C40F' })));
-        lane.rotation.x = -Math.PI / 2;
-        lane.position.set(0, 0.205, 0);
-
-        // Thân rồng uốn 4 nhịp sóng mạ vàng sáng rực
-        for (let w = -0.4; w <= 0.25; w += 0.28) {
-          const wave = new THREE.Mesh(new THREE.TorusGeometry(0.18, 0.055, 14, 24, Math.PI), dragonGoldMat);
-          wave.position.set(w, 0.24, 0);
-          wave.castShadow = true;
-          group.add(wave);
-
-          const fin = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.1, 4), dragonGoldMat);
-          fin.position.set(w, 0.46, 0);
-          group.add(fin);
-        }
-
-        // Đầu rồng uy nghi hướng thẳng ra Biển Đông
-        const head = new THREE.Mesh(new RoundedBoxGeometry(0.24, 0.18, 0.16, 3, 0.03), dragonGoldMat);
-        head.position.set(0.52, 0.48, 0);
-        head.castShadow = true;
-
-        const hornL = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.18, 8), dragonGoldMat);
-        hornL.position.set(0.48, 0.62, 0.06);
-        hornL.rotation.z = -0.3;
-        const hornR = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.18, 8), dragonGoldMat);
-        hornR.position.set(0.48, 0.62, -0.06);
-        hornR.rotation.z = -0.3;
-
-        // Hiệu ứng độc bản: Miệng rồng phát ra luồng lửa cam đỏ rực rỡ & hạt khói sáng lấp lánh
-        const flameGroup = new THREE.Group();
-        flameGroup.position.set(0.68, 0.54, 0);
-        flameGroup.userData = { animType: 'flicker' };
-
-        const flameCore = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.38, 12), flameCoreMat);
-        flameCore.rotation.z = -Math.PI / 2.8;
-        flameCore.position.set(0.06, 0.04, 0);
-
-        const flameOuter = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.28, 12), flameOuterMat);
-        flameOuter.rotation.z = -Math.PI / 2.8;
-
-        // Các hạt khói sáng lấp lánh bay lên trời
-        [[0.22, 0.18, 0.04, 0.045], [0.3, 0.28, -0.04, 0.06], [0.36, 0.4, 0.02, 0.05]].forEach(([sx, sy, sz, sr]) => {
-          const spark = new THREE.Mesh(new THREE.SphereGeometry(sr, 10, 10), sparkSmokeMat);
-          spark.position.set(sx, sy, sz);
-          flameGroup.add(spark);
+        // Bờ kè bê tông hai đầu cầu
+        [-0.6, 0.6].forEach(bx => {
+          const bank = new THREE.Mesh(new RoundedBoxGeometry(0.18, 0.08, 0.98, 2, 0.02), pierConcreteMat);
+          bank.position.set(bx, 0.04, 0);
+          bank.receiveShadow = true;
+          group.add(bank);
         });
 
-        flameGroup.add(flameCore, flameOuter);
+        // 3. THÂN CẦU DẦM THÉP & TRỤ CẦU ĐÔI BẮC QUA SÔNG HÀN
+        const bridgeGroup = new THREE.Group();
+        bridgeGroup.position.set(0, 0.05, 0);
 
-        const tail = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.28, 3), dragonGoldMat);
-        tail.rotation.z = Math.PI / 3;
-        tail.position.set(-0.55, 0.32, 0);
+        // 2 Trụ cầu chữ V đôi cắm sâu dưới lòng sông Hàn
+        [-0.32, 0.18].forEach(px => {
+          const pierL = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.045, 0.18, 8), pierConcreteMat);
+          pierL.position.set(px, 0.09, -0.16);
+          const pierR = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.045, 0.18, 8), pierConcreteMat);
+          pierR.position.set(px, 0.09, 0.16);
+          bridgeGroup.add(pierL, pierR);
+        });
 
-        group.add(hanRiver, bridgeDeck, lane, head, hornL, hornR, flameGroup, tail);
+        // Mặt cầu dầm thép 6 làn xe
+        const bridgeDeck = new THREE.Mesh(new RoundedBoxGeometry(1.3, 0.07, 0.44, 3, 0.02), bridgeDeckMat);
+        bridgeDeck.position.y = 0.16;
+        bridgeDeck.castShadow = true;
+        bridgeDeck.receiveShadow = true;
+
+        // Vạch sơn vàng phân làn xe chạy
+        const centerLine = new THREE.Mesh(new THREE.PlaneGeometry(1.26, 0.024), laneYellowMat);
+        centerLine.rotation.x = -Math.PI / 2;
+        centerLine.position.set(0, 0.198, 0);
+
+        // Lan can cầu hai bên mạn
+        [-0.21, 0.21].forEach(ry => {
+          const rail = new THREE.Mesh(new THREE.BoxGeometry(1.26, 0.025, 0.015), bridgeDeckMat);
+          rail.position.set(0, 0.21, ry);
+          bridgeGroup.add(rail);
+        });
+
+        bridgeGroup.add(bridgeDeck, centerLine);
+
+        // 4. THÂN RỒNG VÀNG THỜI LÝ UỐN LƯỢN 5 NHỊP SÓNG SÁNG RỰC
+        const dragonGroup = new THREE.Group();
+        dragonGroup.position.set(0, 0.05, 0);
+
+        // 5 Nhịp sóng thân rồng vàng uốn lượn liên hoàn
+        const waveOffsets = [-0.44, -0.22, 0, 0.22, 0.44];
+        waveOffsets.forEach((wx, idx) => {
+          const arcR = 0.17;
+          const waveArch = new THREE.Mesh(new THREE.TorusGeometry(arcR, 0.048, 12, 24, Math.PI), dragonGoldMat);
+          waveArch.position.set(wx, 0.2, 0);
+          waveArch.castShadow = true;
+          dragonGroup.add(waveArch);
+
+          // Vây rồng nhọn xếp hình cánh sen trên đỉnh mỗi nhịp sóng
+          const dorsalFin = new THREE.Mesh(new THREE.ConeGeometry(0.035, 0.09, 4), dragonGoldMat);
+          dorsalFin.position.set(wx, 0.2 + arcR + 0.045, 0);
+          dragonGroup.add(dorsalFin);
+
+          // Cáp treo thanh giằng dầm thép đỡ nhịp cầu từ thân rồng
+          [-0.08, 0.08].forEach(cx => {
+            if (idx < 4) {
+              const hanger = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.003, 0.12, 4), bridgeDeckMat);
+              hanger.position.set(wx + cx, 0.21, 0);
+              dragonGroup.add(hanger);
+            }
+          });
+        });
+
+        // Đuôi rồng xòe hình búp sen nở cách điệu ở mố cầu phía Tây
+        const tailLotus = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.26, 4), dragonGoldMat);
+        tailLotus.rotation.z = Math.PI / 2.6;
+        tailLotus.position.set(-0.58, 0.28, 0);
+        tailLotus.castShadow = true;
+
+        // ĐẦU RỒNG UY DŨNG NGẨNG CAO HƯỚNG RA BIỂN ĐÔNG
+        const headGroup = new THREE.Group();
+        headGroup.position.set(0.56, 0.42, 0);
+
+        // Khối đầu rồng thời Lý chạm trổ bờm rồng
+        const headBody = new THREE.Mesh(new RoundedBoxGeometry(0.24, 0.17, 0.16, 3, 0.03), dragonGoldMat);
+        headBody.rotation.z = -0.15;
+        headBody.castShadow = true;
+
+        // Mũi rồng vươn dài há miệng chuẩn bị phun lửa
+        const snout = new THREE.Mesh(new RoundedBoxGeometry(0.14, 0.09, 0.12, 2, 0.02), dragonGoldMat);
+        snout.position.set(0.14, 0.02, 0);
+
+        // Mắt rồng ngọc bích phát sáng
+        [-0.07, 0.07].forEach(ez => {
+          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.024, 8, 8), dragonEyeJadeMat);
+          eye.position.set(0.06, 0.07, ez);
+          headGroup.add(eye);
+        });
+
+        // Cặp sừng rồng cong vút kiêu hãnh
+        [-0.06, 0.06].forEach(hz => {
+          const horn = new THREE.Mesh(new THREE.ConeGeometry(0.026, 0.17, 6), dragonGoldMat);
+          horn.rotation.z = -0.35;
+          horn.position.set(-0.04, 0.14, hz);
+          headGroup.add(horn);
+        });
+
+        // 5. HIỆU ỨNG TRÌNH DIỄN ĐỘC BẢN: ĐẦU RỒNG PHUN LỬA & HẠT KHÓI SÁNG
+        const flameEmitter = new THREE.Group();
+        flameEmitter.position.set(0.24, 0.04, 0);
+        flameEmitter.userData = { animType: 'flicker' };
+
+        // Lõi ngọn lửa đỏ cam rực rỡ
+        const flameCore = new THREE.Mesh(new THREE.ConeGeometry(0.075, 0.36, 12), flameCoreMat);
+        flameCore.rotation.z = -Math.PI / 2.6;
+        flameCore.position.set(0.12, 0.02, 0);
+
+        const flameOuter = new THREE.Mesh(new THREE.ConeGeometry(0.11, 0.26, 12), flameOuterMat);
+        flameOuter.rotation.z = -Math.PI / 2.6;
+        flameOuter.position.set(0.06, 0.01, 0);
+
+        // Hạt đốm lửa và khói sáng bay lên trời
+        const sparks: Array<[number, number, number, number]> = [
+          [0.24, 0.12, 0.03, 0.038],
+          [0.32, 0.22, -0.03, 0.048],
+          [0.38, 0.32, 0.02, 0.04]
+        ];
+        sparks.forEach(([sx, sy, sz, sr]) => {
+          const spark = new THREE.Mesh(new THREE.SphereGeometry(sr, 8, 8), sparkSmokeMat);
+          spark.position.set(sx, sy, sz);
+          flameEmitter.add(spark);
+        });
+
+        flameEmitter.add(flameCore, flameOuter);
+        headGroup.add(headBody, snout, flameEmitter);
+
+        dragonGroup.add(tailLotus, headGroup);
+
+        // 6. DU THUYỀN DU LỊCH SÔNG HÀN 2 TẦNG TÍ HON NGẮM CẦU RỒNG
+        const cruiseBoat = new THREE.Group();
+        cruiseBoat.position.set(-0.28, 0.05, 0.32);
+        cruiseBoat.rotation.y = -0.15;
+        cruiseBoat.userData = { animType: 'float_wave' };
+
+        // Thân du thuyền trắng
+        const boatHull = new THREE.Mesh(new RoundedBoxGeometry(0.28, 0.05, 0.12, 2, 0.01), cruiseWhiteMat);
+        boatHull.position.y = 0.025;
+        boatHull.castShadow = true;
+
+        // Tầng 2 ngắm cảnh có đèn ấm
+        const cabinUpper = new THREE.Mesh(new RoundedBoxGeometry(0.18, 0.045, 0.09, 2, 0.008), cruiseGlassMat);
+        cabinUpper.position.set(-0.02, 0.07, 0);
+
+        cruiseBoat.add(boatHull, cabinUpper);
+
+        group.add(
+          hanRiver,
+          bridgeGroup,
+          dragonGroup,
+          cruiseBoat
+        );
         break;
       }
 
