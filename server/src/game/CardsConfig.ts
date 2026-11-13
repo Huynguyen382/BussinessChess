@@ -7,7 +7,18 @@ export type CardActionType =
   | 'PAY_EACH_PLAYER'
   | 'COLLECT_FROM_EACH_PLAYER'
   | 'REPAIR_PROPERTY'
-  | 'MOVE_STEPS';
+  | 'MOVE_STEPS'
+  // Strategic and interactive mechanics
+  | 'PROPERTY_ACQUISITION'
+  | 'PROPERTY_SWAP'
+  | 'RENT_WAIVER'
+  | 'RENT_MULTIPLIER'
+  | 'DISASTER'
+  | 'TAX_AUDIT'
+  | 'INSTANT_TRANSIT'
+  | 'HOSPITAL_BOND'
+  | 'MINI_EVENT'
+  | 'DIVIDEND_PAYOUT';
 
 export interface GameCard {
   id: string;
@@ -20,6 +31,9 @@ export interface GameCard {
   costPerHouse?: number;
   costPerHotel?: number;
   steps?: number;
+  multiplier?: number;
+  percent?: number;
+  metadata?: Record<string, any>;
 }
 
 export const CHANCE_CARDS: GameCard[] = [
@@ -157,6 +171,69 @@ export const CHANCE_CARDS: GameCard[] = [
     description: 'Startup trí tuệ nhân tạo của bạn được quỹ đầu tư Silicon Valley định giá triệu đô, chia thưởng 180M.',
     action: 'ADD_MONEY',
     value: 180
+  },
+  {
+    id: 'ch_18',
+    type: 'CHANCE',
+    title: 'Quy Hoạch Đất Vàng Đô Thị',
+    description: 'Quyết định phê duyệt dự án khu đô thị mới: Bạn được cấp quyền sở hữu ngay 1 ô đất trống tiếp theo trên bàn cờ hoặc nhận 180M đền bù giải tỏa.',
+    action: 'PROPERTY_ACQUISITION',
+    value: 180
+  },
+  {
+    id: 'ch_19',
+    type: 'CHANCE',
+    title: 'Bùng Nổ Mùa Lễ Hội Du Lịch',
+    description: 'Khách du lịch quốc tế đổ về tham quan, kích cầu kinh tế bùng nổ: Tiền thuê tiếp theo bạn thu được sẽ được nhân đôi (x2)!',
+    action: 'RENT_MULTIPLIER',
+    multiplier: 2
+  },
+  {
+    id: 'ch_20',
+    type: 'CHANCE',
+    title: 'Kiểm Toán Thuế Toàn Diện',
+    description: 'Thanh tra tài chính tiến hành kiểm toán danh mục đầu tư: Nộp phạt và truy thu thuế 15M cho mỗi bất động sản đang sở hữu.',
+    action: 'TAX_AUDIT',
+    value: 15
+  },
+  {
+    id: 'ch_21',
+    type: 'CHANCE',
+    title: 'Chuyên Tuyến Tàu Cao Tốc Shinkansen',
+    description: 'Hệ thống đường sắt tốc độ cao đưa bạn di chuyển thẳng tới Bến Xe / Nhà Ga gần nhất. Nếu đi qua Khởi Hành nhận 200M.',
+    action: 'INSTANT_TRANSIT'
+  },
+  {
+    id: 'ch_22',
+    type: 'CHANCE',
+    title: 'Bão Lũ Siêu Cấp & Sạt Lở',
+    description: 'Cơn bão đổ bộ tàn phá hạ tầng: Giảm 1 cấp công trình trên bất động sản cao nhất hoặc chi 60M gia cố khẩn cấp.',
+    action: 'DISASTER',
+    value: 60
+  },
+  {
+    id: 'ch_23',
+    type: 'CHANCE',
+    title: 'Cổ Tức Quỹ Đầu Tư Bất Động Sản',
+    description: 'Quỹ REIT công bố kết quả kinh doanh vượt bậc: Nhận cổ tức 30M cho mỗi bất động sản bạn đang nắm giữ.',
+    action: 'DIVIDEND_PAYOUT',
+    value: 30
+  },
+  {
+    id: 'ch_24',
+    type: 'CHANCE',
+    title: 'Thương Vụ Mua Bán Sáp Nhập (M&A)',
+    description: 'Tái cơ cấu danh mục tài sản thông qua sáp nhập doanh nghiệp: Hoán đổi 1 bất động sản với đối thủ hoặc nhận 100M phí tư vấn.',
+    action: 'PROPERTY_SWAP',
+    value: 100
+  },
+  {
+    id: 'ch_25',
+    type: 'CHANCE',
+    title: 'Đại Nhạc Hội Countdown Giao Thừa',
+    description: 'Sự kiện âm nhạc quốc tế countdown náo nhiệt: Tất cả người chơi nhận lì xì may mắn đầu năm 50M.',
+    action: 'MINI_EVENT',
+    value: 50
   }
 ];
 
@@ -295,5 +372,68 @@ export const COMMUNITY_CHEST_CARDS: GameCard[] = [
     description: 'Bảo trì định kỳ và đăng kiểm hệ thống xe logistics đạt chuẩn khí thải xanh, chi phí 40M.',
     action: 'SUB_MONEY',
     value: 40
+  },
+  {
+    id: 'cc_18',
+    type: 'COMMUNITY_CHEST',
+    title: 'Thẻ Miễn Trừ Tiền Thuê VIP',
+    description: 'Mối quan hệ ngoại giao cấp cao: Bạn nhận 1 Thẻ Miễn Phí Tiền Thuê VIP, tự động miễn phí 100% khi dừng chân tại đất đối thủ.',
+    action: 'RENT_WAIVER',
+    value: 1
+  },
+  {
+    id: 'cc_19',
+    type: 'COMMUNITY_CHEST',
+    title: 'Bảo Lãnh Y Tế & Trái Phiếu Viện Phí',
+    description: 'Gói bảo hiểm sức khỏe VIP toàn diện: Cấp thẻ bảo lãnh viện phí và pháp lý (miễn trừ 1 lần phí phạt hoặc tiền bảo lãnh tù).',
+    action: 'HOSPITAL_BOND',
+    value: 1
+  },
+  {
+    id: 'cc_20',
+    type: 'COMMUNITY_CHEST',
+    title: 'Cổ Tức Tập Đoàn Công Nghệ VN30',
+    description: 'Tập đoàn công nghệ hàng đầu chi trả cổ tức tiền mặt định kỳ: Nhận 25M cho mỗi bất động sản trong danh mục đầu tư.',
+    action: 'DIVIDEND_PAYOUT',
+    value: 25
+  },
+  {
+    id: 'cc_21',
+    type: 'COMMUNITY_CHEST',
+    title: 'Thanh Tra Chống Thất Thu Thuế',
+    description: 'Cơ quan thuế kiểm tra số dư lưu động: Đóng thuế tài sản 5% tổng số dư tiền mặt hiện tại.',
+    action: 'TAX_AUDIT',
+    percent: 5
+  },
+  {
+    id: 'cc_22',
+    type: 'COMMUNITY_CHEST',
+    title: 'Tuyến Tuyến Metro Số 1 Khai Trương',
+    description: 'Trải nghiệm tuyến Metro hiện đại: Di chuyển tức thì đến Bến Xe / Nhà Ga gần nhất. Đi qua GO nhận 200M.',
+    action: 'INSTANT_TRANSIT'
+  },
+  {
+    id: 'cc_23',
+    type: 'COMMUNITY_CHEST',
+    title: 'Thanh Lý Tài Sản Ngân Hàng',
+    description: 'Ngân hàng phát mãi tài sản nợ xấu với giá ưu đãi: Bạn được sở hữu 1 bất động sản trống tiếp theo hoặc nhận 120M tiền mặt.',
+    action: 'PROPERTY_ACQUISITION',
+    value: 120
+  },
+  {
+    id: 'cc_24',
+    type: 'COMMUNITY_CHEST',
+    title: 'Ngày Hội Khởi Nghiệp Đổi Mới Sáng Tạo',
+    description: 'Vườn ươm doanh nghiệp khởi nghiệp tài trợ vốn: Mỗi người chơi không ở trong tù nhận 60M từ ngân quỹ phát triển.',
+    action: 'MINI_EVENT',
+    value: 60
+  },
+  {
+    id: 'cc_25',
+    type: 'COMMUNITY_CHEST',
+    title: 'Chuyển Giao Quyền Sử Dụng Đất',
+    description: 'Thỏa thuận hợp tác liên danh dự án: Hoán đổi 1 bất động sản hoặc nhận 80M hỗ trợ tài chính.',
+    action: 'PROPERTY_SWAP',
+    value: 80
   }
 ];
