@@ -1,5 +1,5 @@
 import { BOARD_TILES, BoardTile } from './BoardConfig';
-import { CHANCE_CARDS, COMMUNITY_CHEST_CARDS, GameCard } from './Cards';
+import { CHANCE_CARDS, COMMUNITY_CHEST_CARDS, GameCard } from './CardsConfig';
 
 export type TokenType = 'car' | 'hat' | 'dog' | 'rocket';
 
@@ -75,7 +75,7 @@ export class MonopolyEngine {
     this.shuffleDecks();
   }
 
-  private shuffleDecks() {
+  public shuffleDecks() {
     this.chanceDeck.sort(() => Math.random() - 0.5);
     this.chestDeck.sort(() => Math.random() - 0.5);
   }
@@ -144,15 +144,23 @@ export class MonopolyEngine {
     const prevPos = player.position;
     const wasInJail = player.inJail;
 
-    // Handle Jail
+    // Handle Jail status
     if (player.inJail) {
-      if (isDouble) {
+      if (player.getOutOfJailCards > 0) {
+        player.getOutOfJailCards--;
+        player.inJail = false;
+        player.jailTurns = 0;
+        this.addLog(`${player.username} sử dụng Thẻ Đặc Xá để được tự do ra tù!`, 'JAIL', player.id, player.username);
+      } else if (isDouble) {
         player.inJail = false;
         player.jailTurns = 0;
         this.addLog(`${player.username} đổ đôi (${d1}-${d2}) và được tự do ra tù!`, 'JAIL', player.id, player.username);
       } else {
         player.jailTurns++;
         if (player.jailTurns >= 3) {
+          if (player.balance < 50) {
+            this.autoMortgageToCoverDebt(player, 50);
+          }
           player.balance = Math.max(0, player.balance - 50);
           player.inJail = false;
           player.jailTurns = 0;
@@ -182,7 +190,7 @@ export class MonopolyEngine {
         this.turnState.consecutiveDoubles = 0;
         this.turnState.isDouble = false;
         this.turnState.phase = 'END_TURN';
-        this.addLog(`${player.username} đổ đôi 3 lần liên tiếp! Bị tống vào tù vì vi phạm giao thông!`, 'JAIL', player.id, player.username);
+        this.addLog(`${player.username} đổ đôi 3 lần liên tiếp! Bị tống vào tù vì vi phạm luật!`, 'JAIL', player.id, player.username);
         return {
           dice: [d1, d2],
           isDouble,
@@ -226,7 +234,7 @@ export class MonopolyEngine {
     };
   }
 
-  private evaluateTileAction(player: PlayerState, tile: BoardTile, diceSum: number): any {
+  public evaluateTileAction(player: PlayerState, tile: BoardTile, diceSum: number): any {
     switch (tile.type) {
       case 'GO':
         this.setNextPhaseAfterAction(player);
@@ -247,8 +255,8 @@ export class MonopolyEngine {
             canAfford: player.balance >= tile.price
           };
         } else if (prop.ownerId === player.id) {
-          // Owned by self - can upgrade if property
-          if (tile.type === 'PROPERTY' && prop.level < 4 && this.canUpgradeProperty(player.id, tile)) {
+          // Owned by self - can upgrade if property and not mortgaged
+          if (tile.type === 'PROPERTY' && prop.level < 4 && !prop.isMortgaged && this.canUpgradeProperty(player.id, tile)) {
             const cost = tile.houseCost || 100;
             this.turnState.phase = 'BUY_PROPERTY';
             return {
@@ -261,24 +269,46 @@ export class MonopolyEngine {
             };
           } else {
             this.setNextPhaseAfterAction(player);
-            return { type: 'OWNED_SELF', message: 'Đang ghé thăm bất động sản của chính mình.' };
+            return {
+              type: 'OWNED_SELF',
+              message: prop.isMortgaged
+                ? 'Đang ghé thăm bất động sản của chính mình (Đang bị cầm cố).'
+                : 'Đang ghé thăm bất động sản của chính mình.'
+            };
           }
         } else {
-          // Owned by other - pay rent
+          // Owned by other
           const owner = this.players.find(p => p.id === prop.ownerId);
           if (!owner || owner.isBankrupt) {
             this.setNextPhaseAfterAction(player);
             return { type: 'OWNER_BANKRUPT' };
           }
 
+          // If property is mortgaged, rent is 0!
+          if (prop.isMortgaged) {
+            this.setNextPhaseAfterAction(player);
+            this.addLog(`${player.username} vào ô [${tile.name}] đang bị cầm cố, được miễn phí thuê.`, 'INFO', player.id, player.username);
+            return {
+              type: 'MORTGAGED_TILE',
+              tileId: tile.id,
+              message: `Bất động sản [${tile.name}] đang bị cầm cố, không thu tiền thuê.`
+            };
+          }
+
           const rent = this.calculateRent(tile, prop, diceSum);
+
+          // Prevent premature bankruptcy via auto-mortgage
+          if (player.balance < rent) {
+            this.autoMortgageToCoverDebt(player, rent);
+          }
+
           const actualPaid = Math.min(player.balance, rent);
           player.balance -= actualPaid;
           owner.balance += actualPaid;
 
           this.addLog(`${player.username} vào ô [${tile.name}], trả tiền thuê ${actualPaid}M cho ${owner.username}.`, 'MONEY', player.id, player.username);
 
-          if (player.balance <= 0) {
+          if (player.balance <= 0 && rent > actualPaid) {
             this.handleBankruptcy(player, owner);
             return { type: 'BANKRUPT', owedTo: owner.username, rentOwed: rent };
           }
@@ -295,10 +325,14 @@ export class MonopolyEngine {
 
       case 'TAX': {
         const tax = tile.taxAmount || 100;
+        if (player.balance < tax) {
+          this.autoMortgageToCoverDebt(player, tax);
+        }
         const actualPaid = Math.min(player.balance, tax);
         player.balance -= actualPaid;
         this.addLog(`${player.username} đóng thuế [${tile.name}] số tiền ${actualPaid}M.`, 'MONEY', player.id, player.username);
-        if (player.balance <= 0) {
+
+        if (player.balance <= 0 && tax > actualPaid) {
           this.handleBankruptcy(player);
           return { type: 'BANKRUPT', taxPaid: actualPaid };
         }
@@ -330,12 +364,14 @@ export class MonopolyEngine {
         const card = deck.shift()!;
         deck.push(card);
         const cardResult = this.applyCard(player, card);
-        if (!player.inJail && !player.isBankrupt) {
+
+        if (!player.inJail && !player.isBankrupt && this.turnState.phase !== 'BUY_PROPERTY') {
           this.setNextPhaseAfterAction(player);
-        } else {
+        } else if (player.inJail || player.isBankrupt) {
           this.turnState.isDouble = false;
           this.turnState.phase = 'END_TURN';
         }
+
         return {
           type: 'CARD',
           cardType: tile.type,
@@ -350,7 +386,232 @@ export class MonopolyEngine {
     }
   }
 
+  public drawCard(type: 'CHANCE' | 'COMMUNITY_CHEST', player?: PlayerState): { card: GameCard; result: string } {
+    const p = player || this.getCurrentPlayer() || this.players[0];
+    const deck = type === 'CHANCE' ? this.chanceDeck : this.chestDeck;
+    const card = deck.shift()!;
+    deck.push(card);
+    const result = this.applyCard(p, card);
+    return { card, result };
+  }
+
+  public applyCard(player: PlayerState, card: GameCard): string {
+    this.addLog(`${player.username} rút thẻ [${card.title}]: ${card.description}`, 'ACTION', player.id, player.username);
+
+    switch (card.action) {
+      case 'ADD_MONEY': {
+        const val = card.value || 0;
+        player.balance += val;
+        this.updateNetWorth();
+        return `Tài khoản nhận +${val}M`;
+      }
+
+      case 'SUB_MONEY': {
+        const cost = card.value || 0;
+        if (player.balance < cost) {
+          this.autoMortgageToCoverDebt(player, cost);
+        }
+        const sub = Math.min(player.balance, cost);
+        player.balance -= sub;
+        this.updateNetWorth();
+        if (player.balance <= 0 && cost > sub) {
+          this.handleBankruptcy(player);
+        }
+        return `Tài khoản bị trừ -${cost}M`;
+      }
+
+      case 'MOVE_TO': {
+        const prevPos = player.position;
+        const target = card.targetTileId ?? 0;
+        let passedGo = false;
+        if (target === 0 || target < prevPos) {
+          passedGo = true;
+          player.balance += 200;
+          this.addLog(`${player.username} đi qua ô Khởi Hành (GO), nhận thưởng 200M!`, 'MONEY', player.id, player.username);
+        }
+        player.position = target;
+        const destTile = BOARD_TILES[target];
+
+        let subMsg = '';
+        if (destTile.type === 'PROPERTY' || destTile.type === 'RAILROAD' || destTile.type === 'UTILITY') {
+          const prop = this.properties.get(target);
+          if (!prop) {
+            this.turnState.phase = 'BUY_PROPERTY';
+            subMsg = ` Ô [${destTile.name}] chưa có chủ, có thể mua đất.`;
+          } else if (prop.ownerId === player.id) {
+            subMsg = ` Đang thăm bất động sản của chính mình.`;
+          } else if (!prop.isMortgaged) {
+            const owner = this.players.find(p => p.id === prop.ownerId);
+            if (owner && !owner.isBankrupt) {
+              const rent = this.calculateRent(destTile, prop, 7);
+              if (player.balance < rent) {
+                this.autoMortgageToCoverDebt(player, rent);
+              }
+              const actualPaid = Math.min(player.balance, rent);
+              player.balance -= actualPaid;
+              owner.balance += actualPaid;
+              this.addLog(`${player.username} vào ô [${destTile.name}], trả tiền thuê ${actualPaid}M cho ${owner.username}.`, 'MONEY', player.id, player.username);
+              if (player.balance <= 0 && rent > actualPaid) {
+                this.handleBankruptcy(player, owner);
+              }
+              subMsg = ` Trả ${actualPaid}M tiền thuê cho ${owner.username}.`;
+            }
+          } else {
+            subMsg = ` Bất động sản đang bị cầm cố, miễn phí thuê.`;
+          }
+        }
+        this.updateNetWorth();
+        return `Di chuyển tức thì đến [${destTile.name}]${passedGo ? ' (+200M)' : ''}.${subMsg}`;
+      }
+
+      case 'GO_TO_JAIL': {
+        player.position = 10;
+        player.inJail = true;
+        player.jailTurns = 0;
+        this.turnState.isDouble = false;
+        this.turnState.consecutiveDoubles = 0;
+        this.turnState.phase = 'END_TURN';
+        return `Vào tù ngay lập tức`;
+      }
+
+      case 'GET_OUT_OF_JAIL': {
+        player.getOutOfJailCards++;
+        return `Nhận thêm 1 thẻ miễn tội ra tù (Hiện có: ${player.getOutOfJailCards})`;
+      }
+
+      case 'PAY_EACH_PLAYER': {
+        const perPlayer = card.value || 0;
+        const others = this.players.filter(p => p.id !== player.id && !p.isBankrupt);
+        const totalNeeded = perPlayer * others.length;
+
+        if (player.balance < totalNeeded) {
+          this.autoMortgageToCoverDebt(player, totalNeeded);
+        }
+
+        let totalPaid = 0;
+        for (const other of others) {
+          const paid = Math.min(player.balance, perPlayer);
+          player.balance -= paid;
+          other.balance += paid;
+          totalPaid += paid;
+          this.addLog(`${player.username} chi trả ${paid}M cho ${other.username}.`, 'MONEY', player.id, player.username);
+        }
+
+        this.updateNetWorth();
+        if (player.balance <= 0 && totalNeeded > totalPaid) {
+          this.handleBankruptcy(player);
+        }
+        return `Chi trả ${perPlayer}M cho mỗi người chơi (${others.length} người, tổng: -${totalPaid}M)`;
+      }
+
+      case 'COLLECT_FROM_EACH_PLAYER': {
+        const perPlayer = card.value || 0;
+        const others = this.players.filter(p => p.id !== player.id && !p.isBankrupt);
+        let totalCollected = 0;
+
+        for (const other of others) {
+          if (other.balance < perPlayer) {
+            this.autoMortgageToCoverDebt(other, perPlayer);
+          }
+          const paid = Math.min(other.balance, perPlayer);
+          other.balance -= paid;
+          player.balance += paid;
+          totalCollected += paid;
+          this.addLog(`${other.username} đóng góp ${paid}M cho ${player.username}.`, 'MONEY', other.id, other.username);
+          if (other.balance <= 0 && perPlayer > paid) {
+            this.handleBankruptcy(other, player);
+          }
+        }
+
+        this.updateNetWorth();
+        return `Thu ${perPlayer}M từ mỗi người chơi (Tổng nhận: +${totalCollected}M)`;
+      }
+
+      case 'REPAIR_PROPERTY': {
+        const costPerHouse = card.costPerHouse || 25;
+        const costPerHotel = card.costPerHotel || 100;
+        let houseCount = 0;
+        let hotelCount = 0;
+
+        for (const [tileId, prop] of this.properties.entries()) {
+          if (prop.ownerId === player.id) {
+            if (prop.level >= 1 && prop.level <= 3) {
+              houseCount += prop.level;
+            } else if (prop.level === 4) {
+              hotelCount += 1;
+            }
+          }
+        }
+
+        const totalRepair = houseCount * costPerHouse + hotelCount * costPerHotel;
+        if (totalRepair > 0) {
+          if (player.balance < totalRepair) {
+            this.autoMortgageToCoverDebt(player, totalRepair);
+          }
+          const actualPaid = Math.min(player.balance, totalRepair);
+          player.balance -= actualPaid;
+          if (player.balance <= 0 && totalRepair > actualPaid) {
+            this.handleBankruptcy(player);
+          }
+        }
+
+        this.updateNetWorth();
+        return `Chi phí sửa chữa (${houseCount} nhà x ${costPerHouse}M + ${hotelCount} khách sạn x ${costPerHotel}M): -${totalRepair}M`;
+      }
+
+      case 'MOVE_STEPS': {
+        const steps = card.steps || 0;
+        const prevPos = player.position;
+        const target = (prevPos + steps + 40) % 40;
+        let passedGo = false;
+        if (steps > 0 && prevPos + steps >= 40) {
+          passedGo = true;
+          player.balance += 200;
+          this.addLog(`${player.username} đi qua ô Khởi Hành (GO), nhận thưởng 200M!`, 'MONEY', player.id, player.username);
+        }
+        player.position = target;
+        const destTile = BOARD_TILES[target];
+
+        let subMsg = '';
+        if (destTile.type === 'PROPERTY' || destTile.type === 'RAILROAD' || destTile.type === 'UTILITY') {
+          const prop = this.properties.get(target);
+          if (!prop) {
+            this.turnState.phase = 'BUY_PROPERTY';
+            subMsg = ` Ô [${destTile.name}] chưa có chủ, có thể mua đất.`;
+          } else if (prop.ownerId === player.id) {
+            subMsg = ` Đang thăm bất động sản của chính mình.`;
+          } else if (!prop.isMortgaged) {
+            const owner = this.players.find(p => p.id === prop.ownerId);
+            if (owner && !owner.isBankrupt) {
+              const rent = this.calculateRent(destTile, prop, 7);
+              if (player.balance < rent) {
+                this.autoMortgageToCoverDebt(player, rent);
+              }
+              const actualPaid = Math.min(player.balance, rent);
+              player.balance -= actualPaid;
+              owner.balance += actualPaid;
+              this.addLog(`${player.username} vào ô [${destTile.name}], trả tiền thuê ${actualPaid}M cho ${owner.username}.`, 'MONEY', player.id, player.username);
+              if (player.balance <= 0 && rent > actualPaid) {
+                this.handleBankruptcy(player, owner);
+              }
+              subMsg = ` Trả ${actualPaid}M tiền thuê cho ${owner.username}.`;
+            }
+          }
+        }
+        this.updateNetWorth();
+        return `Di chuyển ${steps > 0 ? 'tiến' : 'lùi'} ${Math.abs(steps)} bước đến [${destTile.name}].${subMsg}`;
+      }
+
+      default:
+        return 'Thẻ đã kích hoạt';
+    }
+  }
+
   public calculateRent(tile: BoardTile, prop: PropertyState, diceSum = 7): number {
+    if (prop.isMortgaged) {
+      return 0;
+    }
+
     if (tile.type === 'PROPERTY') {
       switch (prop.level) {
         case 0: {
@@ -366,11 +627,17 @@ export class MonopolyEngine {
       }
     } else if (tile.type === 'RAILROAD') {
       const allRailroads = BOARD_TILES.filter(t => t.type === 'RAILROAD');
-      const count = allRailroads.filter(t => this.properties.get(t.id)?.ownerId === prop.ownerId).length;
+      const count = allRailroads.filter(t => {
+        const p = this.properties.get(t.id);
+        return p && p.ownerId === prop.ownerId && !p.isMortgaged;
+      }).length;
       return 25 * Math.pow(2, Math.max(0, count - 1));
     } else if (tile.type === 'UTILITY') {
       const allUtilities = BOARD_TILES.filter(t => t.type === 'UTILITY');
-      const count = allUtilities.filter(t => this.properties.get(t.id)?.ownerId === prop.ownerId).length;
+      const count = allUtilities.filter(t => {
+        const p = this.properties.get(t.id);
+        return p && p.ownerId === prop.ownerId && !p.isMortgaged;
+      }).length;
       return diceSum * (count >= 2 ? 10 : 4);
     }
     return tile.baseRent;
@@ -379,7 +646,14 @@ export class MonopolyEngine {
   public canUpgradeProperty(userId: string, tile: BoardTile): boolean {
     if (tile.type !== 'PROPERTY' || !tile.district) return false;
     const districtTiles = BOARD_TILES.filter(t => t.district === tile.district);
-    return districtTiles.every(t => this.properties.get(t.id)?.ownerId === userId);
+    const ownsAll = districtTiles.every(t => this.properties.get(t.id)?.ownerId === userId);
+    if (!ownsAll) return false;
+
+    // Không thể xây nhà nếu có bất động sản nào cùng nhóm màu đang bị cầm cố
+    const anyMortgaged = districtTiles.some(t => this.properties.get(t.id)?.isMortgaged);
+    if (anyMortgaged) return false;
+
+    return true;
   }
 
   public buyProperty(userId: string, tileId: number): {
@@ -415,6 +689,9 @@ export class MonopolyEngine {
       this.addLog(`${player.username} đã chi ${tile.price}M mua ô đất [${tile.name}].`, 'ACTION', player.id, player.username);
     } else if (prop.ownerId === player.id) {
       // Nâng cấp nhà
+      if (prop.isMortgaged) {
+        return { success: false, tileId, level: prop.level, remainingCash: player.balance, error: 'Bất động sản đang cầm cố, cần chuộc lại trước khi xây dựng' };
+      }
       if (prop.level >= 4) {
         return { success: false, tileId, level: prop.level, remainingCash: player.balance, error: 'Bất động sản đã đạt cấp Landmark cao nhất' };
       }
@@ -440,17 +717,6 @@ export class MonopolyEngine {
     };
   }
 
-  public setNextPhaseAfterAction(player: PlayerState): 'ROLL_DICE' | 'END_TURN' {
-    if (this.turnState.isDouble && !player.inJail && !player.isBankrupt) {
-      this.turnState.phase = 'ROLL_DICE';
-      this.addLog(`🎉 ${player.username} đổ đôi thành công và được lắc xí ngầu thêm một lượt nữa!`, 'ALERT', player.id, player.username);
-      return 'ROLL_DICE';
-    } else {
-      this.turnState.phase = 'END_TURN';
-      return 'END_TURN';
-    }
-  }
-
   public skipBuyProperty(userId: string): { success: boolean; phase: 'ROLL_DICE' | 'END_TURN' } {
     const player = this.getCurrentPlayer();
     if (!player || player.id !== userId) {
@@ -464,34 +730,230 @@ export class MonopolyEngine {
     return { success: false, phase: this.turnState.phase as any };
   }
 
-  private applyCard(player: PlayerState, card: GameCard): string {
-    this.addLog(`${player.username} rút thẻ [${card.title}]: ${card.description}`, 'ACTION', player.id, player.username);
-    switch (card.action) {
-      case 'ADD_MONEY':
-        player.balance += card.value || 0;
-        return `Tài khoản nhận +${card.value}M`;
-      case 'SUB_MONEY':
-        const sub = Math.min(player.balance, card.value || 0);
-        player.balance -= sub;
-        if (player.balance <= 0) this.handleBankruptcy(player);
-        return `Tài khoản bị trừ -${card.value}M`;
-      case 'MOVE_TO':
-        const target = card.targetTileId ?? 0;
-        if (target < player.position && target === 0) {
-          player.balance += 200;
+  public mortgageProperty(userId: string, tileId: number): {
+    success: boolean;
+    tileId: number;
+    mortgageValue: number;
+    remainingCash: number;
+    error?: string;
+  } {
+    const player = this.players.find(p => p.id === userId);
+    if (!player) return { success: false, tileId, mortgageValue: 0, remainingCash: 0, error: 'Người chơi không tồn tại' };
+
+    const tile = BOARD_TILES[tileId];
+    if (!tile) return { success: false, tileId, mortgageValue: 0, remainingCash: player.balance, error: 'Ô cờ không tồn tại' };
+
+    const prop = this.properties.get(tileId);
+    if (!prop || prop.ownerId !== userId) {
+      return { success: false, tileId, mortgageValue: 0, remainingCash: player.balance, error: 'Bạn không sở hữu ô cờ này' };
+    }
+
+    if (prop.isMortgaged) {
+      return { success: false, tileId, mortgageValue: 0, remainingCash: player.balance, error: 'Bất động sản này đã được cầm cố' };
+    }
+
+    if (prop.level > 0) {
+      return { success: false, tileId, mortgageValue: 0, remainingCash: player.balance, error: 'Phải bán hết nhà trên đất trước khi cầm cố' };
+    }
+
+    const mortgageValue = Math.floor(tile.price * 0.5);
+    prop.isMortgaged = true;
+    player.balance += mortgageValue;
+
+    this.addLog(`${player.username} đã cầm cố ô [${tile.name}], nhận ${mortgageValue}M (50% giá trị).`, 'ACTION', player.id, player.username);
+
+    this.updateNetWorth();
+    return {
+      success: true,
+      tileId,
+      mortgageValue,
+      remainingCash: player.balance
+    };
+  }
+
+  public unmortgageProperty(userId: string, tileId: number): {
+    success: boolean;
+    tileId: number;
+    cost: number;
+    remainingCash: number;
+    error?: string;
+  } {
+    const player = this.players.find(p => p.id === userId);
+    if (!player) return { success: false, tileId, cost: 0, remainingCash: 0, error: 'Người chơi không tồn tại' };
+
+    const tile = BOARD_TILES[tileId];
+    if (!tile) return { success: false, tileId, cost: 0, remainingCash: player.balance, error: 'Ô cờ không tồn tại' };
+
+    const prop = this.properties.get(tileId);
+    if (!prop || prop.ownerId !== userId) {
+      return { success: false, tileId, cost: 0, remainingCash: player.balance, error: 'Bạn không sở hữu ô cờ này' };
+    }
+
+    if (!prop.isMortgaged) {
+      return { success: false, tileId, cost: 0, remainingCash: player.balance, error: 'Bất động sản không ở trạng thái cầm cố' };
+    }
+
+    const principal = Math.floor(tile.price * 0.5);
+    const interest = Math.ceil(principal * 0.1);
+    const cost = principal + interest;
+
+    if (player.balance < cost) {
+      return { success: false, tileId, cost, remainingCash: player.balance, error: `Không đủ tiền chuộc lại (cần ${cost}M gồm 10% lãi suất)` };
+    }
+
+    player.balance -= cost;
+    prop.isMortgaged = false;
+
+    this.addLog(`${player.username} đã chuộc lại ô đất [${tile.name}] với giá ${cost}M (gồm 10% lãi suất).`, 'ACTION', player.id, player.username);
+
+    this.updateNetWorth();
+    return {
+      success: true,
+      tileId,
+      cost,
+      remainingCash: player.balance
+    };
+  }
+
+  public sellBuilding(userId: string, tileId: number): {
+    success: boolean;
+    tileId: number;
+    level: number;
+    refund: number;
+    remainingCash: number;
+    error?: string;
+  } {
+    const player = this.players.find(p => p.id === userId);
+    if (!player) return { success: false, tileId, level: 0, refund: 0, remainingCash: 0, error: 'Người chơi không tồn tại' };
+
+    const tile = BOARD_TILES[tileId];
+    if (!tile) return { success: false, tileId, level: 0, refund: 0, remainingCash: player.balance, error: 'Ô cờ không tồn tại' };
+
+    const prop = this.properties.get(tileId);
+    if (!prop || prop.ownerId !== userId) {
+      return { success: false, tileId, level: 0, refund: 0, remainingCash: player.balance, error: 'Bạn không sở hữu ô đất này' };
+    }
+
+    if (prop.level <= 0) {
+      return { success: false, tileId, level: 0, refund: 0, remainingCash: player.balance, error: 'Ô đất chưa có nhà để bán' };
+    }
+
+    const houseCost = tile.houseCost || 100;
+    const refund = Math.floor(houseCost * 0.5);
+    prop.level--;
+    player.balance += refund;
+
+    const levelNames = ['Đất trống', 'Nhà cấp 1', 'Nhà cấp 2', 'Nhà cấp 3', 'Landmark 5 Sao'];
+    this.addLog(`${player.username} bán 1 cấp công trình tại [${tile.name}], thu về ${refund}M (còn lại: ${levelNames[prop.level]}).`, 'ACTION', player.id, player.username);
+
+    this.updateNetWorth();
+    return {
+      success: true,
+      tileId,
+      level: prop.level,
+      refund,
+      remainingCash: player.balance
+    };
+  }
+
+  public autoMortgageToCoverDebt(player: PlayerState, debtAmount: number): boolean {
+    if (player.balance >= debtAmount) return true;
+
+    // 1. Bán các công trình nhà/khách sạn trước (thu về 50% chi phí xây)
+    const propsWithBuildings = Array.from(this.properties.entries())
+      .filter(([_, prop]) => prop.ownerId === player.id && prop.level > 0)
+      .sort((a, b) => b[1].level - a[1].level);
+
+    for (const [tileId, prop] of propsWithBuildings) {
+      const tile = BOARD_TILES[tileId];
+      const houseCost = tile.houseCost || 100;
+      const refundPerLevel = Math.floor(houseCost * 0.5);
+
+      while (prop.level > 0 && player.balance < debtAmount) {
+        prop.level--;
+        player.balance += refundPerLevel;
+        this.addLog(
+          `${player.username} bán bớt 1 công trình trên [${tile.name}], thu về ${refundPerLevel}M để thanh toán nợ.`,
+          'ACTION',
+          player.id,
+          player.username
+        );
+        if (player.balance >= debtAmount) {
+          this.updateNetWorth();
+          return true;
         }
-        player.position = target;
-        return `Di chuyển tức thì đến [${BOARD_TILES[target].name}]`;
-      case 'GO_TO_JAIL':
-        player.position = 10;
-        player.inJail = true;
-        player.jailTurns = 0;
-        return `Vào tù ngay lập tức`;
-      case 'GET_OUT_OF_JAIL':
-        player.getOutOfJailCards++;
-        return `Nhận thêm 1 thẻ miễn tội ra tù`;
-      default:
-        return 'Thẻ đã kích hoạt';
+      }
+    }
+
+    // 2. Cầm cố các bất động sản chưa cầm cố (thu về 50% giá đất)
+    const unmortgagedProps = Array.from(this.properties.entries())
+      .filter(([_, prop]) => prop.ownerId === player.id && !prop.isMortgaged && prop.level === 0)
+      .sort((a, b) => {
+        const tileA = BOARD_TILES[a[0]];
+        const tileB = BOARD_TILES[b[0]];
+        return (tileA.price || 0) - (tileB.price || 0);
+      });
+
+    for (const [tileId, prop] of unmortgagedProps) {
+      const tile = BOARD_TILES[tileId];
+      const mortgageVal = Math.floor(tile.price * 0.5);
+      prop.isMortgaged = true;
+      player.balance += mortgageVal;
+      this.addLog(
+        `${player.username} cầm cố ô [${tile.name}], thu về ${mortgageVal}M (50% giá trị) để thanh toán nợ.`,
+        'ACTION',
+        player.id,
+        player.username
+      );
+
+      if (player.balance >= debtAmount) {
+        this.updateNetWorth();
+        return true;
+      }
+    }
+
+    this.updateNetWorth();
+    return player.balance >= debtAmount;
+  }
+
+  public useGetOutOfJailCard(userId: string): { success: boolean; error?: string } {
+    const player = this.players.find(p => p.id === userId);
+    if (!player) return { success: false, error: 'Người chơi không tồn tại' };
+    if (!player.inJail) return { success: false, error: 'Người chơi không ở trong tù' };
+    if (player.getOutOfJailCards <= 0) return { success: false, error: 'Không có Thẻ Đặc Xá' };
+
+    player.getOutOfJailCards--;
+    player.inJail = false;
+    player.jailTurns = 0;
+    this.addLog(`${player.username} đã sử dụng Thẻ Đặc Xá để ra tù!`, 'JAIL', player.id, player.username);
+    return { success: true };
+  }
+
+  public payJailFine(userId: string): { success: boolean; error?: string } {
+    const player = this.players.find(p => p.id === userId);
+    if (!player) return { success: false, error: 'Người chơi không tồn tại' };
+    if (!player.inJail) return { success: false, error: 'Người chơi không ở trong tù' };
+
+    if (player.balance < 50) {
+      this.autoMortgageToCoverDebt(player, 50);
+    }
+    if (player.balance < 50) return { success: false, error: 'Không đủ tiền nộp phạt 50M' };
+
+    player.balance -= 50;
+    player.inJail = false;
+    player.jailTurns = 0;
+    this.addLog(`${player.username} nộp 50M tiền bảo lãnh để ra tù sớm.`, 'JAIL', player.id, player.username);
+    return { success: true };
+  }
+
+  public setNextPhaseAfterAction(player: PlayerState): 'ROLL_DICE' | 'END_TURN' {
+    if (this.turnState.isDouble && !player.inJail && !player.isBankrupt) {
+      this.turnState.phase = 'ROLL_DICE';
+      this.addLog(`🎉 ${player.username} đổ đôi thành công và được lắc xí ngầu thêm một lượt nữa!`, 'ALERT', player.id, player.username);
+      return 'ROLL_DICE';
+    } else {
+      this.turnState.phase = 'END_TURN';
+      return 'END_TURN';
     }
   }
 
@@ -569,7 +1031,11 @@ export class MonopolyEngine {
       for (const [tileId, prop] of this.properties.entries()) {
         if (prop.ownerId === player.id) {
           const tile = BOARD_TILES[tileId];
-          assetValue += tile.price + (prop.level * (tile.houseCost || 100));
+          if (prop.isMortgaged) {
+            assetValue += Math.floor(tile.price * 0.5);
+          } else {
+            assetValue += tile.price + (prop.level * (tile.houseCost || 100));
+          }
         }
       }
       player.netWorth = assetValue;

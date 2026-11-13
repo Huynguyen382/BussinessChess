@@ -96,6 +96,26 @@ io.on('connection', (socket: Socket) => {
     roomManager.handleSkipBuy(socket);
   });
 
+  socket.on('game:mortgage_property', (data: { tileId: number }) => {
+    roomManager.handleMortgageProperty(socket, data.tileId);
+  });
+
+  socket.on('game:unmortgage_property', (data: { tileId: number }) => {
+    roomManager.handleUnmortgageProperty(socket, data.tileId);
+  });
+
+  socket.on('game:sell_building', (data: { tileId: number }) => {
+    roomManager.handleSellBuilding(socket, data.tileId);
+  });
+
+  socket.on('game:use_jail_card', () => {
+    roomManager.handleUseJailCard(socket);
+  });
+
+  socket.on('game:pay_jail_fine', () => {
+    roomManager.handlePayJailFine(socket);
+  });
+
   socket.on('game:end_turn', () => {
     roomManager.handleEndTurn(socket);
   });

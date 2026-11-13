@@ -216,6 +216,97 @@ export class RoomManager {
     }
   }
 
+  public handleMortgageProperty(socket: Socket, tileId: number) {
+    const roomCode = this.userToRoom.get(socket.id);
+    if (!roomCode) return;
+    const room = this.rooms.get(roomCode);
+    if (!room || !room.engine || room.status !== 'PLAYING') return;
+
+    const result = room.engine.mortgageProperty(socket.id, tileId);
+    if (result.success) {
+      this.io.to(room.roomCode).emit('game:property_mortgaged', {
+        tileId: result.tileId,
+        ownerId: socket.id,
+        mortgageValue: result.mortgageValue,
+        remainingCash: result.remainingCash,
+        snapshot: room.engine.getSnapshot()
+      });
+      this.io.to(room.roomCode).emit('game:state_sync', { snapshot: room.engine.getSnapshot() });
+    } else {
+      socket.emit('error:message', { message: result.error });
+    }
+  }
+
+  public handleUnmortgageProperty(socket: Socket, tileId: number) {
+    const roomCode = this.userToRoom.get(socket.id);
+    if (!roomCode) return;
+    const room = this.rooms.get(roomCode);
+    if (!room || !room.engine || room.status !== 'PLAYING') return;
+
+    const result = room.engine.unmortgageProperty(socket.id, tileId);
+    if (result.success) {
+      this.io.to(room.roomCode).emit('game:property_unmortgaged', {
+        tileId: result.tileId,
+        ownerId: socket.id,
+        cost: result.cost,
+        remainingCash: result.remainingCash,
+        snapshot: room.engine.getSnapshot()
+      });
+      this.io.to(room.roomCode).emit('game:state_sync', { snapshot: room.engine.getSnapshot() });
+    } else {
+      socket.emit('error:message', { message: result.error });
+    }
+  }
+
+  public handleSellBuilding(socket: Socket, tileId: number) {
+    const roomCode = this.userToRoom.get(socket.id);
+    if (!roomCode) return;
+    const room = this.rooms.get(roomCode);
+    if (!room || !room.engine || room.status !== 'PLAYING') return;
+
+    const result = room.engine.sellBuilding(socket.id, tileId);
+    if (result.success) {
+      this.io.to(room.roomCode).emit('game:property_updated', {
+        tileId: result.tileId,
+        ownerId: socket.id,
+        level: result.level,
+        remainingCash: result.remainingCash,
+        snapshot: room.engine.getSnapshot()
+      });
+      this.io.to(room.roomCode).emit('game:state_sync', { snapshot: room.engine.getSnapshot() });
+    } else {
+      socket.emit('error:message', { message: result.error });
+    }
+  }
+
+  public handleUseJailCard(socket: Socket) {
+    const roomCode = this.userToRoom.get(socket.id);
+    if (!roomCode) return;
+    const room = this.rooms.get(roomCode);
+    if (!room || !room.engine || room.status !== 'PLAYING') return;
+
+    const result = room.engine.useGetOutOfJailCard(socket.id);
+    if (result.success) {
+      this.io.to(room.roomCode).emit('game:state_sync', { snapshot: room.engine.getSnapshot() });
+    } else {
+      socket.emit('error:message', { message: result.error });
+    }
+  }
+
+  public handlePayJailFine(socket: Socket) {
+    const roomCode = this.userToRoom.get(socket.id);
+    if (!roomCode) return;
+    const room = this.rooms.get(roomCode);
+    if (!room || !room.engine || room.status !== 'PLAYING') return;
+
+    const result = room.engine.payJailFine(socket.id);
+    if (result.success) {
+      this.io.to(room.roomCode).emit('game:state_sync', { snapshot: room.engine.getSnapshot() });
+    } else {
+      socket.emit('error:message', { message: result.error });
+    }
+  }
+
   public handleEndTurn(socket: Socket) {
     const roomCode = this.userToRoom.get(socket.id);
     if (!roomCode) return;
