@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "business-chess-3d": "file:..",
     "canvas-confetti": "^1.9.3",
     "socket.io-client": "^4.7.5",
     "three": "^0.166.1"
