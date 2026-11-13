@@ -383,6 +383,12 @@ export class DatabaseService {
     const achievement = this.getAchievementByCode(achievementCodeOrId);
     if (!achievement) return { unlocked: false };
 
+    // If userId is not a registered user (e.g. guest or raw socket id), grant unlock without DB error
+    const user = this.getUserById(userId);
+    if (!user) {
+      return { unlocked: true, achievement };
+    }
+
     // Check if already unlocked
     const checkStmt = this.db.prepare(`
       SELECT id FROM user_achievements WHERE user_id = ? AND achievement_id = ?
