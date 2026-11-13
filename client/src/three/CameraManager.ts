@@ -16,13 +16,27 @@ export class CameraManager {
   // Góc nhìn vàng tiêu chuẩn: Isometric 45 độ, góc nhìn cận cảnh sắc nét bao quát toàn bộ 40 ô
   private static readonly GOLDEN_THETA = Math.PI / 4;       // 45 độ góc ngang
   private static readonly GOLDEN_PHI = Math.PI / 3.4;        // ~53 độ góc chúc xuống tối ưu hiển thị mặt ô cờ
-  private spherical = new THREE.Spherical(26.8, CameraManager.GOLDEN_PHI, CameraManager.GOLDEN_THETA);
 
-  // Touch & Mouse orbit control state
+  // Spherical coordinates (current and target for smooth lerp transitions)
+  private currentSpherical = new THREE.Spherical(26.8, CameraManager.GOLDEN_PHI, CameraManager.GOLDEN_THETA);
+  private targetSpherical = new THREE.Spherical(26.8, CameraManager.GOLDEN_PHI, CameraManager.GOLDEN_THETA);
+
+  // Touch & Pointer state
   private isPointerDown = false;
   private prevPointerX = 0;
   private prevPointerY = 0;
+  private pointerVelocityX = 0;
+  private pointerVelocityY = 0;
+
+  // Pinch-to-zoom state
+  private isPinching = false;
   private pinchStartDist = 0;
+  private pinchStartRadius = 0;
+
+  // Double-tap detection
+  private lastTapTime = 0;
+  private lastTapX = 0;
+  private lastTapY = 0;
 
   constructor(domElement: HTMLElement) {
     this.domElement = domElement;
@@ -33,25 +47,30 @@ export class CameraManager {
     this.camera = new THREE.PerspectiveCamera(fov, aspect, 0.1, 1000);
 
     this.lockToGoldenAngle();
-    this.updateCameraTransform();
+    this.currentSpherical.copy(this.targetSpherical);
+    this.applyCameraTransform();
     this.bindEvents();
   }
 
   // Khóa cứng góc nhìn chuẩn Isometric không cho xoay tự do
   public lockToGoldenAngle() {
-    this.spherical.theta = CameraManager.GOLDEN_THETA;
-    this.spherical.phi = CameraManager.GOLDEN_PHI;
+    this.targetSpherical.theta = CameraManager.GOLDEN_THETA;
+    this.targetSpherical.phi = CameraManager.GOLDEN_PHI;
     if (this.isZoomedIn) {
-      this.spherical.radius = this.isMobile ? 20.0 : 17.5;
+      this.targetSpherical.radius = this.isMobile ? 19.5 : 17.5;
     } else {
-      this.spherical.radius = this.isMobile ? 30.5 : 26.8;
+      this.targetSpherical.radius = this.isMobile ? 29.5 : 26.8;
     }
   }
 
   public toggleZoom(): boolean {
     this.isZoomedIn = !this.isZoomedIn;
-    this.lockToGoldenAngle();
-    this.updateCameraTransform();
+    if (this.isLocked) {
+      this.lockToGoldenAngle();
+    } else {
+      const targetR = this.isZoomedIn ? (this.isMobile ? 19.5 : 17.5) : (this.isMobile ? 29.5 : 26.8);
+      this.targetSpherical.radius = targetR;
+    }
     return this.isZoomedIn;
   }
 
@@ -59,7 +78,6 @@ export class CameraManager {
     this.isLocked = locked;
     if (locked) {
       this.lockToGoldenAngle();
-      this.updateCameraTransform();
     }
   }
 
@@ -68,90 +86,123 @@ export class CameraManager {
     return this.isLocked;
   }
 
-  private updateCameraTransform() {
-    // Luôn giữ góc nhìn ổn định khi bị khóa
-    if (this.isLocked) {
-      this.spherical.theta = CameraManager.GOLDEN_THETA;
-      this.spherical.phi = CameraManager.GOLDEN_PHI;
-      if (!this.isFollowMode) {
-        if (this.isZoomedIn) {
-          this.spherical.radius = this.isMobile ? 20.0 : 17.5;
-        } else {
-          this.spherical.radius = this.isMobile ? 30.5 : 26.8;
-        }
-      }
-    } else {
-      this.spherical.radius = THREE.MathUtils.clamp(this.spherical.radius, 14, 48);
-      this.spherical.phi = THREE.MathUtils.clamp(this.spherical.phi, 0.2, Math.PI / 2.1);
-    }
+  private applyCameraTransform() {
+    this.clampSpherical(this.targetSpherical);
 
-    const offset = new THREE.Vector3().setFromSpherical(this.spherical);
+    const offset = new THREE.Vector3().setFromSpherical(this.currentSpherical);
     const center = this.isFollowMode && this.followTarget ? this.followTarget : this.targetPosition;
 
     this.camera.position.copy(center).add(offset);
-    this.currentLookAt.lerp(center, 0.1);
+    this.currentLookAt.lerp(center, 0.15);
     this.camera.lookAt(this.currentLookAt);
+  }
+
+  private clampSpherical(s: THREE.Spherical) {
+    s.radius = THREE.MathUtils.clamp(s.radius, 14, 46);
+    s.phi = THREE.MathUtils.clamp(s.phi, 0.25, Math.PI / 2.15);
   }
 
   private bindEvents() {
     window.addEventListener('resize', this.onResize.bind(this));
 
-    // Pointer events: Chỉ cho phép kéo xoay nếu ĐÃ MỞ KHÓA
-    this.domElement.addEventListener('pointerdown', (e) => {
-      if (this.isLocked) return; // Khóa góc nhìn hoàn toàn
+    // 1. POINTER / TOUCH DOWN
+    this.domElement.addEventListener('pointerdown', (e: PointerEvent) => {
+      // Check double-tap on mobile touch
+      const now = performance.now();
+      const distFromLastTap = Math.hypot(e.clientX - this.lastTapX, e.clientY - this.lastTapY);
+
+      if (now - this.lastTapTime < 320 && distFromLastTap < 30) {
+        // Double-tap triggered! Toggle zoom
+        this.toggleZoom();
+        this.lastTapTime = 0;
+        return;
+      }
+      this.lastTapTime = now;
+      this.lastTapX = e.clientX;
+      this.lastTapY = e.clientY;
+
       this.isPointerDown = true;
       this.prevPointerX = e.clientX;
       this.prevPointerY = e.clientY;
+      this.pointerVelocityX = 0;
+      this.pointerVelocityY = 0;
     });
 
-    window.addEventListener('pointermove', (e) => {
-      if (this.isLocked || !this.isPointerDown) return;
+    // 2. POINTER / TOUCH MOVE (Orbit Controls)
+    window.addEventListener('pointermove', (e: PointerEvent) => {
+      if (!this.isPointerDown || this.isPinching) return;
+
       const deltaX = e.clientX - this.prevPointerX;
       const deltaY = e.clientY - this.prevPointerY;
       this.prevPointerX = e.clientX;
       this.prevPointerY = e.clientY;
 
-      this.spherical.theta -= deltaX * 0.005;
-      this.spherical.phi -= deltaY * 0.005;
-      this.updateCameraTransform();
+      if (!this.isLocked) {
+        // Orbit rotation freely when unlocked
+        this.pointerVelocityX = deltaX * 0.005;
+        this.pointerVelocityY = deltaY * 0.005;
+
+        this.targetSpherical.theta -= this.pointerVelocityX;
+        this.targetSpherical.phi -= this.pointerVelocityY;
+        this.clampSpherical(this.targetSpherical);
+      }
     });
 
     window.addEventListener('pointerup', () => {
       this.isPointerDown = false;
     });
 
-    // Wheel zoom: Chỉ cho phép thu phóng nhẹ khi mở khóa
-    this.domElement.addEventListener('wheel', (e) => {
-      if (this.isLocked) return;
+    window.addEventListener('pointercancel', () => {
+      this.isPointerDown = false;
+      this.isPinching = false;
+    });
+
+    // 3. WHEEL ZOOM
+    this.domElement.addEventListener('wheel', (e: WheelEvent) => {
       e.preventDefault();
-      this.spherical.radius += e.deltaY * 0.03;
-      this.updateCameraTransform();
+      if (this.isLocked) {
+        this.isLocked = false; // Smoothly unlock on intentional wheel scroll
+      }
+      this.targetSpherical.radius += e.deltaY * 0.025;
+      this.clampSpherical(this.targetSpherical);
     }, { passive: false });
 
-    // Touch pinch to zoom
-    this.domElement.addEventListener('touchstart', (e) => {
-      if (this.isLocked) return;
+    // 4. TOUCH PINCH TO ZOOM & TWO-FINGER GESTURES
+    this.domElement.addEventListener('touchstart', (e: TouchEvent) => {
       if (e.touches.length === 2) {
+        this.isPinching = true;
         this.pinchStartDist = Math.hypot(
           e.touches[0].clientX - e.touches[1].clientX,
           e.touches[0].clientY - e.touches[1].clientY
         );
+        this.pinchStartRadius = this.targetSpherical.radius;
       }
-    });
+    }, { passive: true });
 
-    this.domElement.addEventListener('touchmove', (e) => {
-      if (this.isLocked) return;
-      if (e.touches.length === 2) {
-        const dist = Math.hypot(
+    this.domElement.addEventListener('touchmove', (e: TouchEvent) => {
+      if (e.touches.length === 2 && this.isPinching) {
+        const currentDist = Math.hypot(
           e.touches[0].clientX - e.touches[1].clientX,
           e.touches[0].clientY - e.touches[1].clientY
         );
-        const diff = this.pinchStartDist - dist;
-        this.spherical.radius += diff * 0.04;
-        this.pinchStartDist = dist;
-        this.updateCameraTransform();
+
+        if (this.pinchStartDist > 0) {
+          const pinchFactor = this.pinchStartDist / Math.max(10, currentDist);
+          // Unlock if pinched
+          if (this.isLocked && Math.abs(currentDist - this.pinchStartDist) > 15) {
+            this.isLocked = false;
+          }
+          this.targetSpherical.radius = this.pinchStartRadius * pinchFactor;
+          this.clampSpherical(this.targetSpherical);
+        }
       }
-    });
+    }, { passive: true });
+
+    this.domElement.addEventListener('touchend', (e: TouchEvent) => {
+      if (e.touches.length < 2) {
+        this.isPinching = false;
+      }
+    }, { passive: true });
   }
 
   public setFollowTarget(target: THREE.Vector3 | null) {
@@ -161,7 +212,7 @@ export class CameraManager {
   public toggleFollowMode() {
     this.isFollowMode = !this.isFollowMode;
     if (this.isFollowMode) {
-      this.spherical.radius = this.isMobile ? 18 : 22;
+      this.targetSpherical.radius = this.isMobile ? 18.5 : 21.5;
     } else {
       this.resetOverview();
     }
@@ -170,9 +221,10 @@ export class CameraManager {
   public resetOverview() {
     this.isFollowMode = false;
     this.followTarget = null;
+    this.isLocked = true;
+    this.isZoomedIn = false;
     this.lockToGoldenAngle();
     this.targetPosition.set(0, 0, 0);
-    this.updateCameraTransform();
   }
 
   public onResize() {
@@ -180,12 +232,30 @@ export class CameraManager {
     this.camera.aspect = window.innerWidth / window.innerHeight;
     this.camera.fov = this.camera.aspect < 1 ? (this.camera.aspect < 0.6 ? 53 : 50) : 46;
     this.camera.updateProjectionMatrix();
-    this.updateCameraTransform();
+
+    if (this.isLocked) {
+      this.lockToGoldenAngle();
+    }
   }
 
-  public update() {
-    if (this.isFollowMode && this.followTarget) {
-      this.updateCameraTransform();
+  public update(delta: number = 0.016) {
+    // Smooth inertial damping for orbit velocity
+    if (!this.isPointerDown && !this.isLocked) {
+      if (Math.abs(this.pointerVelocityX) > 0.0001 || Math.abs(this.pointerVelocityY) > 0.0001) {
+        this.targetSpherical.theta -= this.pointerVelocityX;
+        this.targetSpherical.phi -= this.pointerVelocityY;
+        this.clampSpherical(this.targetSpherical);
+        this.pointerVelocityX *= 0.92;
+        this.pointerVelocityY *= 0.92;
+      }
     }
+
+    // Smooth lerp towards target spherical coordinates
+    const lerpSpeed = Math.min(1.0, delta * 9.0);
+    this.currentSpherical.radius += (this.targetSpherical.radius - this.currentSpherical.radius) * lerpSpeed;
+    this.currentSpherical.theta += (this.targetSpherical.theta - this.currentSpherical.theta) * lerpSpeed;
+    this.currentSpherical.phi += (this.targetSpherical.phi - this.currentSpherical.phi) * lerpSpeed;
+
+    this.applyCameraTransform();
   }
 }

@@ -1,3 +1,4 @@
+import * as THREE from 'three';
 import confetti from 'canvas-confetti';
 import { BoardScene } from './three/BoardScene';
 import { socketClient } from './network/SocketClient';
@@ -36,6 +37,14 @@ const btnResetCam = document.getElementById('btn-reset-cam')!;
 const btnToggleLog = document.getElementById('btn-toggle-log')!;
 const btnCloseLog = document.getElementById('btn-close-log')!;
 const logItems = document.getElementById('log-items')!;
+
+// Chat & Emote Drawer
+const btnToggleChat = document.getElementById('btn-toggle-chat');
+const btnCloseChat = document.getElementById('btn-close-chat');
+const elChatDrawer = document.getElementById('chat-drawer');
+const chatMessages = document.getElementById('chat-messages');
+const inputChatMsg = document.getElementById('input-chat-msg') as HTMLInputElement | null;
+const btnSendChat = document.getElementById('btn-send-chat');
 
 // Tile Inspector Floating Card
 const elTileInspector = document.getElementById('tile-inspector-card')!;
@@ -567,11 +576,92 @@ function bindUIEvents() {
     const isOpening = elLogDrawer.style.display === 'none';
     elLogDrawer.style.display = isOpening ? 'flex' : 'none';
     btnToggleLog.classList.toggle('is-active', isOpening);
+    if (isOpening && elChatDrawer) {
+      elChatDrawer.style.display = 'none';
+      btnToggleChat?.classList.remove('is-active');
+    }
   });
 
   btnCloseLog.addEventListener('click', () => {
     elLogDrawer.style.display = 'none';
     btnToggleLog.classList.remove('is-active');
+  });
+
+  // Chat & Emotes functionality
+  function addChatMessage(sender: string, text: string, isMe: boolean = false) {
+    if (!chatMessages) return;
+    const item = document.createElement('div');
+    item.className = `chat-item ${isMe ? 'my-chat' : ''}`;
+    item.innerHTML = `
+      <div style="font-size: 0.72rem; font-weight: 800; color: ${isMe ? '#00B894' : '#0984E3'}; margin-bottom: 2px;">
+        ${sender} ${isMe ? '(Bạn)' : ''}
+      </div>
+      <div style="color: #2D3436; font-weight: 700; word-break: break-word;">${text}</div>
+    `;
+    chatMessages.appendChild(item);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+  }
+
+  function sendChatMessage(msg: string) {
+    const trimmed = msg.trim();
+    if (!trimmed) return;
+    const username = inputUsername?.value || 'Tỷ Phú';
+    addChatMessage(username, trimmed, true);
+    sounds.playTap();
+
+    // Floating chat speech bubble above local player token
+    const sid = socketClient.socket.id || myUserId;
+    const myToken = sid ? boardScene.tokenManager.tokens.get(sid) : null;
+    const pos = myToken ? myToken.mesh.position : new THREE.Vector3(0, 3, 0);
+    boardScene.vfxManager.spawnFloatingText(`💬 ${trimmed}`, pos, true);
+
+    // Emit to socket
+    socketClient.emit('game:chat', { text: trimmed, username });
+    if (inputChatMsg) inputChatMsg.value = '';
+  }
+
+  btnToggleChat?.addEventListener('click', () => {
+    if (!elChatDrawer) return;
+    const isOpening = elChatDrawer.style.display === 'none';
+    elChatDrawer.style.display = isOpening ? 'flex' : 'none';
+    btnToggleChat.classList.toggle('is-active', isOpening);
+    if (isOpening) {
+      elLogDrawer.style.display = 'none';
+      btnToggleLog.classList.remove('is-active');
+      if (inputChatMsg) setTimeout(() => inputChatMsg.focus(), 100);
+    }
+  });
+
+  btnCloseChat?.addEventListener('click', () => {
+    if (elChatDrawer) elChatDrawer.style.display = 'none';
+    btnToggleChat?.classList.remove('is-active');
+  });
+
+  btnSendChat?.addEventListener('click', () => {
+    if (inputChatMsg) sendChatMessage(inputChatMsg.value);
+  });
+
+  inputChatMsg?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      sendChatMessage(inputChatMsg.value);
+    }
+  });
+
+  document.querySelectorAll('.quick-emote-btn').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      const msg = (e.currentTarget as HTMLElement).getAttribute('data-msg');
+      if (msg) sendChatMessage(msg);
+    });
+  });
+
+  socketClient.on('game:chat', (data: { sender?: string; username?: string; text: string; userId?: string }) => {
+    if (data.userId && data.userId === socketClient.socket.id) return;
+    const sender = data.sender || data.username || 'Người chơi';
+    addChatMessage(sender, data.text);
+    const token = data.userId ? boardScene.tokenManager.tokens.get(data.userId) : null;
+    const pos = token ? token.mesh.position : new THREE.Vector3(0, 3, 0);
+    boardScene.vfxManager.spawnFloatingText(`${sender}: ${data.text}`, pos, true);
+    sounds.playTap();
   });
 
   btnSkipBuy.addEventListener('click', () => {
@@ -679,11 +769,19 @@ function bindSocketEvents() {
 
           // Highlight và tự động mở Tra Cứu Chi Tiết ô cờ vừa dừng chân
           boardScene.highlightTile(data.newPosition);
-          showTileInspector(data.newPosition, boardTilesData[data.newPosition]);
+          const currentTile = boardTilesData[data.newPosition];
+          showTileInspector(data.newPosition, currentTile);
+
+          if (currentTile && currentTile.type === 'RAILROAD') {
+            sounds.playTrainWhistle();
+            boardScene.vfxManager.spawnTrainSmoke(landingPos, 14);
+          } else if (currentTile && (currentTile.type === 'GO_TO_JAIL' || (currentTile.type === 'JAIL' && player && player.inJail))) {
+            sounds.playJailSlam();
+          }
 
           if (data.passedGo) {
-            sounds.playCoin();
-            boardScene.vfxManager.spawnFloatingText('+200M (Lương)', landingPos, true);
+            sounds.playCashTransaction();
+            boardScene.vfxManager.spawnFloatingDollar('200M (Lương)', landingPos, true);
             boardScene.vfxManager.spawnStarBurst(landingPos, 20);
           }
 
@@ -964,19 +1062,24 @@ function handleTileActionResult(action: any, isMe: boolean, player: any, pos: an
     );
     elPropertyModal.style.display = 'flex';
   } else if (action.type === 'PAY_RENT') {
-    sounds.playCoin();
-    boardScene.vfxManager.spawnFloatingText(`-${action.amount}M`, pos, false);
+    sounds.playCashTransaction();
+    boardScene.vfxManager.spawnFloatingDollar(`${action.amount}M`, pos, false);
     showToast(`${player.username} đã trả ${action.amount}M tiền thuê cho ${action.ownerName}!`);
   } else if (action.type === 'TAX') {
-    sounds.playCoin();
-    boardScene.vfxManager.spawnFloatingText(`-${action.amount}M (Thuế)`, pos, false);
+    sounds.playCashTransaction();
+    boardScene.vfxManager.spawnFloatingDollar(`${action.amount}M (Thuế)`, pos, false);
   } else if (action.type === 'CARD') {
+    sounds.playCardChime();
+    boardScene.vfxManager.spawnStarBurst(pos, 24);
     cardBadge.textContent = action.cardType === 'CHANCE' ? 'THẺ CƠ HỘI' : 'THẺ KHÍ VẬN';
     cardIcon.textContent = action.cardType === 'CHANCE' ? '⚡' : '🎁';
     cardTitle.textContent = action.card.title;
     cardDesc.textContent = `${action.card.description}\n(${action.result})`;
     elCardModal.style.display = 'flex';
-    sounds.playCoin();
+  } else if (action.type === 'GO_TO_JAIL') {
+    sounds.playJailSlam();
+    boardScene.vfxManager.triggerCameraShake(0.4);
+    boardScene.vfxManager.spawnFloatingText('VÀO TÙ 🔒', pos, false);
   } else if (action.type === 'BANKRUPT') {
     sounds.playBankrupt();
     boardScene.vfxManager.triggerCameraShake(0.5);

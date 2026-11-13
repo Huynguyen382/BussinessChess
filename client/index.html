@@ -182,6 +182,10 @@
               <span class="dock-icon">🗺️</span>
               <span class="dock-label">40 Ô Cờ</span>
             </button>
+            <button id="btn-toggle-chat" class="dock-btn" title="Trò chuyện & biểu cảm">
+              <span class="dock-icon">💬</span>
+              <span class="dock-label">Chat</span>
+            </button>
             <button id="btn-toggle-log" class="dock-btn" title="Xem nhật ký trận đấu">
               <span class="dock-icon">📜</span>
               <span class="dock-label">Nhật Ký</span>
@@ -204,10 +208,11 @@
         <div class="turn-action-buttons">
           <button id="btn-roll-dice" class="btn-chunky btn-accent action-pill" style="display: flex; gap: 10px;">
             <span>🎲</span>
-            <span>ĐỔ XÚC XẮC</span>
+            <span>LẮC XÍ NGẦU</span>
           </button>
           <button id="btn-end-turn" class="btn-chunky btn-white action-pill" style="display: none;">
-            Kết Thúc Lượt ⏩
+            <span>⏩</span>
+            <span>KẾT THÚC LƯỢT</span>
           </button>
         </div>
       </div>
@@ -271,6 +276,31 @@
       </div>
       <div id="log-items" class="log-items-list">
         <!-- Log entries -->
+      </div>
+    </div>
+
+    <!-- 8B. IN-GAME CHAT & EMOTE DRAWER -->
+    <div id="chat-drawer" class="interactive glass-panel chat-drawer-panel" style="display: none;">
+      <div class="chat-drawer-header">
+        <span style="font-weight: 800; font-size: 0.95rem; color: #2D3436;">💬 Trò Chuyện & Cảm Xúc</span>
+        <button id="btn-close-chat" class="inspector-close-btn" style="background: rgba(45,52,54,0.08); color: #2D3436;" title="Đóng chat">✕</button>
+      </div>
+      <div class="quick-emotes-bar">
+        <button class="quick-emote-btn" data-msg="👋 Chào các tỷ phú!">👋 Chào</button>
+        <button class="quick-emote-btn" data-msg="🎲 Ra đôi nào!">🎲 Ra đôi</button>
+        <button class="quick-emote-btn" data-msg="💸 Chát quá cứu tôi!">💸 Chát quá</button>
+        <button class="quick-emote-btn" data-msg="🔥 Tỷ phú số 1!">🔥 Tỷ phú</button>
+        <button class="quick-emote-btn" data-msg="😎 Đỉnh nóc kịch trần!">😎 Đỉnh</button>
+        <button class="quick-emote-btn" data-msg="😭 Cháy túi rồi!">😭 Cháy túi</button>
+      </div>
+      <div id="chat-messages" class="chat-messages-list">
+        <div class="chat-item system-chat">
+          <span>Chào mừng đến với Cờ Tỷ Phú 3D! Bạn có thể gửi cảm xúc hoặc tin nhắn cho mọi người.</span>
+        </div>
+      </div>
+      <div class="chat-input-bar">
+        <input id="input-chat-msg" type="text" placeholder="Nhập tin nhắn..." maxlength="60" />
+        <button id="btn-send-chat" class="btn-chunky btn-primary btn-sm">Gửi</button>
       </div>
     </div>
 

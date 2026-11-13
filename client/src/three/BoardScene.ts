@@ -972,7 +972,7 @@ export class BoardScene {
     const elapsedTime = this.clock.getElapsedTime();
 
     this.dicePhysics.update(delta);
-    this.cameraManager.update();
+    this.cameraManager.update(delta);
     this.buildingMesh.update(elapsedTime);
     this.vfxManager.update(delta);
     this.tokenManager.update(delta);

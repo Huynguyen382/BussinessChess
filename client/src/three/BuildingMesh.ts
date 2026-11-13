@@ -270,11 +270,19 @@ export class BuildingMesh {
 
     this.group.add(bGroup);
     this.buildingMap.set(tileId, bGroup);
-    sounds.playBuild();
 
-    if (this.vfxManager) {
-      this.vfxManager.spawnShockwave(position, level === 4 ? '#FDCB6E' : '#00B894', 2.8);
-      this.vfxManager.spawnStarBurst(position, 16, level === 4 ? 0xFDCB6E : 0x00B894);
+    if (level === 4) {
+      sounds.playHotelFanfare();
+      if (this.vfxManager) {
+        this.vfxManager.spawnHotelCelebration(position);
+        this.vfxManager.spawnFloatingDollar('KHÁCH SẠN HOÀNG GIA!', position, true);
+      }
+    } else {
+      sounds.playBuild();
+      if (this.vfxManager) {
+        this.vfxManager.spawnShockwave(position, '#00B894', 2.8);
+        this.vfxManager.spawnStarBurst(position, 18, 0x00B894);
+      }
     }
   }
 
