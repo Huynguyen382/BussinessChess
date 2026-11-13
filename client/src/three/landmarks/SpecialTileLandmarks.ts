@@ -141,10 +141,10 @@ export class SpecialTileLandmarks {
       box.position.set(0, 0.3, 0);
       box.castShadow = true;
 
-      // Nơ ruy băng vàng quấn quanh hộp
-      const ribH = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.1, 0.72), ribbonMat);
+      // Nơ ruy băng vàng quấn quanh hộp bo viền mềm mại
+      const ribH = new THREE.Mesh(new RoundedBoxGeometry(0.72, 0.1, 0.72, 2, 0.015), ribbonMat);
       ribH.position.set(0, 0.3, 0);
-      const ribV = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.62, 0.72), ribbonMat);
+      const ribV = new THREE.Mesh(new RoundedBoxGeometry(0.1, 0.62, 0.72, 2, 0.015), ribbonMat);
       ribV.position.set(0, 0.3, 0);
 
       // Dấu hỏi vàng 3D xoay nổi phía trên

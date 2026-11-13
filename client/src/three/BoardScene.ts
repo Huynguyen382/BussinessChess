@@ -45,12 +45,13 @@ export class BoardScene {
     this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
-    // Cinematic Tone Mapping
+    // Cinematic Tone Mapping with crisp contrast and rich dynamic range
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.15;
+    this.renderer.toneMappingExposure = 1.18;
 
     container.appendChild(this.renderer.domElement);
 
@@ -192,8 +193,8 @@ export class BoardScene {
   }
 
   private setupLighting() {
-    // Warm Key Light (Morning Sunbeam)
-    const dirLight = new THREE.DirectionalLight('#FFF7EB', 1.48);
+    // Warm Key Light (Morning Sunbeam) - Crisp directional light with clean shadows
+    const dirLight = new THREE.DirectionalLight('#FFF7EB', 1.52);
     dirLight.position.set(24, 38, 22);
     dirLight.castShadow = true;
     dirLight.shadow.mapSize.width = 2048;
@@ -206,17 +207,23 @@ export class BoardScene {
     dirLight.shadow.camera.right = d;
     dirLight.shadow.camera.top = d;
     dirLight.shadow.camera.bottom = -d;
-    dirLight.shadow.bias = -0.0003;
+    dirLight.shadow.bias = -0.0002;
+    dirLight.shadow.normalBias = 0.02; // Prevents shadow acne on beveled geometries and curved surfaces
     this.scene.add(dirLight);
 
     // Warm Ambient Bounce from Oak Table and Walls
-    const hemiLight = new THREE.HemisphereLight('#FFF6E8', '#CBD5E1', 0.98);
+    const hemiLight = new THREE.HemisphereLight('#FFF6E8', '#94A3B8', 0.95);
     this.scene.add(hemiLight);
 
-    // Soft Blue Sky Secondary Bounce
-    const fillLight = new THREE.DirectionalLight('#E0F2FE', 0.4);
+    // Soft Blue Sky Secondary Bounce Fill Light
+    const fillLight = new THREE.DirectionalLight('#E0F2FE', 0.45);
     fillLight.position.set(-25, 20, -25);
     this.scene.add(fillLight);
+
+    // Rim / Silhouette Accent Light - Sharpens edges and landmark silhouettes against background
+    const rimLight = new THREE.DirectionalLight('#F0F9FF', 0.42);
+    rimLight.position.set(-22, 28, 22);
+    this.scene.add(rimLight);
   }
 
   public initBoard(tiles: BoardTileMeta[]) {

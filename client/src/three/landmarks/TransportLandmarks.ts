@@ -173,7 +173,7 @@ export class TransportLandmarks {
     signBox.position.set(0, 0.58, 0.1);
     signBox.userData = { animType: 'flicker' };
 
-    const signBezel = new THREE.Mesh(new THREE.BoxGeometry(0.74, 0.13, 0.02), steelStructureMat);
+    const signBezel = new THREE.Mesh(new RoundedBoxGeometry(0.74, 0.13, 0.02, 2, 0.005), steelStructureMat);
     signBezel.position.set(0, 0.58, 0.08);
 
     terminalGroup.add(mainBuilding, groundGlass, roof, signBox, signBezel);
@@ -266,7 +266,7 @@ export class TransportLandmarks {
 
     // Cụm đèn hậu LED đỏ phía sau
     [-0.1, 0.1].forEach(rx => {
-      const taillight = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.045, 0.01), ledRedMat);
+      const taillight = new THREE.Mesh(new RoundedBoxGeometry(0.02, 0.045, 0.01, 1, 0.003), ledRedMat);
       taillight.position.set(rx, 0.05, -0.415);
       busGroup.add(taillight);
     });

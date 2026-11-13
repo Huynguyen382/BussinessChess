@@ -870,7 +870,7 @@ export class VietnamLandmarks {
         jeepHood.position.set(0.08, 0.075, 0);
 
         // Kính chắn gió dựng đứng
-        const windshield = new THREE.Mesh(new THREE.BoxGeometry(0.01, 0.07, 0.14), darkPortalMat);
+        const windshield = new THREE.Mesh(new RoundedBoxGeometry(0.01, 0.07, 0.14, 1, 0.003), darkPortalMat);
         windshield.position.set(0.02, 0.13, 0);
 
         // Khung chống lật (Roll cage) màu đen
@@ -1518,10 +1518,10 @@ export class VietnamLandmarks {
         roof.castShadow = true;
 
         // Dải hoa văn thổ cẩm đỏ - trắng truyền thống chạy ngang mái nhà rông
-        const brocadeBandRed = new THREE.Mesh(new THREE.BoxGeometry(0.54, 0.08, 0.29), brocadeRedMat);
+        const brocadeBandRed = new THREE.Mesh(new RoundedBoxGeometry(0.54, 0.08, 0.29, 1, 0.005), brocadeRedMat);
         brocadeBandRed.position.set(0, 0.98, 0);
 
-        const brocadeBandWhite = new THREE.Mesh(new THREE.BoxGeometry(0.545, 0.02, 0.295), brocadeWhiteMat);
+        const brocadeBandWhite = new THREE.Mesh(new RoundedBoxGeometry(0.545, 0.02, 0.295, 1, 0.005), brocadeWhiteMat);
         brocadeBandWhite.position.set(0, 0.98, 0);
 
         // 2 Sừng trâu (Kơ-pan) vươn cao ở hai đầu đỉnh nóc nhà rông
@@ -2165,7 +2165,7 @@ export class VietnamLandmarks {
 
         // Dải lan can tay vịn gỗ lim viền vàng kim
         [-0.24, 0.24].forEach(rz => {
-          const handrail = new THREE.Mesh(new THREE.BoxGeometry(1.12, 0.028, 0.035), goldPlaqueMat);
+          const handrail = new THREE.Mesh(new RoundedBoxGeometry(1.12, 0.028, 0.035, 1, 0.005), goldPlaqueMat);
           handrail.position.set(0, 0.26, rz);
           bridgeGroup.add(handrail);
         });
@@ -2393,7 +2393,7 @@ export class VietnamLandmarks {
 
         // Lan can cầu hai bên mạn
         [-0.21, 0.21].forEach(ry => {
-          const rail = new THREE.Mesh(new THREE.BoxGeometry(1.26, 0.025, 0.015), bridgeDeckMat);
+          const rail = new THREE.Mesh(new RoundedBoxGeometry(1.26, 0.025, 0.015, 1, 0.003), bridgeDeckMat);
           rail.position.set(0, 0.21, ry);
           bridgeGroup.add(rail);
         });
@@ -3208,9 +3208,62 @@ export class VietnamLandmarks {
       }
 
       default: {
-        const generic = new THREE.Mesh(new RoundedBoxGeometry(0.65, 0.65, 0.65, 4, 0.06), LandmarkMaterials.getMat('genericDiorama', () => new THREE.MeshStandardMaterial({ color: '#00B894' })));
-        generic.position.set(0, 0.35, 0);
-        group.add(generic);
+        // Mô hình Đình Làng / Vọng Cảnh Cổ Kính thay thế triệt để mọi khối lập phương generic
+        const plinthMat = LandmarkMaterials.getMat('pavilionPlinthStone', () => new THREE.MeshStandardMaterial({ color: '#57606F', roughness: 0.65 }));
+        const timberMat = LandmarkMaterials.getMat('pavilionRedTimber', () => new THREE.MeshStandardMaterial({ color: '#C0392B', roughness: 0.35 }));
+        const goldMat = LandmarkMaterials.getMat('shinyGold', () => new THREE.MeshStandardMaterial({ color: '#F1C40F', metalness: 0.88, roughness: 0.15 }));
+        const terracottaMat = LandmarkMaterials.getMat('terracottaRoofTile', () => new THREE.MeshStandardMaterial({ color: '#D35400', roughness: 0.32 }));
+        const lanternMat = LandmarkMaterials.getMat('traditionalLanternGlow', () => new THREE.MeshStandardMaterial({
+          color: '#FFEAA7',
+          emissive: '#F1C40F',
+          emissiveIntensity: 0.9,
+          roughness: 0.2
+        }));
+
+        // Bệ tam cấp đá xanh
+        const base = new THREE.Mesh(new RoundedBoxGeometry(0.85, 0.12, 0.85, 3, 0.03), plinthMat);
+        base.position.y = 0.06;
+        base.receiveShadow = true;
+
+        // 4 Cột gỗ lim sơn son thếp vàng
+        const colGeo = new THREE.CylinderGeometry(0.04, 0.045, 0.62, 12);
+        const colCap = new THREE.CylinderGeometry(0.055, 0.04, 0.05, 10);
+        const colPositions = [
+          [-0.26, -0.26], [0.26, -0.26],
+          [-0.26, 0.26], [0.26, 0.26]
+        ];
+        colPositions.forEach(([cx, cz]) => {
+          const col = new THREE.Mesh(colGeo, timberMat);
+          col.position.set(cx, 0.42, cz);
+          col.castShadow = true;
+          const cap = new THREE.Mesh(colCap, goldMat);
+          cap.position.set(cx, 0.72, cz);
+          group.add(col, cap);
+        });
+
+        // Tầng mái dưới lợp ngói âm dương cong vút
+        const lowerRoof = new THREE.Mesh(new THREE.ConeGeometry(0.68, 0.24, 4), terracottaMat);
+        lowerRoof.rotation.y = Math.PI / 4;
+        lowerRoof.scale.set(1.15, 0.65, 1.15);
+        lowerRoof.position.set(0, 0.82, 0);
+        lowerRoof.castShadow = true;
+
+        // Tầng mái trên & Đỉnh tháp vàng kim
+        const upperRoof = new THREE.Mesh(new THREE.ConeGeometry(0.52, 0.28, 4), terracottaMat);
+        upperRoof.rotation.y = Math.PI / 4;
+        upperRoof.scale.set(1.1, 0.75, 1.1);
+        upperRoof.position.set(0, 1.05, 0);
+        upperRoof.castShadow = true;
+
+        const finial = new THREE.Mesh(new THREE.SphereGeometry(0.07, 10, 10), goldMat);
+        finial.position.set(0, 1.25, 0);
+
+        // Đèn lồng vàng ấm treo chính giữa trần đình
+        const lantern = new THREE.Mesh(new THREE.OctahedronGeometry(0.09, 1), lanternMat);
+        lantern.position.set(0, 0.58, 0);
+        lantern.userData = { animType: 'flicker' };
+
+        group.add(base, lowerRoof, upperRoof, finial, lantern);
         break;
       }
     }
