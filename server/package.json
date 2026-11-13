@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
-    "test": "tsx test/MonopolyEngine.test.ts",
+    "test": "tsx test/MonopolyEngine.test.ts && tsx test/AuthAchievements.test.ts",
     "start": "node dist/index.js"
   },
   "dependencies": {

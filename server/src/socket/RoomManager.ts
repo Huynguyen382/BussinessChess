@@ -2,6 +2,7 @@ import { Server, Socket } from 'socket.io';
 import { MonopolyEngine } from '../game/MonopolyEngine';
 import { BotAI } from '../game/BotAI';
 import { BOARD_TILES } from '../game/BoardConfig';
+import { AchievementEngine } from '../achievements/AchievementEngine';
 
 export interface RoomInfo {
   id: string;
@@ -23,9 +24,15 @@ export class RoomManager {
   private io: Server;
   private rooms: Map<string, RoomInfo> = new Map(); // key: roomCode
   private userToRoom: Map<string, string> = new Map(); // key: socketId -> roomCode
+  private socketToUserId: Map<string, string> = new Map(); // socketId -> registered userId
 
   constructor(io: Server) {
     this.io = io;
+    AchievementEngine.init(io);
+  }
+
+  public setSocketUser(socketId: string, userId: string) {
+    this.socketToUserId.set(socketId, userId);
   }
 
   public generateRoomCode(): string {
@@ -42,6 +49,7 @@ export class RoomManager {
     payload: {
       name: string;
       username: string;
+      userId?: string;
       maxPlayers?: number;
       isPrivate?: boolean;
       password?: string;
@@ -70,6 +78,9 @@ export class RoomManager {
 
     this.rooms.set(roomCode, room);
     this.userToRoom.set(socket.id, roomCode);
+    if (payload.userId) {
+      this.socketToUserId.set(socket.id, payload.userId);
+    }
     socket.join(roomCode);
 
     // Host joins as first player
@@ -80,7 +91,7 @@ export class RoomManager {
 
   public joinRoom(
     socket: Socket,
-    payload: { roomCode: string; username: string; password?: string }
+    payload: { roomCode: string; username: string; userId?: string; password?: string }
   ): { success: boolean; room?: RoomInfo; error?: string } {
     const room = this.rooms.get(payload.roomCode.toUpperCase());
     if (!room) {
@@ -100,6 +111,9 @@ export class RoomManager {
     }
 
     this.userToRoom.set(socket.id, room.roomCode);
+    if (payload.userId) {
+      this.socketToUserId.set(socket.id, payload.userId);
+    }
     socket.join(room.roomCode);
 
     room.engine.addPlayer(socket.id, socket.id, payload.username, false, room.initialCash);
@@ -142,6 +156,15 @@ export class RoomManager {
     room.status = 'PLAYING';
     const { firstTurnUserId } = room.engine.startGame();
 
+    // Initialize AchievementEngine for this room session
+    AchievementEngine.initRoom(room.roomCode, room.engine.players);
+    for (const p of room.engine.players) {
+      const uid = this.socketToUserId.get(p.socketId);
+      if (uid) {
+        AchievementEngine.setPlayerUserId(room.roomCode, p.id, uid);
+      }
+    }
+
     this.io.to(room.roomCode).emit('game:start', {
       boardData: BOARD_TILES,
       snapshot: room.engine.getSnapshot(),
@@ -161,7 +184,36 @@ export class RoomManager {
     if (!room || !room.engine || room.status !== 'PLAYING') return;
 
     try {
+      const player = room.engine.players.find(p => p.id === socket.id);
       const result = room.engine.rollDice(socket.id);
+
+      if (player) {
+        AchievementEngine.onDiceRolled(
+          room.roomCode,
+          player,
+          result.dice,
+          result.isDouble,
+          room.engine.turnState.consecutiveDoubles
+        );
+
+        if (result.passedGo) {
+          AchievementEngine.onPassedGo(room.roomCode, player, room.engine);
+        }
+
+        if (result.actionResult && result.actionResult.type === 'PAY_RENT') {
+          const prop = room.engine.properties.get(result.actionResult.tileId);
+          const owner = room.engine.players.find(p => p.id === prop?.ownerId);
+          if (owner) {
+            AchievementEngine.onRentPaid(
+              room.roomCode,
+              player,
+              owner,
+              result.actionResult.amount,
+              room.engine
+            );
+          }
+        }
+      }
 
       this.io.to(room.roomCode).emit('game:dice_result', {
         userId: socket.id,
@@ -188,8 +240,19 @@ export class RoomManager {
     const room = this.rooms.get(roomCode);
     if (!room || !room.engine || room.status !== 'PLAYING') return;
 
+    const player = room.engine.players.find(p => p.id === socket.id);
     const result = room.engine.buyProperty(socket.id, tileId);
     if (result.success) {
+      if (player) {
+        AchievementEngine.onPropertyBought(
+          room.roomCode,
+          player,
+          tileId,
+          result.level,
+          room.engine
+        );
+      }
+
       this.io.to(room.roomCode).emit('game:property_updated', {
         tileId: result.tileId,
         ownerId: socket.id,
@@ -319,6 +382,10 @@ export class RoomManager {
       if (isGameOver) {
         room.status = 'FINISHED';
         if (room.timerInterval) clearInterval(room.timerInterval);
+        const winner = room.engine.players.find(p => p.id === room.engine!.winnerId);
+        if (winner) {
+          AchievementEngine.onGameOver(room.roomCode, winner, room.engine);
+        }
         this.io.to(room.roomCode).emit('game:over', {
           winnerId: room.engine.winnerId,
           snapshot: room.engine.getSnapshot()
@@ -410,6 +477,33 @@ export class RoomManager {
         if (action === 'ROLL_DICE') {
           try {
             const res = room.engine!.rollDice(curPlayer.id);
+
+            AchievementEngine.onDiceRolled(
+              room.roomCode,
+              curPlayer,
+              res.dice,
+              res.isDouble,
+              room.engine!.turnState.consecutiveDoubles
+            );
+
+            if (res.passedGo) {
+              AchievementEngine.onPassedGo(room.roomCode, curPlayer, room.engine!);
+            }
+
+            if (res.actionResult && res.actionResult.type === 'PAY_RENT') {
+              const prop = room.engine!.properties.get(res.actionResult.tileId);
+              const owner = room.engine!.players.find(p => p.id === prop?.ownerId);
+              if (owner) {
+                AchievementEngine.onRentPaid(
+                  room.roomCode,
+                  curPlayer,
+                  owner,
+                  res.actionResult.amount,
+                  room.engine!
+                );
+              }
+            }
+
             this.io.to(room.roomCode).emit('game:dice_result', {
               userId: curPlayer.id,
               dice1: res.dice[0],
@@ -426,6 +520,13 @@ export class RoomManager {
         } else if (action === 'BUY_PROPERTY') {
           const res = room.engine!.buyProperty(curPlayer.id, payload.tileId);
           if (res.success) {
+            AchievementEngine.onPropertyBought(
+              room.roomCode,
+              curPlayer,
+              payload.tileId,
+              res.level,
+              room.engine!
+            );
             this.io.to(room.roomCode).emit('game:property_updated', {
               tileId: res.tileId,
               ownerId: curPlayer.id,
@@ -447,6 +548,10 @@ export class RoomManager {
             if (res.isGameOver) {
               room.status = 'FINISHED';
               if (room.timerInterval) clearInterval(room.timerInterval);
+              const winner = room.engine!.players.find(p => p.id === room.engine!.winnerId);
+              if (winner) {
+                AchievementEngine.onGameOver(room.roomCode, winner, room.engine!);
+              }
               this.io.to(room.roomCode).emit('game:over', {
                 winnerId: room.engine!.winnerId,
                 snapshot: room.engine!.getSnapshot()
@@ -472,6 +577,10 @@ export class RoomManager {
     if (room.engine.isGameOver || room.engine.checkGameOver()) {
       room.status = 'FINISHED';
       if (room.timerInterval) clearInterval(room.timerInterval);
+      const winner = room.engine.players.find(p => p.id === room.engine!.winnerId);
+      if (winner) {
+        AchievementEngine.onGameOver(room.roomCode, winner, room.engine);
+      }
       this.io.to(room.roomCode).emit('game:over', {
         winnerId: room.engine.winnerId,
         snapshot: room.engine.getSnapshot()
@@ -488,6 +597,10 @@ export class RoomManager {
           if (res.isGameOver) {
             room.status = 'FINISHED';
             if (room.timerInterval) clearInterval(room.timerInterval);
+            const winner = room.engine.players.find(p => p.id === room.engine!.winnerId);
+            if (winner) {
+              AchievementEngine.onGameOver(room.roomCode, winner, room.engine);
+            }
             this.io.to(room.roomCode).emit('game:over', {
               winnerId: room.engine.winnerId,
               snapshot: room.engine.getSnapshot()
