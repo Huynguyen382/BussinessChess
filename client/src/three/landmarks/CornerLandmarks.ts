@@ -52,9 +52,9 @@ export class CornerLandmarks {
     const carpet = new THREE.Mesh(new RoundedBoxGeometry(0.95, 0.03, 2.1, 2, 0.01), velvetCarpetMat);
     carpet.position.set(0, 0.15, 0.1);
     carpet.receiveShadow = true;
-    const carpetGoldTrimL = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.035, 2.1), goldMat);
+    const carpetGoldTrimL = new THREE.Mesh(new RoundedBoxGeometry(0.05, 0.035, 2.1, 2, 0.008), goldMat);
     carpetGoldTrimL.position.set(-0.44, 0.152, 0.1);
-    const carpetGoldTrimR = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.035, 2.1), goldMat);
+    const carpetGoldTrimR = new THREE.Mesh(new RoundedBoxGeometry(0.05, 0.035, 2.1, 2, 0.008), goldMat);
     carpetGoldTrimR.position.set(0.44, 0.152, 0.1);
     group.add(carpet, carpetGoldTrimL, carpetGoldTrimR);
 
@@ -184,9 +184,9 @@ export class CornerLandmarks {
       bar.castShadow = true;
       group.add(bar);
     }
-    const barCrossTop = new THREE.Mesh(new THREE.BoxGeometry(0.92, 0.07, 0.08), titaniumMat);
+    const barCrossTop = new THREE.Mesh(new RoundedBoxGeometry(0.92, 0.07, 0.08, 2, 0.015), titaniumMat);
     barCrossTop.position.set(0.28, 1.08, 0.35);
-    const barCrossBottom = new THREE.Mesh(new THREE.BoxGeometry(0.92, 0.07, 0.08), titaniumMat);
+    const barCrossBottom = new THREE.Mesh(new RoundedBoxGeometry(0.92, 0.07, 0.08, 2, 0.015), titaniumMat);
     barCrossBottom.position.set(0.28, 0.24, 0.35);
 
     // Ổ khóa xích vàng bản lớn treo chính giữa song sắt
@@ -209,7 +209,7 @@ export class CornerLandmarks {
     const boothFrame = new THREE.Mesh(new RoundedBoxGeometry(0.36, 0.72, 0.36, 2, 0.03), boothRedMat);
     boothFrame.position.y = 0.36;
     boothFrame.castShadow = true;
-    const boothGlass = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.48, 0.28), glassMat);
+    const boothGlass = new THREE.Mesh(new RoundedBoxGeometry(0.38, 0.48, 0.28, 2, 0.02), glassMat);
     boothGlass.position.y = 0.38;
     phoneBooth.add(boothFrame, boothGlass);
 
@@ -280,7 +280,7 @@ export class CornerLandmarks {
 
     // Sọc đỏ Retro trên mái che
     for (let s = -0.55; s <= 0.55; s += 0.36) {
-      const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.15, 0.94), retroRedMat);
+      const stripe = new THREE.Mesh(new RoundedBoxGeometry(0.18, 0.15, 0.94, 2, 0.015), retroRedMat);
       stripe.position.set(-0.18 + s, 1.48, -0.52);
       group.add(stripe);
     }
@@ -317,7 +317,7 @@ export class CornerLandmarks {
     carHull.castShadow = true;
 
     // Kính chắn gió nghiêng thể thao & khoang ghế da mở mui
-    const windshield = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.16, 0.4), cyanNeonMat);
+    const windshield = new THREE.Mesh(new RoundedBoxGeometry(0.04, 0.16, 0.4, 2, 0.015), cyanNeonMat);
     windshield.position.set(0.14, 0.32, 0);
     windshield.rotation.z = 0.35;
 
@@ -424,7 +424,7 @@ export class CornerLandmarks {
     const barrierArm = new THREE.Mesh(new RoundedBoxGeometry(1.38, 0.08, 0.08, 2, 0.01), goldBadgeMat);
     barrierArm.position.set(0.02, 0.48, 0.55);
     for (let s = -0.45; s <= 0.45; s += 0.3) {
-      const blackStripe = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.085, 0.085), darkSlateMat);
+      const blackStripe = new THREE.Mesh(new RoundedBoxGeometry(0.12, 0.085, 0.085, 2, 0.01), darkSlateMat);
       blackStripe.position.set(0.02 + s, 0.48, 0.55);
       group.add(blackStripe);
     }

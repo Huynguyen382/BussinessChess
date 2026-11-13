@@ -44,7 +44,9 @@ export class CameraManager {
 
     const aspect = window.innerWidth / window.innerHeight;
     const fov = aspect < 1 ? (aspect < 0.6 ? 53 : 50) : 46;
-    this.camera = new THREE.PerspectiveCamera(fov, aspect, 0.1, 1000);
+    // Optimized near (0.2) and far (350) clipping planes to prevent clipping of tall landmarks
+    // while maximizing 24-bit depth buffer precision and eliminating z-fighting
+    this.camera = new THREE.PerspectiveCamera(fov, aspect, 0.2, 350);
 
     this.lockToGoldenAngle();
     this.currentSpherical.copy(this.targetSpherical);
@@ -57,9 +59,9 @@ export class CameraManager {
     this.targetSpherical.theta = CameraManager.GOLDEN_THETA;
     this.targetSpherical.phi = CameraManager.GOLDEN_PHI;
     if (this.isZoomedIn) {
-      this.targetSpherical.radius = this.isMobile ? 19.5 : 17.5;
+      this.targetSpherical.radius = this.isMobile ? 16.0 : 14.0;
     } else {
-      this.targetSpherical.radius = this.isMobile ? 29.5 : 26.8;
+      this.targetSpherical.radius = this.isMobile ? 28.5 : 25.5;
     }
   }
 
@@ -68,7 +70,7 @@ export class CameraManager {
     if (this.isLocked) {
       this.lockToGoldenAngle();
     } else {
-      const targetR = this.isZoomedIn ? (this.isMobile ? 19.5 : 17.5) : (this.isMobile ? 29.5 : 26.8);
+      const targetR = this.isZoomedIn ? (this.isMobile ? 16.0 : 14.0) : (this.isMobile ? 28.5 : 25.5);
       this.targetSpherical.radius = targetR;
     }
     return this.isZoomedIn;
@@ -98,8 +100,9 @@ export class CameraManager {
   }
 
   private clampSpherical(s: THREE.Spherical) {
-    s.radius = THREE.MathUtils.clamp(s.radius, 14, 46);
-    s.phi = THREE.MathUtils.clamp(s.phi, 0.25, Math.PI / 2.15);
+    // Allows crisp zoom-in up to radius 8.5 to view landmark details cleanly without clipping
+    s.radius = THREE.MathUtils.clamp(s.radius, 8.5, 42);
+    s.phi = THREE.MathUtils.clamp(s.phi, 0.20, Math.PI / 2.15);
   }
 
   private bindEvents() {
@@ -160,11 +163,10 @@ export class CameraManager {
     // 3. WHEEL ZOOM
     this.domElement.addEventListener('wheel', (e: WheelEvent) => {
       e.preventDefault();
-      if (this.isLocked) {
-        this.isLocked = false; // Smoothly unlock on intentional wheel scroll
-      }
-      this.targetSpherical.radius += e.deltaY * 0.025;
+      // Smooth zoom without unintentionally unlocking orbit rotation
+      this.targetSpherical.radius += e.deltaY * 0.022;
       this.clampSpherical(this.targetSpherical);
+      this.isZoomedIn = this.targetSpherical.radius < (this.isMobile ? 22 : 19);
     }, { passive: false });
 
     // 4. TOUCH PINCH TO ZOOM & TWO-FINGER GESTURES
@@ -188,12 +190,9 @@ export class CameraManager {
 
         if (this.pinchStartDist > 0) {
           const pinchFactor = this.pinchStartDist / Math.max(10, currentDist);
-          // Unlock if pinched
-          if (this.isLocked && Math.abs(currentDist - this.pinchStartDist) > 15) {
-            this.isLocked = false;
-          }
           this.targetSpherical.radius = this.pinchStartRadius * pinchFactor;
           this.clampSpherical(this.targetSpherical);
+          this.isZoomedIn = this.targetSpherical.radius < (this.isMobile ? 22 : 19);
         }
       }
     }, { passive: true });
@@ -203,6 +202,19 @@ export class CameraManager {
         this.isPinching = false;
       }
     }, { passive: true });
+  }
+
+  public focusOnPosition(pos: THREE.Vector3, zoomRadius?: number) {
+    this.targetPosition.copy(pos);
+    if (zoomRadius !== undefined) {
+      this.targetSpherical.radius = zoomRadius;
+      this.clampSpherical(this.targetSpherical);
+      this.isZoomedIn = this.targetSpherical.radius < (this.isMobile ? 22 : 19);
+    }
+  }
+
+  public getTargetPosition(): THREE.Vector3 {
+    return this.targetPosition;
   }
 
   public setFollowTarget(target: THREE.Vector3 | null) {
