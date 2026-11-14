@@ -40,7 +40,7 @@ export class BoardScene {
 
     // Natural Morning Studio Ambient Sky
     this.scene.background = new THREE.Color('#DFE7F0');
-    this.scene.fog = new THREE.FogExp2('#DFE7F0', 0.007);
+    this.scene.fog = new THREE.FogExp2('#DFE7F0', 0.0058);
 
     this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
     this.renderer.setSize(window.innerWidth, window.innerHeight);
@@ -51,7 +51,7 @@ export class BoardScene {
 
     // Cinematic Tone Mapping with crisp contrast and rich dynamic range
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.18;
+    this.renderer.toneMappingExposure = 1.15;
 
     container.appendChild(this.renderer.domElement);
 
@@ -70,6 +70,9 @@ export class BoardScene {
 
     this.setupLighting();
     this.environment = new BoardEnvironment(this.scene);
+    if (this.dirSunLight) {
+      this.environment.setSunDirection(this.dirSunLight.position);
+    }
 
     // Initialize 40 tiles immediately
     this.initBoard(DEFAULT_BOARD_TILES);
@@ -192,38 +195,46 @@ export class BoardScene {
     lm.userData.__bounceInterval = interval;
   }
 
+  private dirSunLight: THREE.DirectionalLight | null = null;
+
   private setupLighting() {
-    // Warm Key Light (Morning Sunbeam) - Crisp directional light with clean shadows
-    const dirLight = new THREE.DirectionalLight('#FFF7EB', 1.52);
-    dirLight.position.set(24, 38, 22);
+    // 1. Warm Key Sun Light (Morning Sunbeam) - Crisp directional light with clean shadows
+    const dirLight = new THREE.DirectionalLight('#FFF5E4', 1.68);
+    dirLight.position.set(26, 42, 24);
     dirLight.castShadow = true;
     dirLight.shadow.mapSize.width = 2048;
     dirLight.shadow.mapSize.height = 2048;
-    dirLight.shadow.radius = 2.0;
+    dirLight.shadow.radius = 2.2;
     dirLight.shadow.camera.near = 0.5;
-    dirLight.shadow.camera.far = 120;
+    dirLight.shadow.camera.far = 130;
     const d = 26;
     dirLight.shadow.camera.left = -d;
     dirLight.shadow.camera.right = d;
     dirLight.shadow.camera.top = d;
     dirLight.shadow.camera.bottom = -d;
-    dirLight.shadow.bias = -0.0002;
-    dirLight.shadow.normalBias = 0.02; // Prevents shadow acne on beveled geometries and curved surfaces
+    dirLight.shadow.bias = -0.00015;
+    dirLight.shadow.normalBias = 0.024; // Prevents shadow acne on beveled geometries and curved surfaces
     this.scene.add(dirLight);
+    this.dirSunLight = dirLight;
 
-    // Warm Ambient Bounce from Oak Table and Walls
-    const hemiLight = new THREE.HemisphereLight('#FFF6E8', '#94A3B8', 0.95);
+    // 2. Warm Ambient Bounce from Oak Table and Walls
+    const hemiLight = new THREE.HemisphereLight('#EBF4FF', '#E8C99B', 0.88);
     this.scene.add(hemiLight);
 
-    // Soft Blue Sky Secondary Bounce Fill Light
-    const fillLight = new THREE.DirectionalLight('#E0F2FE', 0.45);
-    fillLight.position.set(-25, 20, -25);
+    // 3. Soft Blue Sky Secondary Bounce Fill Light
+    const fillLight = new THREE.DirectionalLight('#CCE7FF', 0.42);
+    fillLight.position.set(-24, 18, -24);
     this.scene.add(fillLight);
 
-    // Rim / Silhouette Accent Light - Sharpens edges and landmark silhouettes against background
-    const rimLight = new THREE.DirectionalLight('#F0F9FF', 0.42);
+    // 4. Rim / Silhouette Accent Light - Sharpens edges and landmark silhouettes against background
+    const rimLight = new THREE.DirectionalLight('#FFF3D6', 0.52);
     rimLight.position.set(-22, 28, 22);
     this.scene.add(rimLight);
+
+    // 5. Upward Table & Water Basin Bounce Fill (Subtle GI reflection to lift dark undersides)
+    const bounceLight = new THREE.DirectionalLight('#FFE5B4', 0.24);
+    bounceLight.position.set(12, -8, 12);
+    this.scene.add(bounceLight);
   }
 
   public initBoard(tiles: BoardTileMeta[]) {
@@ -381,7 +392,7 @@ export class BoardScene {
         if (i === 0) corner3D = LandmarkModels.createGOCorner();
         else if (i === 10) corner3D = LandmarkModels.createJailCorner();
         else if (i === 20) corner3D = LandmarkModels.createFreeParkingCorner();
-        else if (i === 30) corner3D = LandmarkModels.createGoToJailCorner();
+        else if (i === 30) corner3D = LandmarkModels.createAirportCorner();
 
         if (corner3D) {
           corner3D.position.set(0, tileHeight / 2 + 0.010, 0);
@@ -902,25 +913,25 @@ export class BoardScene {
       ctx.font = '900 54px system-ui, sans-serif';
       ctx.fillText('Nghỉ Chân Miễn Phí', 512, 780);
 
-    } else if (tile.type === 'GO_TO_JAIL') {
-      // 🚨 Ô VÀO TÙ NGAY (GO TO JAIL)
-      const jailGrad = ctx.createLinearGradient(0, 0, 1024, 1024);
-      jailGrad.addColorStop(0, '#D63031');
-      jailGrad.addColorStop(1, '#E84118');
-      ctx.fillStyle = jailGrad;
+    } else if (tile.type === 'AIRPORT' || tile.type === 'GO_TO_JAIL') {
+      // ✈️ SÂN BAY QUỐC TẾ (AIRPORT)
+      const airportGrad = ctx.createLinearGradient(0, 0, 1024, 1024);
+      airportGrad.addColorStop(0, '#0984E3');
+      airportGrad.addColorStop(1, '#00CEC9');
+      ctx.fillStyle = airportGrad;
       this.drawRoundedRect(ctx, 24, 24, 976, 976, 42);
       ctx.fill();
 
       ctx.font = '190px "Segoe UI Emoji", "Apple Color Emoji", sans-serif';
-      ctx.fillText('🚨', 512, 360);
+      ctx.fillText('✈️', 512, 360);
 
       ctx.fillStyle = '#FFFFFF';
-      ctx.font = '900 92px "Fredoka", sans-serif';
-      ctx.fillText('VÀO TÙ NGAY', 512, 620);
+      ctx.font = '900 84px "Fredoka", sans-serif';
+      ctx.fillText('SÂN BAY', 512, 620);
 
       ctx.fillStyle = '#FFEAA7';
-      ctx.font = '900 54px system-ui, sans-serif';
-      ctx.fillText('Không Được Đi Qua GO!', 512, 760);
+      ctx.font = '900 52px system-ui, sans-serif';
+      ctx.fillText('Bay Về GO Nhận 200M', 512, 760);
     }
 
     const texture = new THREE.CanvasTexture(canvas);
@@ -956,11 +967,41 @@ export class BoardScene {
     ctx.closePath();
   }
 
-  public updateBuilding(tileId: number, level: number) {
+  public updateBuilding(tileId: number, level: number, ownerColor?: string) {
     const pos = this.tilePositions[tileId];
     const angle = this.tileRotations[tileId] || 0;
     if (pos) {
-      this.buildingMesh.updateBuilding(tileId, level, pos, angle);
+      this.buildingMesh.updateBuilding(tileId, level, pos, angle, ownerColor);
+    }
+  }
+
+  public syncProperties(properties: any[], players: any[]) {
+    const playerColorMap = new Map<string, string>();
+    if (Array.isArray(players)) {
+      players.forEach(p => {
+        if (p && p.id && p.color) {
+          playerColorMap.set(p.id, p.color);
+        }
+      });
+    }
+
+    const activeTiles = new Set<number>();
+    if (Array.isArray(properties)) {
+      properties.forEach(prop => {
+        if (prop && typeof prop.tileId === 'number' && prop.ownerId) {
+          activeTiles.add(prop.tileId);
+          const ownerColor = playerColorMap.get(prop.ownerId) || '#00B894';
+          const level = typeof prop.level === 'number' ? prop.level : 0;
+          this.updateBuilding(prop.tileId, level, ownerColor);
+        }
+      });
+    }
+
+    // Xóa các công trình trên những ô cờ không còn chủ sở hữu
+    for (const tileId of this.buildingMesh.getTrackedTileIds()) {
+      if (!activeTiles.has(tileId)) {
+        this.buildingMesh.removeBuilding(tileId);
+      }
     }
   }
 
@@ -970,17 +1011,19 @@ export class BoardScene {
 
   private onResize() {
     this.renderer.setSize(window.innerWidth, window.innerHeight);
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.cameraManager.onResize();
   }
 
   private animate() {
     requestAnimationFrame(this.animate);
-    const delta = this.clock.getDelta();
+    const rawDelta = this.clock.getDelta();
+    const delta = Math.min(rawDelta, 0.08); // Giới hạn delta an toàn, ngăn giật khựng trên màn hình 60Hz-144Hz và khi chuyển tab
     const elapsedTime = this.clock.getElapsedTime();
 
     this.dicePhysics.update(delta);
     this.cameraManager.update(delta);
-    this.buildingMesh.update(elapsedTime);
+    this.buildingMesh.update(delta, elapsedTime);
     this.vfxManager.update(delta);
     this.tokenManager.update(delta);
 
@@ -989,8 +1032,8 @@ export class BoardScene {
       this.cameraManager.camera.position.add(this.vfxManager.cameraShakeOffset);
     }
 
-    // Cập nhật hoạt ảnh môi trường (đài phun nước, xe cộ, cây cối, khói cà phê, bụi nắng)
-    this.environment.update(delta, elapsedTime);
+    // Cập nhật hoạt ảnh môi trường (đài phun nước, xe cộ, cây cối, khói cà phê, bụi nắng, sóng nước, đom đóm)
+    this.environment.update(delta, elapsedTime, this.cameraManager.camera);
 
     // Micro-animations cho các bộ phận chi tiết của các kỳ quan và mô hình trên bàn cờ
     this.animatedLandmarks.forEach((lm, idx) => {
@@ -1025,5 +1068,20 @@ export class BoardScene {
     });
 
     this.renderer.render(this.scene, this.cameraManager.camera);
+  }
+
+  public setFocusMode(enabled: boolean) {
+    this.environment.setFocusMode(enabled);
+  }
+
+  public setDioramaVisibility(visible: boolean) {
+    this.environment.setDioramaVisibility(visible);
+  }
+
+  public dispose() {
+    window.removeEventListener('resize', this.onResize);
+    this.environment.dispose();
+    this.tokenManager.clearTokens();
+    this.renderer.dispose();
   }
 }

@@ -129,20 +129,22 @@ async function runAllTests() {
   // ----------------------------------------------------
   console.log('\n--- Suite 2: Jail Mechanics ---');
 
-  await test('Landing on GO_TO_JAIL tile (tile 30) puts player in jail', () => {
+  await test('Landing on AIRPORT tile (tile 30) flies player to GO and grants 200M flight bonus', () => {
     const game = createGameWithPlayers(2);
     const p1 = game.players[0];
     p1.position = 26; // Hai Phong
+    const startBalance = p1.balance;
 
     const origRandom = Math.random;
     try {
       Math.random = () => 0.2; // d1=2, d2=2 -> steps = 4 -> newPos = 30
       const res = game.rollDice(p1.id);
-      assert.equal(res.actionResult.type, 'GO_TO_JAIL');
-      assert.equal(p1.inJail, true);
-      assert.equal(p1.position, 10);
-      assert.equal(p1.jailTurns, 0);
-      assert.equal(game.turnState.phase, 'END_TURN');
+      assert.equal(res.actionResult.type, 'AIRPORT');
+      assert.equal(p1.inJail, false);
+      assert.equal(p1.position, 0); // Flew directly to GO
+      assert.equal(p1.balance, startBalance + 200);
+      assert.equal(res.actionResult.reward, 200);
+      assert.equal(res.actionResult.destination, 0);
     } finally {
       Math.random = origRandom;
     }

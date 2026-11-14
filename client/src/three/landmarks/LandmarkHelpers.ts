@@ -229,4 +229,206 @@ export class LandmarkHelpers {
     qGroup.add(arc, stem, dot);
     return qGroup;
   }
+
+  /**
+   * Tạo hình ngôi sao vàng 5 cánh đúng chuẩn tỷ lệ Quốc kỳ Việt Nam (10 đỉnh đa giác)
+   */
+  public static create5PointStarShape(outerRadius = 0.068, innerRadius = 0.026): THREE.Shape {
+    const shape = new THREE.Shape();
+    const points = 5;
+    for (let i = 0; i < points * 2; i++) {
+      const r = i % 2 === 0 ? outerRadius : innerRadius;
+      const angle = Math.PI / 2 + (i * Math.PI) / points;
+      const x = Math.cos(angle) * r;
+      const y = Math.sin(angle) * r;
+      if (i === 0) shape.moveTo(x, y);
+      else shape.lineTo(x, y);
+    }
+    shape.closePath();
+    return shape;
+  }
+
+  /**
+   * Thuyền thúng nan truyền thống làng chài Cửa Lò
+   */
+  public static createBasketBoat(scale = 1.0): THREE.Group {
+    const boat = new THREE.Group();
+    const wovenBambooMat = LandmarkMaterials.getMat('wovenBambooMat', () => new THREE.MeshStandardMaterial({
+      color: '#E5A93C',
+      roughness: 0.65
+    }));
+    const tarBaseMat = LandmarkMaterials.getMat('tarBaseMat', () => new THREE.MeshStandardMaterial({
+      color: '#2C3437',
+      roughness: 0.8
+    }));
+    const rimWoodMat = LandmarkMaterials.getMat('rimWoodMat', () => new THREE.MeshStandardMaterial({
+      color: '#8D5B29',
+      roughness: 0.5
+    }));
+
+    // Thân thúng nan hình bán cầu tròn
+    const hullGeo = new THREE.SphereGeometry(0.19, 18, 12, 0, Math.PI * 2, Math.PI * 0.5, Math.PI * 0.5);
+    const hull = new THREE.Mesh(hullGeo, wovenBambooMat);
+    hull.rotation.x = Math.PI;
+    hull.position.y = 0.11;
+    hull.castShadow = true;
+
+    // Đáy thúng trét chai / nhựa đường chống thấm nước
+    const tarBottom = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.09, 0.04, 16), tarBaseMat);
+    tarBottom.position.y = 0.02;
+
+    // Vành thúng uốn nan tre dày dặn
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(0.19, 0.02, 8, 24), rimWoodMat);
+    rim.rotation.x = Math.PI / 2;
+    rim.position.y = 0.11;
+
+    // Thanh ngang gác giữa lòng thúng để ngồi chèo
+    const seatThwart = new THREE.Mesh(new RoundedBoxGeometry(0.35, 0.02, 0.06, 2, 0.005), rimWoodMat);
+    seatThwart.position.set(0, 0.09, 0);
+
+    // Mái chèo gỗ gác chéo miệng thúng
+    const oarShaft = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.38, 8), rimWoodMat);
+    oarShaft.position.set(0.05, 0.12, 0.04);
+    oarShaft.rotation.z = 0.85;
+    oarShaft.rotation.y = 0.3;
+
+    const oarBlade = new THREE.Mesh(new RoundedBoxGeometry(0.04, 0.1, 0.008, 2, 0.002), rimWoodMat);
+    oarBlade.position.set(0.19, 0.04, 0.08);
+    oarBlade.rotation.z = 0.85;
+
+    boat.add(hull, tarBottom, rim, seatThwart, oarShaft, oarBlade);
+    boat.scale.set(scale, scale, scale);
+    return boat;
+  }
+
+  /**
+   * Thuyền nan chèo đò du lịch Tràng An / Tam Cốc
+   */
+  public static createSampanBoat(scale = 1.0): THREE.Group {
+    const sampan = new THREE.Group();
+    const woodMat = LandmarkMaterials.getMat('sampanDarkWood', () => new THREE.MeshStandardMaterial({
+      color: '#5C381E',
+      roughness: 0.55
+    }));
+    const seatMat = LandmarkMaterials.getMat('sampanSeatWood', () => new THREE.MeshStandardMaterial({
+      color: '#8A5832',
+      roughness: 0.45
+    }));
+    const metalMat = LandmarkMaterials.getMat('sampanOarlockMat', () => new THREE.MeshStandardMaterial({
+      color: '#7F8C8D',
+      metalness: 0.7,
+      roughness: 0.3
+    }));
+
+    // Thân thuyền nan thon dài vểnh hai đầu
+    const hull = new THREE.Mesh(new RoundedBoxGeometry(0.68, 0.11, 0.22, 3, 0.02), woodMat);
+    hull.position.y = 0.065;
+    hull.castShadow = true;
+
+    // Mũi và đuôi thuyền uốn cong nhẹ
+    const prow = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.22, 10), woodMat);
+    prow.rotation.z = -Math.PI / 2.3;
+    prow.position.set(0.36, 0.1, 0);
+
+    const stern = new THREE.Mesh(new THREE.ConeGeometry(0.11, 0.2, 10), woodMat);
+    stern.rotation.z = Math.PI / 2.3;
+    stern.position.set(-0.36, 0.1, 0);
+
+    // Ghế ngồi bằng ván gỗ cho khách và người chèo
+    [-0.15, 0.02, 0.18].forEach(sx => {
+      const seat = new THREE.Mesh(new RoundedBoxGeometry(0.08, 0.02, 0.18, 2, 0.004), seatMat);
+      seat.position.set(sx, 0.09, 0);
+      sampan.add(seat);
+    });
+
+    // Mái chèo nan đôi đặt ở khoang lái phía sau
+    [-0.09, 0.09].forEach(sideZ => {
+      const oar = new THREE.Mesh(new THREE.CylinderGeometry(0.007, 0.007, 0.42, 8), seatMat);
+      oar.position.set(-0.24, 0.12, sideZ);
+      oar.rotation.x = sideZ > 0 ? -0.45 : 0.45;
+      oar.rotation.z = 0.35;
+
+      const lock = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.04, 6), metalMat);
+      lock.position.set(-0.22, 0.11, sideZ * 1.15);
+
+      sampan.add(oar, lock);
+    });
+
+    sampan.add(hull, prow, stern);
+    sampan.scale.set(scale, scale, scale);
+    return sampan;
+  }
+
+  /**
+   * Thuyền khám phá hang động ngầm Phong Nha - Kẻ Bàng có đèn rọi thám hiểm
+   */
+  public static createCaveExplorationBoat(scale = 1.0): THREE.Group {
+    const boat = new THREE.Group();
+    const boatHullMat = LandmarkMaterials.getMat('caveBoatHullMat', () => new THREE.MeshStandardMaterial({
+      color: '#2980B9',
+      roughness: 0.35,
+      metalness: 0.2
+    }));
+    const cabinMat = LandmarkMaterials.getMat('caveBoatTrimMat', () => new THREE.MeshStandardMaterial({
+      color: '#ECF0F1',
+      roughness: 0.3
+    }));
+    const headlampGlowMat = LandmarkMaterials.getMat('caveBoatHeadlampGlow', () => new THREE.MeshStandardMaterial({
+      color: '#FFF275',
+      emissive: '#F1C40F',
+      emissiveIntensity: 1.5,
+      roughness: 0.1
+    }));
+    const lightBeamMat = LandmarkMaterials.getMat('caveBoatBeamCone', () => new THREE.MeshBasicMaterial({
+      color: '#FFF9C4',
+      transparent: true,
+      opacity: 0.35,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      side: THREE.DoubleSide
+    }));
+
+    // Thân xuồng du lịch sông ngầm
+    const hull = new THREE.Mesh(new RoundedBoxGeometry(0.66, 0.13, 0.24, 3, 0.025), boatHullMat);
+    hull.position.y = 0.07;
+    hull.castShadow = true;
+
+    // Mũi nhọn rẽ nước
+    const bowProw = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.24, 8), boatHullMat);
+    bowProw.rotation.z = -Math.PI / 2.25;
+    bowProw.position.set(0.35, 0.09, 0);
+
+    // Vành be xuồng màu trắng
+    const trim = new THREE.Mesh(new RoundedBoxGeometry(0.64, 0.03, 0.22, 2, 0.005), cabinMat);
+    trim.position.y = 0.13;
+
+    // Băng ghế cho du khách tham quan
+    [-0.14, 0.02, 0.16].forEach(bx => {
+      const bench = new THREE.Mesh(new RoundedBoxGeometry(0.09, 0.02, 0.18, 2, 0.004), cabinMat);
+      bench.position.set(bx, 0.1, 0);
+      boat.add(bench);
+    });
+
+    // Đèn pha rọi thám hiểm đặt trên mũi thuyền
+    const lampPost = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.12, 8), cabinMat);
+    lampPost.position.set(0.32, 0.16, 0);
+
+    const lampHousing = new THREE.Mesh(new THREE.CylinderGeometry(0.032, 0.022, 0.05, 12), boatHullMat);
+    lampHousing.rotation.z = -Math.PI / 2;
+    lampHousing.position.set(0.35, 0.21, 0);
+
+    const lampBulb = new THREE.Mesh(new THREE.SphereGeometry(0.026, 10, 10), headlampGlowMat);
+    lampBulb.position.set(0.375, 0.21, 0);
+
+    // Luồng sáng quét vào lòng hang ngọc bích
+    const beamGeo = new THREE.ConeGeometry(0.24, 0.75, 16, 1, true);
+    beamGeo.translate(0, -0.375, 0);
+    const lightBeam = new THREE.Mesh(beamGeo, lightBeamMat);
+    lightBeam.rotation.z = Math.PI / 2 + 0.08;
+    lightBeam.position.set(0.38, 0.21, 0);
+
+    boat.add(hull, bowProw, trim, lampPost, lampHousing, lampBulb, lightBeam);
+    boat.scale.set(scale, scale, scale);
+    return boat;
+  }
 }

@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite --host",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "npx tsx test/runTests.ts"
   },
   "dependencies": {
     "business-chess-3d": "file:..",
@@ -17,6 +18,7 @@
   "devDependencies": {
     "@types/canvas-confetti": "^1.9.0",
     "@types/three": "^0.166.0",
+    "tsx": "^4.16.2",
     "typescript": "^5.5.2",
     "vite": "^5.3.3"
   }

@@ -138,6 +138,101 @@ app.post('/api/achievements/claim', authMiddleware, (req: AuthenticatedRequest, 
   });
 });
 
+// ==================== Nameplates & Frames Endpoints ====================
+
+app.get('/api/profile/frames', authMiddleware, (req: AuthenticatedRequest, res) => {
+  if (!req.user) {
+    return res.status(401).json({ error: 'Yêu cầu đăng nhập' });
+  }
+  const user = dbService.getUserById(req.user.id);
+  const equippedFrame = user?.equipped_frame || 'frame_default';
+  const allFrames = dbService.getAllFrames(req.user.id);
+
+  return res.json({
+    equippedFrame,
+    frames: allFrames
+  });
+});
+
+app.post('/api/profile/equip-frame', authMiddleware, (req: AuthenticatedRequest, res) => {
+  if (!req.user) {
+    return res.status(401).json({ error: 'Yêu cầu đăng nhập' });
+  }
+  const { frameId } = req.body;
+  if (!frameId) {
+    return res.status(400).json({ error: 'Thiếu mã khung tên (frameId)' });
+  }
+
+  const result = dbService.equipFrame(req.user.id, frameId);
+  if (!result.success) {
+    return res.status(400).json({ error: result.error });
+  }
+
+  return res.json({
+    success: true,
+    message: 'Trang bị khung tên thành công!',
+    equippedFrame: result.equippedFrame
+  });
+});
+
+// ==================== Friends REST Endpoints ====================
+
+app.get('/api/friends', authMiddleware, (req: AuthenticatedRequest, res) => {
+  if (!req.user) {
+    return res.status(401).json({ error: 'Yêu cầu đăng nhập' });
+  }
+  const data = dbService.getFriends(req.user.id);
+  return res.json({ success: true, ...data });
+});
+
+app.post('/api/friends/request', authMiddleware, (req: AuthenticatedRequest, res) => {
+  if (!req.user) {
+    return res.status(401).json({ error: 'Yêu cầu đăng nhập' });
+  }
+  const { targetIdentifier } = req.body;
+  if (!targetIdentifier || typeof targetIdentifier !== 'string' || !targetIdentifier.trim()) {
+    return res.status(400).json({ error: 'Vui lòng cung cấp username hoặc email của người muốn kết bạn' });
+  }
+
+  const result = dbService.sendFriendRequest(req.user.id, targetIdentifier.trim());
+  if (!result.success) {
+    return res.status(400).json({ error: result.error });
+  }
+  return res.json({ success: true, message: 'Đã gửi lời mời kết bạn', request: result.request });
+});
+
+app.post('/api/friends/respond', authMiddleware, (req: AuthenticatedRequest, res) => {
+  if (!req.user) {
+    return res.status(401).json({ error: 'Yêu cầu đăng nhập' });
+  }
+  const { requestId, action } = req.body;
+  if (!requestId || (action !== 'ACCEPT' && action !== 'REJECT')) {
+    return res.status(400).json({ error: 'Tham số requestId hoặc action không hợp lệ' });
+  }
+
+  const result = dbService.respondFriendRequest(req.user.id, requestId, action);
+  if (!result.success) {
+    return res.status(400).json({ error: result.error });
+  }
+  return res.json({
+    success: true,
+    message: action === 'ACCEPT' ? 'Đã chấp nhận lời mời kết bạn' : 'Đã từ chối lời mời kết bạn'
+  });
+});
+
+app.delete('/api/friends/:friendId', authMiddleware, (req: AuthenticatedRequest, res) => {
+  if (!req.user) {
+    return res.status(401).json({ error: 'Yêu cầu đăng nhập' });
+  }
+  const { friendId } = req.params;
+  if (!friendId) {
+    return res.status(400).json({ error: 'Thiếu friendId' });
+  }
+
+  dbService.removeFriend(req.user.id, friendId);
+  return res.json({ success: true, message: 'Đã xóa bạn thành công' });
+});
+
 // ==================== Socket.io Handlers ====================
 
 io.on('connection', (socket: Socket) => {

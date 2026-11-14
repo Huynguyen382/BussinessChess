@@ -12,6 +12,7 @@ export interface AuthUserDTO {
   goldBalance: number;
   totalMatches: number;
   totalWins: number;
+  equippedFrame?: string;
   createdAt: string;
   unlockedAchievementsCount?: number;
 }
@@ -103,6 +104,7 @@ export class AuthService {
       goldBalance: user.gold_balance,
       totalMatches: user.total_matches,
       totalWins: user.total_wins,
+      equippedFrame: user.equipped_frame || 'frame_default',
       createdAt: user.created_at,
       unlockedAchievementsCount: unlockedCount
     };

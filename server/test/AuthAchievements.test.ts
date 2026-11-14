@@ -4,6 +4,34 @@ import { AuthService } from '../src/auth/AuthService';
 import { AchievementEngine } from '../src/achievements/AchievementEngine';
 import { MonopolyEngine } from '../src/game/MonopolyEngine';
 import { BOARD_TILES } from '../src/game/BoardConfig';
+import { RoomManager } from '../src/socket/RoomManager';
+
+// Mock Socket and Server for Room tests
+class MockSocket {
+  public id: string;
+  public rooms: Set<string> = new Set();
+  public emittedEvents: { event: string; data: any }[] = [];
+
+  constructor(id: string) {
+    this.id = id;
+  }
+  join(room: string) { this.rooms.add(room); }
+  leave(room: string) { this.rooms.delete(room); }
+  emit(event: string, data: any) { this.emittedEvents.push({ event, data }); }
+  clear() { this.emittedEvents = []; }
+}
+
+class MockServer {
+  public broadcastedEvents: { room?: string; event: string; data: any }[] = [];
+  to(room: string) {
+    return {
+      emit: (event: string, data: any) => {
+        this.broadcastedEvents.push({ room, event, data });
+      }
+    };
+  }
+  emit(event: string, data: any) { this.broadcastedEvents.push({ event, data }); }
+}
 
 console.log('====================================================');
 console.log(' RUNNING AUTH & ACHIEVEMENTS AUTOMATED TEST SUITE');
@@ -301,6 +329,259 @@ test('User can claim unlocked achievement reward and receive gold', () => {
   // Claiming again must fail
   const claimAgain = dbService.claimAchievementReward(registeredUserId, 'FIRST_PROPERTY');
   assert(!claimAgain.success, 'Claiming already claimed reward must fail');
+});
+
+// ====================================================
+// 6. Friendship System & Social Graph
+// ====================================================
+console.log('\n--- Suite 6: Friendship Operations & Social Graph ---');
+
+let friendUserId: string = '';
+const friendUserDto = {
+  username: `BanThan_${uniqueSuffix}`,
+  email: `banthan_${uniqueSuffix}@businesschess.vn`,
+  password: 'Password999!'
+};
+
+test('Register a second user for friendship testing', () => {
+  const res = AuthService.register(friendUserDto);
+  assert(res.success, `Second user registration failed: ${res.error}`);
+  friendUserId = res.user!.id;
+});
+
+test('Cannot send friend request to oneself', () => {
+  const res = dbService.sendFriendRequest(registeredUserId, testUser.username);
+  assert(!res.success);
+  assert.strictEqual(res.error, 'Không thể tự kết bạn với chính mình');
+});
+
+test('Sending friend request to non-existent user returns error', () => {
+  const res = dbService.sendFriendRequest(registeredUserId, 'non_existent_user_99999');
+  assert(!res.success);
+  assert.strictEqual(res.error, 'Người dùng không tồn tại');
+});
+
+let pendingRequestId: string = '';
+test('Send friend request by username successfully', () => {
+  const res = dbService.sendFriendRequest(registeredUserId, friendUserDto.username);
+  assert(res.success, `Friend request failed: ${res.error}`);
+  assert(res.request);
+  assert.strictEqual(res.request.status, 'PENDING');
+  pendingRequestId = res.request.id;
+
+  // Verify list in incoming and outgoing
+  const senderLists = dbService.getFriends(registeredUserId);
+  assert.strictEqual(senderLists.outgoingRequests.length, 1);
+  assert.strictEqual(senderLists.outgoingRequests[0].username, friendUserDto.username);
+
+  const receiverLists = dbService.getFriends(friendUserId);
+  assert.strictEqual(receiverLists.incomingRequests.length, 1);
+  assert.strictEqual(receiverLists.incomingRequests[0].username, testUser.username);
+});
+
+test('Duplicate friend request is rejected', () => {
+  const res = dbService.sendFriendRequest(registeredUserId, friendUserDto.email);
+  assert(!res.success);
+  assert.strictEqual(res.error, 'Bạn đã gửi lời mời kết bạn trước đó');
+});
+
+test('Accepting friend request creates mutual friendship', () => {
+  const res = dbService.respondFriendRequest(friendUserId, pendingRequestId, 'ACCEPT');
+  assert(res.success, `Accept friend request failed: ${res.error}`);
+
+  const userFriends = dbService.getFriends(registeredUserId);
+  assert.strictEqual(userFriends.friends.length, 1);
+  assert.strictEqual(userFriends.friends[0].username, friendUserDto.username);
+  assert.strictEqual(userFriends.outgoingRequests.length, 0);
+
+  const friendFriends = dbService.getFriends(friendUserId);
+  assert.strictEqual(friendFriends.friends.length, 1);
+  assert.strictEqual(friendFriends.friends[0].username, testUser.username);
+  assert.strictEqual(friendFriends.incomingRequests.length, 0);
+});
+
+test('Removing friend deletes mutual friendship', () => {
+  const res = dbService.removeFriend(registeredUserId, friendUserId);
+  assert(res.success);
+
+  const userFriends = dbService.getFriends(registeredUserId);
+  assert.strictEqual(userFriends.friends.length, 0);
+});
+
+// ====================================================
+// 7. Room Password Protection
+// ====================================================
+console.log('\n--- Suite 7: Room Password Protection & Access Control ---');
+
+test('Create protected room and verify isProtected flag in public rooms', () => {
+  const io = new MockServer();
+  const mgr = new RoomManager(io as any);
+  const hostSocket = new MockSocket('host_socket');
+
+  const room = mgr.createRoom(hostSocket as any, {
+    name: 'Phòng VIP',
+    username: 'HostVIP',
+    password: 'SuperSecretRoomPassword123'
+  });
+
+  assert(room.password === 'SuperSecretRoomPassword123');
+
+  const publicRooms = mgr.getPublicRooms();
+  const found = publicRooms.find(r => r.roomCode === room.roomCode);
+  assert(found, 'Protected room should be listed in public rooms when not isPrivate');
+  assert.strictEqual(found.isProtected, true, 'Room must have isProtected: true');
+  assert.strictEqual((found as any).password, undefined, 'Room password must NOT be leaked in public list');
+});
+
+test('Join protected room requires valid password', () => {
+  const io = new MockServer();
+  const mgr = new RoomManager(io as any);
+  const hostSocket = new MockSocket('host_socket');
+  const guestSocket = new MockSocket('guest_socket');
+
+  const room = mgr.createRoom(hostSocket as any, {
+    name: 'Phòng Có Khóa',
+    username: 'Host',
+    password: 'CorrectPassword'
+  });
+
+  // Attempt without password
+  const resNoPw = mgr.joinRoom(guestSocket as any, {
+    roomCode: room.roomCode,
+    username: 'Guest'
+  });
+  assert(!resNoPw.success);
+  assert.strictEqual(resNoPw.error, 'Mật khẩu phòng không đúng');
+
+  // Attempt with wrong password
+  const resWrongPw = mgr.joinRoom(guestSocket as any, {
+    roomCode: room.roomCode,
+    username: 'Guest',
+    password: 'WrongPassword'
+  });
+  assert(!resWrongPw.success);
+  assert.strictEqual(resWrongPw.error, 'Mật khẩu phòng không đúng');
+
+  // Attempt with correct password
+  const resCorrect = mgr.joinRoom(guestSocket as any, {
+    roomCode: room.roomCode,
+    username: 'Guest',
+    password: 'CorrectPassword'
+  });
+  assert(resCorrect.success, `Join with correct password failed: ${resCorrect.error}`);
+  assert.strictEqual(resCorrect.room?.roomCode, room.roomCode);
+});
+
+// ====================================================
+// 8. 5-Tier Achievement Mastery & Nameplate Frame System
+// ====================================================
+console.log('\n--- Suite 8: 5-Tier Achievement Mastery & Nameplate Frames ---');
+
+const freshUserRes = AuthService.register({
+  username: `FrameTester_${uniqueSuffix}`,
+  email: `frame_tester_${uniqueSuffix}@businesschess.vn`,
+  password: 'Password999!'
+});
+const frameTestUserId = freshUserRes.user!.id;
+
+test('All seeded achievements have valid tier (GRAY/BLUE/GOLD/ORANGE/RED) and mastery levels (1-5)', () => {
+  const achievements = dbService.getAllAchievements();
+  assert(achievements.length >= 10, 'Must have at least 10 seeded achievements');
+
+  const validTiers = new Set(['GRAY', 'BLUE', 'GOLD', 'ORANGE', 'RED']);
+  for (const ach of achievements) {
+    assert(validTiers.has(ach.tier), `Achievement ${ach.id} must have a valid tier (found: ${ach.tier})`);
+    assert(ach.level >= 1 && ach.level <= 5, `Achievement ${ach.id} level must be between 1 and 5 (found: ${ach.level})`);
+    assert(ach.frame_id && ach.frame_id.startsWith('frame_'), `Achievement ${ach.id} must have valid frame_id`);
+    assert(ach.frame_name && ach.frame_name.length > 0, `Achievement ${ach.id} must have valid frame_name`);
+  }
+});
+
+test('getAllFrames returns all catalog frames with correct lock and equip status', () => {
+  const frames = dbService.getAllFrames(frameTestUserId);
+  assert(frames.length >= 11, 'Must return at least default frame + 10 achievement frames');
+
+  const defaultFrame = frames.find(f => f.frameId === 'frame_default');
+  assert(defaultFrame, 'Default frame must always exist');
+  assert.strictEqual(defaultFrame.isUnlocked, true, 'Default frame must be unlocked for all players');
+  assert.strictEqual(defaultFrame.tier, 'GRAY');
+  assert.strictEqual(defaultFrame.level, 1);
+
+  // Unearned achievement frames should be locked for new user
+  const redFrame = frames.find(f => f.frameId === 'frame_red_millionaire');
+  assert(redFrame, 'frame_red_millionaire must exist');
+  assert.strictEqual(redFrame.isUnlocked, false, 'Unearned achievement frame must be locked');
+
+  const dragonFrame = frames.find(f => f.frameId === 'frame_red_dragon');
+  assert(dragonFrame, 'frame_red_dragon must exist');
+  assert.strictEqual(dragonFrame.isUnlocked, false, 'Unearned dragon frame must be locked');
+});
+
+test('getUnlockedFrames initially returns only default frame for new user', () => {
+  const unlocked = dbService.getUnlockedFrames(frameTestUserId);
+  assert.strictEqual(unlocked.length, 1, 'New user should initially have 1 unlocked frame');
+  assert.strictEqual(unlocked[0].frame_id, 'frame_default');
+});
+
+test('equipFrame rejects locked/unearned achievement frames', () => {
+  const result = dbService.equipFrame(frameTestUserId, 'frame_red_dragon');
+  assert(!result.success, 'Equipping locked frame must fail');
+  assert(result.error && result.error.toLowerCase().includes('chưa mở khóa'), `Error message should mention chưa mở khóa: ${result.error}`);
+});
+
+test('equipFrame succeeds for frame_default and updates user state', () => {
+  const result = dbService.equipFrame(frameTestUserId, 'frame_default');
+  assert(result.success, `Equipping default frame failed: ${result.error}`);
+  assert.strictEqual(result.equippedFrame, 'frame_default');
+
+  const user = dbService.getUserById(frameTestUserId);
+  assert.strictEqual(user?.equipped_frame, 'frame_default');
+});
+
+test('Unlocking achievement unlocks corresponding nameplate frame and allows equipping', () => {
+  // Unlock FIRST_PROPERTY for user
+  const unlockRes = dbService.unlockAchievement(frameTestUserId, 'FIRST_PROPERTY');
+  assert(unlockRes.unlocked, 'Unlocking FIRST_PROPERTY should succeed');
+
+  const frames = dbService.getAllFrames(frameTestUserId);
+  const starterFrame = frames.find(f => f.frameId === 'frame_gray_starter');
+  assert(starterFrame, 'frame_gray_starter must exist');
+  assert.strictEqual(starterFrame.isUnlocked, true, 'frame_gray_starter must now be unlocked');
+
+  // Also check getUnlockedFrames
+  const unlocked = dbService.getUnlockedFrames(frameTestUserId);
+  assert(unlocked.some(u => u.frame_id === 'frame_gray_starter'), 'frame_gray_starter must appear in getUnlockedFrames');
+
+  // Now equip it
+  const equipRes = dbService.equipFrame(frameTestUserId, 'frame_gray_starter');
+  assert(equipRes.success, `Equipping unlocked frame failed: ${equipRes.error}`);
+  assert.strictEqual(equipRes.equippedFrame, 'frame_gray_starter');
+
+  const user = dbService.getUserById(frameTestUserId);
+  assert.strictEqual(user?.equipped_frame, 'frame_gray_starter');
+});
+
+test('RoomManager propagates equipped frame to room players and bot players', () => {
+  const io = new MockServer();
+  const mgr = new RoomManager(io as any);
+  const hostSocket = new MockSocket('frame_host_socket');
+
+  const room = mgr.createRoom(hostSocket as any, {
+    name: 'Phòng Khung Tên',
+    username: 'MasterPlayer',
+    userId: frameTestUserId,
+    frame: 'frame_gray_starter'
+  });
+
+  assert(room.engine, 'Room must have initialized engine');
+  assert.strictEqual(room.engine.players[0].frame, 'frame_gray_starter', 'Host player must have equipped frame attached');
+
+  // Add bot player
+  const botRes = mgr.addBot(hostSocket as any);
+  assert(botRes.success, 'Adding bot should succeed');
+  const botPlayer = room.engine.players.find(p => p.isBot);
+  assert(botPlayer, 'Bot player must exist in room');
+  assert(botPlayer.frame && botPlayer.frame.startsWith('frame_'), 'Bot must have a designated frame');
 });
 
 console.log('\n====================================================');

@@ -24,6 +24,7 @@ export class LandmarkModels {
   public static createGOCorner = CornerLandmarks.createGOCorner.bind(CornerLandmarks);
   public static createJailCorner = CornerLandmarks.createJailCorner.bind(CornerLandmarks);
   public static createFreeParkingCorner = CornerLandmarks.createFreeParkingCorner.bind(CornerLandmarks);
+  public static createAirportCorner = CornerLandmarks.createAirportCorner.bind(CornerLandmarks);
   public static createGoToJailCorner = CornerLandmarks.createGoToJailCorner.bind(CornerLandmarks);
 
   public static createRailroadModel = TransportLandmarks.createRailroadModel.bind(TransportLandmarks);

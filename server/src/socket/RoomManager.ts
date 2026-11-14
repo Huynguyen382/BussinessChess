@@ -3,6 +3,7 @@ import { MonopolyEngine } from '../game/MonopolyEngine';
 import { BotAI } from '../game/BotAI';
 import { BOARD_TILES } from '../game/BoardConfig';
 import { AchievementEngine } from '../achievements/AchievementEngine';
+import { dbService } from '../database/Database';
 
 export interface RoomInfo {
   id: string;
@@ -78,27 +79,30 @@ export class RoomManager {
 
     this.rooms.set(roomCode, room);
     this.userToRoom.set(socket.id, roomCode);
+    let userFrame = (payload as any).frame || 'frame_default';
     if (payload.userId) {
       this.socketToUserId.set(socket.id, payload.userId);
+      const user = dbService.getUserById(payload.userId);
+      if (user?.equipped_frame) userFrame = user.equipped_frame;
     }
     socket.join(roomCode);
 
     // Host joins as first player
-    room.engine?.addPlayer(socket.id, socket.id, payload.username, true, initialCash);
+    room.engine?.addPlayer(socket.id, socket.id, payload.username, true, initialCash, userFrame);
 
     return room;
   }
 
   public joinRoom(
     socket: Socket,
-    payload: { roomCode: string; username: string; userId?: string; password?: string }
+    payload: { roomCode: string; username: string; userId?: string; password?: string; frame?: string }
   ): { success: boolean; room?: RoomInfo; error?: string } {
     const room = this.rooms.get(payload.roomCode.toUpperCase());
     if (!room) {
       return { success: false, error: 'Phòng không tồn tại' };
     }
 
-    if (room.isPrivate && room.password && room.password !== payload.password) {
+    if (room.password && room.password !== payload.password) {
       return { success: false, error: 'Mật khẩu phòng không đúng' };
     }
 
@@ -111,12 +115,15 @@ export class RoomManager {
     }
 
     this.userToRoom.set(socket.id, room.roomCode);
+    let userFrame = payload.frame || 'frame_default';
     if (payload.userId) {
       this.socketToUserId.set(socket.id, payload.userId);
+      const user = dbService.getUserById(payload.userId);
+      if (user?.equipped_frame) userFrame = user.equipped_frame;
     }
     socket.join(room.roomCode);
 
-    room.engine.addPlayer(socket.id, socket.id, payload.username, false, room.initialCash);
+    room.engine.addPlayer(socket.id, socket.id, payload.username, false, room.initialCash, userFrame);
 
     return { success: true, room };
   }
@@ -135,8 +142,10 @@ export class RoomManager {
     const botNames = ['Tỷ Phú Elon', 'Đại Gia David', 'Tiểu Thư Luna', 'Nhà Đầu Tư Sam'];
     const botName = botNames[room.engine.players.length % botNames.length];
     const botId = `bot_${Math.random().toString(36).substring(2, 7)}`;
+    const botFrames = ['frame_gray_starter', 'frame_blue_dice', 'frame_gold_monopoly', 'frame_orange_landmark', 'frame_red_dragon'];
+    const botFrame = botFrames[room.engine.players.length % botFrames.length];
 
-    const player = room.engine.addPlayer(botId, botId, botName, false, room.initialCash);
+    const player = room.engine.addPlayer(botId, botId, botName, false, room.initialCash, botFrame);
     player.isBot = true;
 
     this.broadcastRoomUpdate(room);
@@ -227,6 +236,7 @@ export class RoomManager {
         snapshot: room.engine.getSnapshot()
       });
 
+      this.resetTurnTimer(room);
       this.checkBankruptcyOrGameOver(room);
       this.checkTriggerBot(room);
     } catch (err: any) {
@@ -260,6 +270,7 @@ export class RoomManager {
         remainingCash: result.remainingCash,
         snapshot: room.engine.getSnapshot()
       });
+      this.resetTurnTimer(room);
       this.checkTriggerBot(room);
     } else {
       socket.emit('error:message', { message: result.error });
@@ -275,6 +286,7 @@ export class RoomManager {
     const res = room.engine.skipBuyProperty(socket.id);
     if (res.success) {
       this.io.to(room.roomCode).emit('game:state_sync', { snapshot: room.engine.getSnapshot() });
+      this.resetTurnTimer(room);
       this.checkTriggerBot(room);
     }
   }
@@ -433,6 +445,7 @@ export class RoomManager {
                 actionResult: res.actionResult,
                 snapshot: room.engine.getSnapshot()
               });
+              this.resetTurnTimer(room);
               this.checkBankruptcyOrGameOver(room);
               this.checkTriggerBot(room);
             } catch (e) {}
@@ -674,7 +687,8 @@ export class RoomManager {
           playersCount: room.engine?.players.length || 0,
           maxPlayers: room.maxPlayers,
           initialCash: room.initialCash,
-          turnTimeout: room.turnTimeout
+          turnTimeout: room.turnTimeout,
+          isProtected: Boolean(room.password)
         });
       }
     }

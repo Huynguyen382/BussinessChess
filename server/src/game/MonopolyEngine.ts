@@ -22,6 +22,7 @@ export interface PlayerState {
   isBot: boolean;
   isHost: boolean;
   netWorth: number;
+  frame?: string;
 }
 
 export interface PropertyState {
@@ -102,7 +103,7 @@ export class MonopolyEngine {
     this.chestDeck.sort(() => Math.random() - 0.5);
   }
 
-  public addPlayer(id: string, socketId: string, username: string, isHost = false, initialCash = 1500): PlayerState {
+  public addPlayer(id: string, socketId: string, username: string, isHost = false, initialCash = 1500, frame = 'frame_default'): PlayerState {
     const slot = this.players.length;
     const player: PlayerState = {
       id,
@@ -122,7 +123,8 @@ export class MonopolyEngine {
       isBankrupt: false,
       isBot: false,
       isHost,
-      netWorth: initialCash
+      netWorth: initialCash,
+      frame: frame || 'frame_default'
     };
     this.players.push(player);
     this.addLog(`${username} đã tham gia ván đấu.`, 'INFO', id, username);
@@ -392,6 +394,15 @@ export class MonopolyEngine {
         }
         this.setNextPhaseAfterAction(player);
         return { type: 'TAX', amount: tax };
+      }
+
+      case 'AIRPORT': {
+        const flightBonus = 200;
+        player.balance += flightBonus;
+        player.position = 0; // Bay thẳng về ô Khởi Hành (GO)
+        this.addLog(`✈️ ${player.username} đáp xuống [Sân Bay Quốc Tế]! Lên chuyên cơ bay thẳng về Khởi Hành (GO) và nhận ${flightBonus}M trợ cấp du lịch hàng không!`, 'MONEY', player.id, player.username);
+        this.setNextPhaseAfterAction(player);
+        return { type: 'AIRPORT', reward: flightBonus, destination: 0, message: `Bay chuyên cơ về Khởi Hành (GO) và nhận ${flightBonus}M!` };
       }
 
       case 'GO_TO_JAIL':

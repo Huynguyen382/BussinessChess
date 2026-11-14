@@ -13,8 +13,9 @@ export class BotAI {
         if (engine.turnState.phase === 'ROLL_DICE' && engine.turnState.currentUserId === currentPlayer.id) {
           onAction('ROLL_DICE');
         }
-      }, 1000);
+      }, 1800);
     } else if (phase === 'BUY_PROPERTY') {
+      // Đợi hoạt ảnh tung xúc xắc (1.5s) + di chuyển quân cờ (tới 2.2s) hoàn tất trước khi ra quyết định mua đất
       setTimeout(() => {
         if (engine.turnState.phase === 'BUY_PROPERTY' && engine.turnState.currentUserId === currentPlayer.id) {
           const tile = BOARD_TILES[currentPlayer.position];
@@ -35,13 +36,14 @@ export class BotAI {
             onAction('SKIP_BUY');
           }
         }
-      }, 1200);
+      }, 4500);
     } else if (phase === 'END_TURN') {
+      // Đảm bảo hoạt ảnh quân cờ và hiệu ứng ô dừng chân trên toàn bộ client đã kết thúc hoàn toàn trước khi chuyển lượt
       setTimeout(() => {
         if (engine.turnState.phase === 'END_TURN' && engine.turnState.currentUserId === currentPlayer.id) {
           onAction('END_TURN');
         }
-      }, 1000);
+      }, 1500);
     }
   }
 }

@@ -16,6 +16,38 @@
     <!-- 1. LOBBY VIEW (Clean Floating Card, allows full 3D tabletop diorama to be visible) -->
     <div id="lobby-view" class="lobby-overlay" style="display: flex;">
       <div id="lobby-card" class="glass-panel lobby-card">
+        <!-- Header User & Auth Bar (Lobby Top Bar) -->
+        <div id="lobby-top-bar" class="lobby-top-bar">
+          <!-- Guest state -->
+          <div id="auth-guest-view" class="auth-bar-row">
+            <span class="badge-guest">Chơi Khách</span>
+            <button id="btn-open-auth" class="btn-chunky btn-primary btn-sm">
+              🔑 Đăng Nhập / Đăng Ký
+            </button>
+          </div>
+          <!-- Logged in state -->
+          <div id="auth-user-view" class="auth-bar-row" style="display: none;">
+            <div class="auth-user-summary">
+              <img id="header-user-avatar" class="header-avatar-thumb" src="https://api.dicebear.com/7.x/bottts/svg?seed=TyPhu" alt="Avatar" />
+              <div class="auth-user-text">
+                <span id="header-user-name" class="header-username">Tỷ Phú</span>
+                <span id="header-user-gold" class="badge-gold">🪙 10,000</span>
+              </div>
+            </div>
+            <div class="auth-actions-group">
+              <button id="btn-open-profile" class="btn-chunky btn-white btn-xs" title="Xem hồ sơ & thành tựu">
+                👤 Hồ Sơ
+              </button>
+              <button id="btn-open-friends" class="btn-chunky btn-white btn-xs" title="Danh sách bạn bè">
+                👥 Bạn Bè
+              </button>
+              <button id="btn-logout" class="btn-chunky btn-danger-soft btn-xs" title="Đăng xuất">
+                🚪 Đăng Xuất
+              </button>
+            </div>
+          </div>
+        </div>
+
         <div class="lobby-card-top">
           <div class="lobby-brand-badge">
             <span class="lobby-brand-icon">🎲</span>
@@ -101,6 +133,16 @@
               <option value="2000">2.000M (Đại gia trường kỳ)</option>
             </select>
           </div>
+          <div>
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 700; font-size: 0.85rem; color: #2D3436; margin-top: 4px;">
+              <input type="checkbox" id="create-room-is-protected" style="width: 18px; height: 18px; accent-color: #00B894; cursor: pointer;" />
+              <span>🔒 Phòng riêng tư (Đặt mật khẩu)</span>
+            </label>
+            <div id="create-room-password-group" style="display: none; margin-top: 8px;">
+              <input id="create-room-password" type="password" placeholder="Nhập mật khẩu phòng..." maxlength="30"
+                style="width: 100%; padding: 10px 14px; border-radius: 12px; border: 2px solid #DFE6E9; font-weight: 700; font-family: inherit;" />
+            </div>
+          </div>
           <div style="display: flex; gap: 10px; margin-top: 14px;">
             <button id="btn-cancel-create" class="btn-chunky btn-white" style="flex: 1;">Hủy</button>
             <button id="btn-confirm-create" class="btn-chunky btn-primary" style="flex: 1;">Tạo Phòng</button>
@@ -165,9 +207,9 @@
               <span class="dock-icon">🔍</span>
               <span class="dock-label">Phóng To</span>
             </button>
-            <button id="btn-toggle-cam-lock" class="dock-btn is-active" title="Khóa/Mở tự do góc nhìn">
-              <span class="dock-icon">🔒</span>
-              <span class="dock-label">Góc Cố Định</span>
+            <button id="btn-toggle-cam-lock" class="dock-btn" title="Căn chỉnh về góc Isometric chuẩn (45°)">
+              <span class="dock-icon">🧭</span>
+              <span class="dock-label">Góc Chuẩn</span>
             </button>
             <button id="btn-toggle-follow" class="dock-btn" title="Camera bám sát quân cờ">
               <span class="dock-icon">🎥</span>
@@ -176,6 +218,10 @@
             <button id="btn-reset-cam" class="dock-btn" title="Đặt lại góc nhìn toàn cảnh">
               <span class="dock-icon">🔄</span>
               <span class="dock-label">Toàn Cảnh</span>
+            </button>
+            <button id="btn-toggle-focus-mode" class="dock-btn dock-btn-focus" title="Chế độ Tinh Gọn: Ẩn bớt tiểu cảnh phụ để tập trung thi đấu">
+              <span class="dock-icon">🎯</span>
+              <span class="dock-label">Tinh Gọn</span>
             </button>
             <div class="dock-divider"></div>
             <button id="btn-open-roster" class="dock-btn" title="Xem toàn bộ 40 ô cờ & bất động sản">
@@ -206,7 +252,7 @@
           <span id="turn-status-text">Đang khởi tạo bàn cờ...</span>
         </div>
         <div class="turn-action-buttons">
-          <button id="btn-roll-dice" class="btn-chunky btn-accent action-pill" style="display: flex; gap: 10px;">
+          <button id="btn-roll-dice" class="btn-chunky btn-accent action-pill" style="display: none; gap: 10px;">
             <span>🎲</span>
             <span>LẮC XÍ NGẦU</span>
           </button>
@@ -214,6 +260,29 @@
             <span>⏩</span>
             <span>KẾT THÚC LƯỢT</span>
           </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- DICE ROLL ANNOUNCEMENT BANNER (Floating Card Overlay) -->
+    <div id="dice-announcement-card" class="dice-announcement-overlay" style="display: none;">
+      <div class="dice-announcement-panel glass-panel">
+        <div class="dice-announcement-header">
+          <div id="dice-announcement-avatar" class="dice-player-avatar" style="background: #00B894;">👤</div>
+          <div class="dice-player-info">
+            <span id="dice-announcement-player" class="dice-player-name">Người chơi</span>
+            <span class="dice-player-sub">đang đổ xí ngầu</span>
+          </div>
+        </div>
+        <div class="dice-faces-row">
+          <div id="dice-face-1" class="dice-face-box">⚂ 3</div>
+          <span class="dice-plus">+</span>
+          <div id="dice-face-2" class="dice-face-box">⚄ 5</div>
+          <span class="dice-equals">=</span>
+          <div id="dice-total-badge" class="dice-total-badge">8 ĐIỂM</div>
+        </div>
+        <div id="dice-double-banner" class="dice-double-banner" style="display: none;">
+          🎉 LẮC TRÚNG ĐÔI — ĐƯỢC THÊM LƯỢT! 🎉
         </div>
       </div>
     </div>
@@ -368,6 +437,14 @@
           <div style="margin-top: 8px; font-size: 0.72rem; color: #636E72; text-align: right;">
             Chi phí xây mỗi nhà: <b id="inspector-house-cost" style="color: #2D3436;">200M</b>
           </div>
+
+          <!-- Nâng Cấp Công Trình Tương Tác Khi Xem Ô Của Mình Trong Lượt -->
+          <div id="inspector-upgrade-container" style="display: none; margin-top: 12px;">
+            <button id="btn-inspector-upgrade" class="btn-chunky btn-primary" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;">
+              <span>🏗️</span>
+              <span id="inspector-upgrade-label">Nâng Cấp Công Trình</span>
+            </button>
+          </div>
         </div>
 
         <!-- Khối mô tả cho ô đặc biệt / Cơ hội / Khí vận / Thuế -->
@@ -400,6 +477,242 @@
         <!-- Danh sách cuộn 40 ô -->
         <div id="roster-tiles-list" class="roster-tiles-container">
           <!-- Injected dynamically -->
+        </div>
+      </div>
+    </div>
+
+    <!-- 11. AUTH MODAL (Đăng Nhập / Đăng Ký) -->
+    <div id="auth-modal" class="interactive modal-overlay" style="display: none;">
+      <div class="glass-panel modal-content auth-modal-box">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 1.5rem;">👑</span>
+            <h2 style="font-size: 1.4rem; color: #2D3436; margin: 0;">Tài Khoản Tỷ Phú</h2>
+          </div>
+          <button id="btn-close-auth" class="btn-chunky btn-white btn-xs" style="font-size: 1.1rem; width: 34px; height: 34px; border-radius: 50%; padding: 0;">✕</button>
+        </div>
+
+        <!-- 2 Tabs: Đăng Nhập & Đăng Ký -->
+        <div class="auth-tabs">
+          <button id="tab-btn-login" class="auth-tab active" type="button">Đăng Nhập</button>
+          <button id="tab-btn-register" class="auth-tab" type="button">Đăng Ký</button>
+        </div>
+
+        <!-- Tab 1: Đăng Nhập -->
+        <form id="form-login" class="auth-form" onsubmit="return false;">
+          <div class="auth-field">
+            <label class="field-label" for="login-identifier">TÊN ĐĂNG NHẬP HOẶC EMAIL</label>
+            <input id="login-identifier" class="field-input" type="text" placeholder="Nhập username hoặc email..." autocomplete="username" />
+          </div>
+          <div class="auth-field">
+            <label class="field-label" for="login-password">MẬT KHẨU</label>
+            <input id="login-password" class="field-input" type="password" placeholder="Nhập mật khẩu..." autocomplete="current-password" />
+          </div>
+          <div id="login-error-msg" class="auth-error-msg" style="display: none;"></div>
+          <button id="btn-submit-login" class="btn-chunky btn-primary" type="button" style="width: 100%; margin-top: 10px;">
+            🚀 Đăng Nhập
+          </button>
+        </form>
+
+        <!-- Tab 2: Đăng Ký -->
+        <form id="form-register" class="auth-form" style="display: none;" onsubmit="return false;">
+          <div class="auth-field">
+            <label class="field-label" for="register-username">TÊN NGƯỜI CHƠI (USERNAME)</label>
+            <input id="register-username" class="field-input" type="text" placeholder="Từ 3-30 ký tự..." autocomplete="username" />
+          </div>
+          <div class="auth-field">
+            <label class="field-label" for="register-email">EMAIL</label>
+            <input id="register-email" class="field-input" type="email" placeholder="example@email.com" autocomplete="email" />
+          </div>
+          <div class="auth-field">
+            <label class="field-label" for="register-password">MẬT KHẨU</label>
+            <input id="register-password" class="field-input" type="password" placeholder="Tối thiểu 6 ký tự..." autocomplete="new-password" />
+          </div>
+          <div class="auth-field">
+            <label class="field-label">CHỌN AVATAR MẪU</label>
+            <div id="register-avatar-picker" class="avatar-picker-grid">
+              <!-- Dynamically rendered avatar choices -->
+            </div>
+          </div>
+          <div id="register-error-msg" class="auth-error-msg" style="display: none;"></div>
+          <button id="btn-submit-register" class="btn-chunky btn-accent" type="button" style="width: 100%; margin-top: 10px;">
+            ✨ Tạo Tài Khoản Mới
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- 12. USER PROFILE MODAL -->
+    <div id="profile-modal" class="interactive modal-overlay" style="display: none;">
+      <div class="glass-panel modal-content profile-modal-box">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 1.4rem;">👤</span>
+            <h2 style="font-size: 1.4rem; color: #2D3436; margin: 0;">Hồ Sơ Tỷ Phú</h2>
+          </div>
+          <button id="btn-close-profile" class="btn-chunky btn-white btn-xs" style="font-size: 1.1rem; width: 34px; height: 34px; border-radius: 50%; padding: 0;">✕</button>
+        </div>
+
+        <!-- Profile Hero Card -->
+        <div class="profile-hero-card">
+          <div id="profile-avatar-wrapper" class="profile-avatar-wrapper nameplate-frame nameplate-tier-gray">
+            <img id="profile-avatar-img" class="profile-avatar-large" src="https://api.dicebear.com/7.x/bottts/svg?seed=TyPhu" alt="Avatar" />
+            <span id="profile-frame-badge" class="profile-frame-badge">Khung Tân Thủ</span>
+          </div>
+          <div class="profile-hero-info">
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+              <div id="profile-username" class="profile-hero-username">Tỷ Phú</div>
+              <span id="profile-level-badge" class="nameplate-badge nameplate-tier-gray">Lv.1 Tân Thủ</span>
+            </div>
+            <div id="profile-email" class="profile-hero-email">typhu@businesschess.vn</div>
+            <div class="profile-hero-gold">
+              <span>🪙</span>
+              <span id="profile-gold-balance">10,000 Vàng</span>
+            </div>
+            <!-- Mastery Level & Progress -->
+            <div class="profile-mastery-banner">
+              <div class="mastery-level-row">
+                <span id="profile-mastery-title" class="mastery-title">Cấp Độ Thông Thạo: Level 1 (Xám)</span>
+                <span id="profile-mastery-xp" class="mastery-xp">0 / 10 Thành Tựu</span>
+              </div>
+              <div class="mastery-progress-track">
+                <div id="profile-mastery-bar" class="mastery-progress-fill" style="width: 10%;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Stats Grid: Matches, Wins, Win Rate %, Achievements -->
+        <div class="profile-stats-grid">
+          <div class="profile-stat-card">
+            <div class="stat-number" id="profile-total-matches">0</div>
+            <div class="stat-label">Tổng Trận Đấu</div>
+          </div>
+          <div class="profile-stat-card">
+            <div class="stat-number" id="profile-total-wins" style="color: #00B894;">0</div>
+            <div class="stat-label">Chiến Thắng</div>
+          </div>
+          <div class="profile-stat-card">
+            <div class="stat-number" id="profile-win-rate" style="color: #0984E3;">0%</div>
+            <div class="stat-label">Tỷ Lệ Thắng</div>
+          </div>
+          <div class="profile-stat-card">
+            <div class="stat-number" id="profile-stat-achievements" style="color: #E17055;">0/10</div>
+            <div class="stat-label">Thành Tựu</div>
+          </div>
+        </div>
+
+        <!-- Profile Tabs: Achievements vs Nameplate Frames -->
+        <div class="profile-tabs">
+          <button id="tab-btn-profile-achievements" class="profile-tab active" type="button">
+            🏆 Thành Tựu & Level (<span id="profile-ach-count">0</span>)
+          </button>
+          <button id="tab-btn-profile-frames" class="profile-tab" type="button">
+            👑 Khung Tên Thông Thạo (<span id="profile-frames-count">1</span>)
+          </button>
+        </div>
+
+        <!-- Pane 1: Achievements Section -->
+        <div id="pane-profile-achievements" class="profile-tab-pane">
+          <!-- 5-Tier Level Filter Chips -->
+          <div class="tier-filter-chips">
+            <button class="tier-chip active" data-tier="ALL" type="button">Tất Cả</button>
+            <button class="tier-chip chip-gray" data-tier="GRAY" type="button">⚪ Lv.1 Xám</button>
+            <button class="tier-chip chip-blue" data-tier="BLUE" type="button">🔵 Lv.2 Xanh</button>
+            <button class="tier-chip chip-gold" data-tier="GOLD" type="button">🟡 Lv.3 Vàng</button>
+            <button class="tier-chip chip-orange" data-tier="ORANGE" type="button">🟠 Lv.4 Cam</button>
+            <button class="tier-chip chip-red" data-tier="RED" type="button">🔴 Lv.5 Đỏ</button>
+          </div>
+          <div id="profile-achievements-list" class="profile-achievements-list">
+            <!-- Injected dynamically -->
+          </div>
+        </div>
+
+        <!-- Pane 2: Nameplate Frames Showcase Section -->
+        <div id="pane-profile-frames" class="profile-tab-pane" style="display: none;">
+          <div style="font-size: 0.82rem; color: #636E72; margin: 6px 0 12px; line-height: 1.4;">
+            ✨ <b>Khung Tên Thông Thạo:</b> Mỗi khi mở khóa một thành tựu, bạn sẽ nhận được khung tên danh hiệu tương ứng để tỏa sáng trong trận đấu!
+          </div>
+          <div id="profile-frames-grid" class="profile-frames-grid">
+            <!-- Injected dynamically -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 13. FRIENDS MODAL -->
+    <div id="friends-modal" class="interactive modal-overlay" style="display: none;">
+      <div class="glass-panel modal-content friends-modal-box">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 1.4rem;">👥</span>
+            <h2 style="font-size: 1.4rem; color: #2D3436; margin: 0;">Bạn Bè</h2>
+          </div>
+          <button id="btn-close-friends" class="btn-chunky btn-white btn-xs" style="font-size: 1.1rem; width: 34px; height: 34px; border-radius: 50%; padding: 0;">✕</button>
+        </div>
+
+        <!-- 3 Tabs -->
+        <div class="friends-tabs">
+          <button id="tab-btn-friends-list" class="friends-tab active" type="button">
+            Bạn Bè <span id="badge-friends-count" class="tab-badge">0</span>
+          </button>
+          <button id="tab-btn-add-friend" class="friends-tab" type="button">
+            ➕ Thêm Bạn
+          </button>
+          <button id="tab-btn-friend-requests" class="friends-tab" type="button">
+            Lời Mời <span id="badge-requests-count" class="tab-badge" style="display: none;">0</span>
+          </button>
+        </div>
+
+        <!-- Tab 1: Friends List -->
+        <div id="pane-friends-list" class="friends-tab-pane">
+          <div id="friends-list-container" class="friends-items-list">
+            <div style="font-size: 0.85rem; color: #B2BEC3; text-align: center; padding: 20px;">Đang tải danh sách bạn bè...</div>
+          </div>
+        </div>
+
+        <!-- Tab 2: Add Friend -->
+        <div id="pane-add-friend" class="friends-tab-pane" style="display: none;">
+          <div style="padding: 12px 4px; text-align: left;">
+            <p style="font-size: 0.85rem; color: #636E72; margin-bottom: 12px; line-height: 1.5;">
+              Nhập Tên đăng nhập (Username) hoặc Email của người chơi để gửi lời mời kết bạn:
+            </p>
+            <div style="display: flex; gap: 8px;">
+              <input id="input-friend-identifier" class="field-input" type="text" placeholder="Username hoặc Email..." style="flex: 1;" />
+              <button id="btn-send-friend-request" class="btn-chunky btn-primary" type="button" style="padding: 10px 18px; font-size: 0.9rem; white-space: nowrap;">
+                Gửi Lời Mời
+              </button>
+            </div>
+            <div id="add-friend-status" style="font-size: 0.82rem; font-weight: 700; margin-top: 10px; display: none;"></div>
+          </div>
+        </div>
+
+        <!-- Tab 3: Friend Requests -->
+        <div id="pane-friend-requests" class="friends-tab-pane" style="display: none;">
+          <div id="friend-requests-container" class="friends-items-list">
+            <div style="font-size: 0.85rem; color: #B2BEC3; text-align: center; padding: 20px;">Không có lời mời kết bạn nào.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 14. ROOM PASSWORD PROMPT MODAL -->
+    <div id="join-password-modal" class="interactive modal-overlay" style="display: none;">
+      <div class="glass-panel modal-content" style="max-width: 390px; text-align: left;">
+        <h3 style="margin-bottom: 8px; color: #2D3436; display: flex; align-items: center; gap: 8px;">
+          <span>🔒</span> <span>Phòng Riêng Tư</span>
+        </h3>
+        <p style="font-size: 0.84rem; color: #636E72; margin-bottom: 14px; line-height: 1.45;">
+          Phòng <b id="join-password-room-name" style="color: #2D3436;">...</b> yêu cầu mật khẩu để tham gia.
+        </p>
+        <div style="margin-bottom: 14px;">
+          <label class="field-label" for="join-password-input">MẬT KHẨU PHÒNG</label>
+          <input id="join-password-input" class="field-input" type="password" placeholder="Nhập mật khẩu..." maxlength="30" />
+          <div id="join-password-error" style="color: #E84118; font-size: 0.78rem; font-weight: 700; margin-top: 6px; display: none;"></div>
+        </div>
+        <div style="display: flex; gap: 10px;">
+          <button id="btn-cancel-join-password" class="btn-chunky btn-white" type="button" style="flex: 1;">Hủy</button>
+          <button id="btn-confirm-join-password" class="btn-chunky btn-primary" type="button" style="flex: 1.2;">Vào Phòng</button>
         </div>
       </div>
     </div>

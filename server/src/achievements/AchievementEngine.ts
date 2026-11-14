@@ -142,6 +142,17 @@ export class AchievementEngine {
       }
     }
 
+    // 4. RAILROAD_TYCOON: Own at least 2 railroads
+    if (tile && tile.type === 'RAILROAD') {
+      const ownedRailroads = [5, 15, 25, 35].filter(rId => {
+        const prop = engine.properties.get(rId);
+        return prop && prop.ownerId === player.id;
+      });
+      if (ownedRailroads.length >= 2) {
+        this.triggerUnlock(roomId, player, 'RAILROAD_TYCOON');
+      }
+    }
+
     // Check Millionaire
     this.checkWealthAchievements(roomId, player, engine);
   }
@@ -258,6 +269,12 @@ export class AchievementEngine {
         const isWin = p.id === winner.id;
         const prizeGold = isWin ? 2000 : 500;
         dbService.updateUserStats(uid, isWin, prizeGold);
+        if (isWin) {
+          const u = dbService.getUserById(uid);
+          if (u && u.total_wins >= 10) {
+            this.triggerUnlock(roomId, winner, 'VIETNAM_CONQUEROR');
+          }
+        }
       }
     }
   }

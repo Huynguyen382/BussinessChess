@@ -26,9 +26,170 @@ export class TokenManager {
   private shadowTexture: THREE.CanvasTexture;
   private animClock = 0;
 
+  // 3D Turn Pointer Indicator Arrow (Mũi tên trỏ vào nhân vật lượt đi)
+  public arrowGroup: THREE.Group;
+  public arrowConeGroup: THREE.Group;
+  public arrowConeMat: THREE.MeshStandardMaterial;
+  public arrowHaloMesh: THREE.Mesh;
+  public arrowSprite: THREE.Sprite | null = null;
+  public activeUserId: string | null = null;
+
   constructor() {
     this.group = new THREE.Group();
     this.shadowTexture = this.createContactShadowTexture();
+
+    const arrowParts = this.createTurnArrow();
+    this.arrowGroup = arrowParts.group;
+    this.arrowConeGroup = arrowParts.coneGroup;
+    this.arrowConeMat = arrowParts.mat;
+    this.arrowHaloMesh = arrowParts.halo;
+    this.group.add(this.arrowGroup);
+  }
+
+  private createTurnArrow(): { group: THREE.Group; coneGroup: THREE.Group; mat: THREE.MeshStandardMaterial; halo: THREE.Mesh } {
+    const root = new THREE.Group();
+    const coneGroup = new THREE.Group();
+
+    // 1. Mũi tên nhọn 3D chỉ thẳng xuống nhân vật (Inverted Cone)
+    const coneGeo = new THREE.ConeGeometry(0.28, 0.55, 16);
+    coneGeo.rotateX(Math.PI);
+    coneGeo.translate(0, 0.28, 0);
+
+    const mat = new THREE.MeshStandardMaterial({
+      color: '#00B894',
+      emissive: '#00B894',
+      emissiveIntensity: 0.9,
+      roughness: 0.2,
+      metalness: 0.7
+    });
+    const coneMesh = new THREE.Mesh(coneGeo, mat);
+
+    // 2. Thân trên mũi tên (Prism / Cylinder shaft)
+    const shaftGeo = new THREE.CylinderGeometry(0.09, 0.09, 0.38, 16);
+    shaftGeo.translate(0, 0.74, 0);
+    const shaftMesh = new THREE.Mesh(shaftGeo, mat);
+
+    // 3. Viên ngọc kim cương phát sáng trên đỉnh mũi tên (Diamond Top Gem)
+    const gemGeo = new THREE.OctahedronGeometry(0.16, 0);
+    gemGeo.translate(0, 1.05, 0);
+    const gemMat = new THREE.MeshStandardMaterial({
+      color: '#FFFFFF',
+      emissive: '#FFEAA7',
+      emissiveIntensity: 0.95,
+      roughness: 0.1,
+      metalness: 0.9
+    });
+    const gemMesh = new THREE.Mesh(gemGeo, gemMat);
+
+    coneGroup.add(coneMesh, shaftMesh, gemMesh);
+
+    // 4. Vòng hào quang phát sáng dưới mũi tên (Pulsing Halo Ring)
+    const haloGeo = new THREE.TorusGeometry(0.35, 0.035, 8, 24);
+    haloGeo.rotateX(Math.PI / 2);
+    haloGeo.translate(0, -0.05, 0);
+    const haloMat = new THREE.MeshBasicMaterial({
+      color: '#FFFFFF',
+      transparent: true,
+      opacity: 0.85
+    });
+    const haloMesh = new THREE.Mesh(haloGeo, haloMat);
+
+    root.add(coneGroup, haloMesh);
+    root.visible = false;
+
+    return { group: root, coneGroup, mat, halo: haloMesh };
+  }
+
+  private drawRoundedRect(ctx: any, x: number, y: number, w: number, h: number, r: number) {
+    if (!ctx || !ctx.beginPath) return;
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    if (ctx.quadraticCurveTo) ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h - r);
+    if (ctx.quadraticCurveTo) ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    ctx.lineTo(x + r, y + h);
+    if (ctx.quadraticCurveTo) ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+    ctx.lineTo(x, y + r);
+    if (ctx.quadraticCurveTo) ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
+  }
+
+  public updateArrowBadge(username: string, color: string) {
+    if (typeof document === 'undefined') return;
+    const canvas = document.createElement('canvas');
+    if (!canvas || !canvas.getContext) return;
+    canvas.width = 256;
+    canvas.height = 72;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // Background pill with dark glass look
+    ctx.fillStyle = 'rgba(29, 36, 43, 0.92)';
+    this.drawRoundedRect(ctx, 4, 4, 248, 64, 32);
+    if (ctx.fill) ctx.fill();
+
+    // Border with player color
+    ctx.strokeStyle = color || '#00B894';
+    ctx.lineWidth = 4;
+    if (ctx.stroke) ctx.stroke();
+
+    // Player text
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold 24px system-ui, -apple-system, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    if (ctx.fillText) {
+      const displayName = username.length > 12 ? username.slice(0, 11) + '…' : username;
+      ctx.fillText(`▶ ${displayName}`, 128, 36);
+    }
+
+    const texture = new THREE.CanvasTexture(canvas);
+    if (!this.arrowSprite) {
+      const spriteMat = new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: false });
+      this.arrowSprite = new THREE.Sprite(spriteMat);
+      this.arrowSprite.scale.set(1.5, 0.42, 1);
+      this.arrowSprite.position.set(0, 1.45, 0);
+      this.arrowGroup.add(this.arrowSprite);
+    } else {
+      const mat = this.arrowSprite.material as THREE.SpriteMaterial;
+      if (mat.map) mat.map.dispose();
+      mat.map = texture;
+      mat.needsUpdate = true;
+    }
+  }
+
+  public setActiveTurnPlayer(userId: string | null, username?: string, color?: string) {
+    this.activeUserId = userId;
+    if (!userId) {
+      this.arrowGroup.visible = false;
+      return;
+    }
+
+    const token = this.tokens.get(userId);
+    if (token) {
+      this.arrowGroup.visible = true;
+      const playerColor = color || token.color || '#00B894';
+      this.arrowConeMat.color.set(playerColor);
+      this.arrowConeMat.emissive.set(playerColor);
+
+      const name = username || `Người chơi`;
+      this.updateArrowBadge(name, playerColor);
+
+      // Snap arrow position above token right away
+      const tokenPos = token.mesh.position;
+      this.arrowGroup.position.set(tokenPos.x, tokenPos.y + 1.65, tokenPos.z);
+    } else {
+      this.arrowGroup.visible = false;
+    }
+  }
+
+  public clearTokens() {
+    this.group.clear();
+    this.group.add(this.arrowGroup);
+    this.tokens.clear();
+    this.activeUserId = null;
+    this.arrowGroup.visible = false;
   }
 
   private createContactShadowTexture(): THREE.CanvasTexture {
@@ -75,19 +236,26 @@ export class TokenManager {
       // ==========================================
       const bodyMat = new THREE.MeshStandardMaterial({
         color: color || '#FF3838',
-        roughness: 0.18,
-        metalness: 0.15
+        roughness: 0.14,
+        metalness: 0.32
       });
       const chromeMat = new THREE.MeshStandardMaterial({
         color: '#FFFFFF',
-        metalness: 0.92,
-        roughness: 0.1
+        metalness: 0.98,
+        roughness: 0.05
       });
 
       // A. Khung gầm thân xe bo tròn cong mềm
       const body = new THREE.Mesh(new RoundedBoxGeometry(0.92, 0.32, 0.54, 4, 0.1), bodyMat);
       body.position.y = 0.28;
       body.castShadow = true;
+
+      // Nẹp crom cổ điển chạy dọc hai bên sườn xe
+      [-0.275, 0.275].forEach(sz => {
+        const sideSpear = new THREE.Mesh(new THREE.BoxGeometry(0.86, 0.022, 0.015), chromeMat);
+        sideSpear.position.set(0, 0.28, sz);
+        tokenGroup.add(sideSpear);
+      });
 
       // Nắp ca-pô cong phía trước
       const hood = new THREE.Mesh(new RoundedBoxGeometry(0.38, 0.14, 0.48, 3, 0.06), bodyMat);
@@ -426,13 +594,27 @@ export class TokenManager {
         new THREE.MeshStandardMaterial({
           color: '#FFA502',
           emissive: '#FF4757',
-          emissiveIntensity: 0.95,
+          emissiveIntensity: 1.15,
           transparent: true,
           opacity: 0.92
         })
       );
       flameMesh.position.y = -0.15;
       flameMesh.rotation.x = Math.PI;
+
+      // Lõi lửa plasma trắng vàng siêu nhiệt bên trong
+      const innerFlame = new THREE.Mesh(
+        new THREE.ConeGeometry(0.11, 0.28, 14),
+        new THREE.MeshStandardMaterial({
+          color: '#FFFDE7',
+          emissive: '#00CEC9',
+          emissiveIntensity: 1.8,
+          transparent: true,
+          opacity: 0.95
+        })
+      );
+      innerFlame.position.y = 0.06;
+      flameMesh.add(innerFlame);
 
       tokenGroup.add(body, nose, winBorder, winGlass, starInsignia, nozzle);
       if (flameMesh) tokenGroup.add(flameMesh);
@@ -523,10 +705,10 @@ export class TokenManager {
         token.mesh.position.lerpVectors(startPos, endPos, t);
         token.mesh.position.y = startPos.y + hopHeight;
 
-        // Quay bánh xe ô tô
+        // Quay bánh xe ô tô chuẩn xác theo tiến trình bước nhảy (t), mượt mà độc lập tần số quét 60Hz - 144Hz
         if (token.wheels && token.wheels.length > 0) {
           token.wheels.forEach(w => {
-            w.rotation.x += 0.25;
+            w.rotation.x = t * Math.PI * 4;
           });
         }
 
@@ -582,21 +764,81 @@ export class TokenManager {
 
   public update(delta: number) {
     this.animClock += delta;
+
+    // 1. Cập nhật mũi tên chỉ hướng lượt đi (Turn Pointer Arrow) bám sát nhân vật
+    if (this.activeUserId) {
+      const activeToken = this.tokens.get(this.activeUserId);
+      if (activeToken) {
+        this.arrowGroup.visible = true;
+        const tokenPos = activeToken.mesh.position;
+        const bob = Math.sin(this.animClock * 4.5) * 0.16;
+        const targetY = tokenPos.y + 1.65 + bob;
+
+        if (activeToken.isMoving) {
+          // Khi quân cờ đang nhảy từng ô, mũi tên bám dính tức thì theo vị trí X, Z và chiều cao Y
+          this.arrowGroup.position.set(tokenPos.x, targetY, tokenPos.z);
+        } else {
+          // Khi đứng yên, lerp mượt mà
+          this.arrowGroup.position.x = THREE.MathUtils.lerp(this.arrowGroup.position.x, tokenPos.x, 0.25);
+          this.arrowGroup.position.z = THREE.MathUtils.lerp(this.arrowGroup.position.z, tokenPos.z, 0.25);
+          this.arrowGroup.position.y = targetY;
+        }
+
+        // Xoay nhẹ mũi tên 3D quanh trục Y để tạo chuyển động sống động
+        this.arrowConeGroup.rotation.y += delta * 2.2;
+
+        // Xung nhịp phát sáng
+        this.arrowConeMat.emissiveIntensity = 0.8 + Math.sin(this.animClock * 5.0) * 0.35;
+        const haloScale = 1.0 + Math.sin(this.animClock * 5.0) * 0.16;
+        this.arrowHaloMesh.scale.set(haloScale, haloScale, 1);
+      } else {
+        this.arrowGroup.visible = false;
+      }
+    }
+
+    // 2. Hoạt ảnh Idle & Chuyển Động của các quân cờ
     for (const token of this.tokens.values()) {
-      if (!token.isMoving && token.innerModel) {
-        // Nhịp thở Idle sống động
+      if (token.isMoving) {
+        // Khi di chuyển: Bánh xe lăn, tai cún vẫy nhịp nhàng, lửa phản lực phụt mạnh
+        if (token.wheels && token.wheels.length > 0) {
+          token.wheels.forEach(w => {
+            w.rotation.x += delta * 18;
+          });
+        }
+        if (token.ears) {
+          token.ears.rotation.z = Math.sin(this.animClock * 14) * 0.22;
+          token.ears.rotation.x = Math.cos(this.animClock * 12) * 0.12;
+        }
+        if (token.tail) {
+          token.tail.rotation.z = Math.sin(this.animClock * 16) * 0.35;
+        }
+        if (token.thrusterFlame) {
+          const fScale = 1.1 + Math.sin(this.animClock * 28) * 0.35;
+          const fLen = 1.2 + Math.cos(this.animClock * 24) * 0.38;
+          token.thrusterFlame.scale.set(fScale, fLen, fScale);
+        }
+      } else if (token.innerModel) {
+        // Nhịp thở Idle sống động khi đứng yên
         const breathe = Math.sin(this.animClock * 2.5 + token.currentTile) * 0.02;
         token.innerModel.position.y = breathe;
 
-        // Vẫy đuôi cún nhè nhẹ khi đứng yên
-        if (token.tail) {
-          token.tail.rotation.z = Math.sin(this.animClock * 5) * 0.15;
+        // Vẫy tai cún ngộ nghĩnh
+        if (token.ears) {
+          token.ears.rotation.z = Math.sin(this.animClock * 5.0) * 0.12;
+          token.ears.rotation.x = Math.sin(this.animClock * 3.5) * 0.07;
         }
 
-        // Đuôi lửa phập phồng
+        // Vẫy đuôi cún nhè nhẹ khi đứng yên
+        if (token.tail) {
+          token.tail.rotation.z = Math.sin(this.animClock * 6.5) * 0.22;
+          token.tail.rotation.y = Math.PI / 2 + Math.cos(this.animClock * 4.5) * 0.12;
+        }
+
+        // Đuôi lửa phập phồng nhịp nhàng
         if (token.thrusterFlame) {
-          const fScale = 0.85 + Math.sin(this.animClock * 16) * 0.22;
-          token.thrusterFlame.scale.set(fScale, fScale, fScale);
+          const fScale = 0.88 + Math.sin(this.animClock * 18) * 0.22;
+          const fLen = 0.92 + Math.cos(this.animClock * 16) * 0.24;
+          token.thrusterFlame.scale.set(fScale, fLen, fScale);
         }
       }
     }
@@ -608,5 +850,12 @@ export class TokenManager {
     const pos = this.getTilePosition(tileIndex, slot);
     token.mesh.position.copy(pos);
     token.currentTile = tileIndex;
+  }
+
+  public isAnyTokenMoving(): boolean {
+    for (const token of this.tokens.values()) {
+      if (token.isMoving) return true;
+    }
+    return false;
   }
 }

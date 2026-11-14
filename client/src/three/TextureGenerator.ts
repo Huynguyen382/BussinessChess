@@ -110,4 +110,81 @@ export class TextureGenerator {
 
     return new THREE.CanvasTexture(canvas);
   }
+
+  // Texture hạt bụi nắng & đom đóm tròn mềm mượt (Soft Circular Feathered Glow Particle)
+  public static createParticleTexture(): THREE.CanvasTexture {
+    const canvas = document.createElement('canvas');
+    canvas.width = 64;
+    canvas.height = 64;
+    const ctx = canvas.getContext('2d')!;
+
+    const grad = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+    grad.addColorStop(0, 'rgba(255, 255, 255, 1.0)');
+    grad.addColorStop(0.25, 'rgba(255, 248, 220, 0.85)');
+    grad.addColorStop(0.6, 'rgba(255, 225, 160, 0.35)');
+    grad.addColorStop(1, 'rgba(255, 200, 100, 0)');
+
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 64, 64);
+
+    return new THREE.CanvasTexture(canvas);
+  }
+
+  // Texture sương mù thể tích diorama mềm mại (Soft Volumetric Diorama Haze)
+  public static createVolumetricHazeTexture(): THREE.CanvasTexture {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 256;
+    const ctx = canvas.getContext('2d')!;
+
+    const grad = ctx.createRadialGradient(128, 128, 0, 128, 128, 128);
+    grad.addColorStop(0, 'rgba(255, 248, 235, 0.35)');
+    grad.addColorStop(0.45, 'rgba(240, 245, 255, 0.18)');
+    grad.addColorStop(0.8, 'rgba(220, 235, 250, 0.05)');
+    grad.addColorStop(1, 'rgba(200, 225, 250, 0)');
+
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 256, 256);
+
+    return new THREE.CanvasTexture(canvas);
+  }
+
+  // Texture chuyển sắc đáy biển nhiệt đới quanh đảo bàn cờ (Lush Tropical Lagoon Bed)
+  public static createTropicalLagoonTexture(): THREE.CanvasTexture {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 512;
+    const ctx = canvas.getContext('2d')!;
+
+    const grad = ctx.createRadialGradient(256, 256, 80, 256, 256, 256);
+    grad.addColorStop(0, '#55EFC4'); // Bãi cát ngầm rạn san hô xanh ngọc
+    grad.addColorStop(0.35, '#00CEC9'); // Làn nước biển xanh ngọc nhiệt đới
+    grad.addColorStop(0.7, '#0984E3'); // Xanh ngọc bích đại dương sâu
+    grad.addColorStop(1, '#0A3D62'); // Xanh sapphire đại dương xa xăm
+
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 512, 512);
+
+    return new THREE.CanvasTexture(canvas);
+  }
+
+  // Texture vòm trời bình minh vàng ấm áp (Warm Golden Celestial Horizon Gradient)
+  public static createSkyGradientTexture(): THREE.CanvasTexture {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 512;
+    const ctx = canvas.getContext('2d')!;
+
+    const grad = ctx.createLinearGradient(0, 0, 0, 512);
+    grad.addColorStop(0, '#6C92AF'); // Đỉnh vòm trời xanh êm dịu (Zenith)
+    grad.addColorStop(0.35, '#99B9D1'); // Khí quyển ban mai trong trẻo
+    grad.addColorStop(0.65, '#E2D3B8'); // Vệt nắng vàng mật ấm áp đường chân trời
+    grad.addColorStop(0.85, '#FFECC7'); // Hừng đông rực rỡ
+    grad.addColorStop(1, '#DFE7F0'); // Hòa quyện nhẹ nhàng vào lớp sương mù bàn chơi
+
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 256, 512);
+
+    return new THREE.CanvasTexture(canvas);
+  }
 }
