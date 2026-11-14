@@ -200,6 +200,16 @@ test('Tile 30 (AIRPORT / Sân Bay Quốc Tế) - Terminal, Jetliner, Control Tow
   assert(audit.meshCount >= 10, `Airport expected >= 10 meshes, found ${audit.meshCount}`);
   assert(audit.animTypesFound.includes('spin_y'), 'Airport should have spin_y on ATC radar dish');
   assert(audit.animTypesFound.includes('pulse_red'), 'Airport should have pulse_red on ATC beacon light');
+
+  // Verify Airplane geometry orientation: Nose forward (+Z) and Tail rear (-Z)
+  const airplane = model.children.find(c => c.children && c.children.length > 10);
+  assert(airplane, 'Airport must contain detailed airplane group');
+  const noseMesh = airplane.children.find(m => (m as THREE.Mesh).geometry instanceof THREE.ConeGeometry && m.position.z > 0.5);
+  assert(noseMesh, 'Airplane must have forward nose cone pointing along +Z');
+  assert(noseMesh.position.z > 0.6, 'Nose cone must be at front (+Z) of fuselage');
+
+  const tailMesh = airplane.children.find(m => m.position.z < -0.5);
+  assert(tailMesh, 'Airplane must have vertical/horizontal tail assembly at rear (-Z)');
 });
 
 // ====================================================
