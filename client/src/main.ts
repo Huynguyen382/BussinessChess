@@ -583,7 +583,7 @@ function closeTileInspector() {
   elTileInspector.style.display = 'none';
   currentInspectedTileId = null;
   if (boardScene) {
-    boardScene.cameraManager.focusOnPosition(new THREE.Vector3(0, 0, 0), boardScene.cameraManager.isMobile ? 28.5 : 25.5);
+    boardScene.clearTileHighlight();
   }
 }
 
@@ -648,8 +648,6 @@ function init() {
 
   // Lắng nghe tương tác chạm/click trực tiếp vào ô cờ 3D
   boardScene.onTileClick = (tileId: number, tile: any) => {
-    const tilePos = boardScene.getTileWorldPosition(tileId);
-    boardScene.cameraManager.focusOnPosition(tilePos, 14.5);
     showTileInspector(tileId, tile);
   };
 

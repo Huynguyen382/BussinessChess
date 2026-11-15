@@ -168,6 +168,12 @@ export class BoardScene {
     }
   }
 
+  public clearTileHighlight() {
+    if (this.highlightBox) {
+      this.highlightBox.visible = false;
+    }
+  }
+
   private bounceLandmark(lm: THREE.Group) {
     if (lm.userData.__bounceInterval) {
       clearInterval(lm.userData.__bounceInterval);
