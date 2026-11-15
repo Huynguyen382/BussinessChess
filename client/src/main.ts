@@ -304,6 +304,22 @@ const btnCloseRoster = document.getElementById('btn-close-roster')!;
 const rosterTilesList = document.getElementById('roster-tiles-list')!;
 const rosterFilterTabs = document.getElementById('roster-filter-tabs')!;
 
+// Airport Flight Modal Elements
+const elAirportModal = document.getElementById('airport-flight-modal')!;
+const btnCloseAirportModal = document.getElementById('btn-close-airport-modal')!;
+const btnAirportQuickGo = document.getElementById('btn-airport-quick-go')!;
+const airportTilesList = document.getElementById('airport-tiles-list')!;
+const airportFilterTabs = document.getElementById('airport-filter-tabs')!;
+const airportFloatingBar = document.getElementById('airport-floating-bar')!;
+const btnAirportReopen = document.getElementById('btn-airport-reopen-list')!;
+const airportConfirmModal = document.getElementById('airport-confirm-modal')!;
+const airportConfirmTitle = document.getElementById('airport-confirm-title')!;
+const airportConfirmDesc = document.getElementById('airport-confirm-desc')!;
+const btnAirportConfirmCancel = document.getElementById('btn-airport-confirm-cancel')!;
+const btnAirportConfirmFly = document.getElementById('btn-airport-confirm-fly')!;
+let currentAirportFilter = 'ALL';
+let selectedAirportTargetId: number | null = null;
+
 const inputUsername = document.getElementById('input-username') as HTMLInputElement;
 const inputRoomCode = document.getElementById('input-room-code') as HTMLInputElement;
 const btnOpenCreate = document.getElementById('btn-open-create-room')!;
@@ -642,12 +658,130 @@ function renderBoardRoster(filter: string = currentRosterFilter) {
   showTileInspector(tileId, boardTilesData[tileId]);
 };
 
+function showAirportModal() {
+  renderAirportDestinations('ALL');
+  elAirportModal.style.display = 'flex';
+  airportFloatingBar.style.display = 'none';
+}
+
+function renderAirportDestinations(filter: string = currentAirportFilter) {
+  currentAirportFilter = filter;
+  if (!boardTilesData || boardTilesData.length === 0) return;
+
+  const filtered = boardTilesData.filter(t => {
+    if (filter === 'ALL') return true;
+    if (filter === 'PROPERTY') return t.type === 'PROPERTY';
+    if (filter === 'RAILROAD') return t.type === 'RAILROAD' || t.type === 'UTILITY';
+    if (filter === 'SPECIAL') return t.type !== 'PROPERTY' && t.type !== 'RAILROAD' && t.type !== 'UTILITY';
+    return true;
+  });
+
+  airportTilesList.innerHTML = filtered.map(t => {
+    const isAirport = t.id === 30;
+    const prop = latestPropertiesSnapshot.find(p => p.tileId === t.id);
+    const owner = prop ? latestPlayersSnapshot.find(p => p.id === prop.ownerId) : null;
+    const color = t.districtColor || (t.type === 'RAILROAD' ? '#2D3436' : t.type === 'UTILITY' ? '#0984E3' : '#B2BEC3');
+    const landmarkIcon = LANDMARK_ICONS[t.id] || '📍';
+
+    let ownerStatusHtml = '';
+    if (t.type === 'PROPERTY' || t.type === 'RAILROAD' || t.type === 'UTILITY') {
+      if (owner) {
+        ownerStatusHtml = `<span style="color:${owner.color}; font-weight:800; font-size:0.75rem;">👑 ${owner.username} (${prop.level === 4 ? 'Khách sạn' : prop.level + ' Nhà'})</span>`;
+      } else {
+        ownerStatusHtml = `<span style="color:#00B894; font-weight:800; font-size:0.75rem;">💰 ${t.price}M (Đang mở bán)</span>`;
+      }
+    } else {
+      ownerStatusHtml = `<span style="color:#636E72; font-size:0.72rem;">${t.description || 'Ô chức năng'}</span>`;
+    }
+
+    if (isAirport) {
+      return `
+        <div class="roster-tile-card" style="opacity: 0.55; cursor: not-allowed; background: #F8F9FA; border: 1px dashed #B2BEC3;">
+          <div class="roster-tile-top">
+            <div style="display:flex; align-items:center;">
+              <div class="roster-tile-color-bar" style="background:${color};"></div>
+              <span style="font-size:1.1rem; margin-right:6px;">✈️</span>
+              <b style="font-size:0.88rem; color:#636E72;">${t.name} (Vị trí hiện tại)</b>
+            </div>
+            <span style="font-size:0.7rem; font-weight:800; color:#B2BEC3;">#30</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-top:2px;">
+            <span style="font-size:0.72rem; color:#E17055; font-weight:700;">🚫 Không thể bay lại ô Sân Bay</span>
+          </div>
+        </div>
+      `;
+    }
+
+    const isPassGo = t.id < 30;
+    const passGoBadge = isPassGo ? `<span style="color:#00B894; font-size:0.7rem; font-weight:800;">+200M Lương 🚩</span>` : '';
+
+    return `
+      <div class="roster-tile-card" onclick="window.selectTileForFlight(${t.id})">
+        <div class="roster-tile-top">
+          <div style="display:flex; align-items:center;">
+            <div class="roster-tile-color-bar" style="background:${color};"></div>
+            <span style="font-size:1.1rem; margin-right:6px;">${landmarkIcon}</span>
+            <b style="font-size:0.88rem; color:#2D3436;">${t.name}</b>
+          </div>
+          <span style="font-size:0.7rem; font-weight:800; color:#B2BEC3;">#${t.id < 10 ? '0' + t.id : t.id}</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:2px;">
+          ${ownerStatusHtml}
+          <div style="display:flex; align-items:center; gap:6px;">
+            ${passGoBadge}
+            <span style="font-size:0.72rem; color:#0984E3; font-weight:800;">Bay Đến ➔</span>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+(window as any).selectTileForFlight = (tileId: number) => {
+  if (tileId === 30) {
+    showToast('⚠️ Không thể chọn bay lại vào ô Sân Bay!');
+    return;
+  }
+  executeAirportFlight(tileId);
+};
+
+function executeAirportFlight(tileId: number) {
+  if (tileId === 30) {
+    showToast('⚠️ Không thể chọn bay lại vào ô Sân Bay!');
+    return;
+  }
+  socketClient.emit('game:choose_airport_destination', { tileId });
+  elAirportModal.style.display = 'none';
+  airportFloatingBar.style.display = 'none';
+  airportConfirmModal.style.display = 'none';
+}
+
 function init() {
   const container = document.getElementById('canvas-container')!;
   boardScene = new BoardScene(container);
 
   // Lắng nghe tương tác chạm/click trực tiếp vào ô cờ 3D
   boardScene.onTileClick = (tileId: number, tile: any) => {
+    const isAirportTurn = latestGameStateSnapshot?.turnState?.phase === 'AIRPORT_SELECT' &&
+                          latestGameStateSnapshot?.turnState?.currentUserId === socketClient.socket.id;
+    if (isAirportTurn) {
+      if (tileId === 30) {
+        showToast('⚠️ Không thể chọn bay lại vào ô Sân Bay!');
+        return;
+      }
+      boardScene.highlightTile(tileId);
+      selectedAirportTargetId = tileId;
+      airportConfirmTitle.textContent = `Bay Đến ${tile.name} (ô #${tileId})?`;
+      const isPassGo = tileId < 30;
+      airportConfirmDesc.textContent = isPassGo
+        ? `Chuyến bay sẽ bay qua Khởi Hành (GO), nhận thêm 200M tiền lương và hạ cánh tại ${tile.name}.`
+        : `Chuyến bay sẽ cất cánh từ Sân Bay và đưa bạn hạ cánh thẳng xuống ${tile.name}.`;
+      btnAirportConfirmFly.onclick = () => {
+        executeAirportFlight(tileId);
+      };
+      airportConfirmModal.style.display = 'flex';
+      return;
+    }
     showTileInspector(tileId, tile);
   };
 
@@ -824,6 +958,46 @@ function bindUIEvents() {
       rosterFilterTabs.querySelectorAll('.roster-tab').forEach(t => t.classList.remove('active'));
       target.classList.add('active');
       renderBoardRoster(filter);
+    });
+  }
+
+  // Airport Flight Modal Listeners
+  if (btnCloseAirportModal) {
+    btnCloseAirportModal.addEventListener('click', () => {
+      elAirportModal.style.display = 'none';
+      if (latestGameStateSnapshot?.turnState?.phase === 'AIRPORT_SELECT' &&
+          latestGameStateSnapshot?.turnState?.currentUserId === socketClient.socket.id) {
+        airportFloatingBar.style.display = 'flex';
+      }
+    });
+  }
+
+  if (btnAirportReopen) {
+    btnAirportReopen.addEventListener('click', () => {
+      showAirportModal();
+    });
+  }
+
+  if (btnAirportQuickGo) {
+    btnAirportQuickGo.addEventListener('click', () => {
+      executeAirportFlight(0);
+    });
+  }
+
+  if (btnAirportConfirmCancel) {
+    btnAirportConfirmCancel.addEventListener('click', () => {
+      airportConfirmModal.style.display = 'none';
+    });
+  }
+
+  if (airportFilterTabs) {
+    airportFilterTabs.addEventListener('click', (e) => {
+      const target = (e.target as HTMLElement).closest('.roster-tab') as HTMLElement;
+      if (target && target.dataset.airportFilter) {
+        airportFilterTabs.querySelectorAll('.roster-tab').forEach(b => b.classList.remove('active'));
+        target.classList.add('active');
+        renderAirportDestinations(target.dataset.airportFilter);
+      }
     });
   }
 
@@ -1134,6 +1308,64 @@ function bindSocketEvents() {
         }
       );
     });
+
+    latestGameStateSnapshot = data.snapshot;
+    latestPropertiesSnapshot = data.snapshot.properties || latestPropertiesSnapshot;
+    updateHudPlayers(data.snapshot);
+    renderLogs(data.snapshot.logs);
+  });
+
+  socketClient.on('game:airport_flight_result', (data: any) => {
+    const isMe = data.userId === socketClient.socket.id;
+    const player = data.snapshot.players.find((p: any) => p.id === data.userId);
+    const slot = data.snapshot.players.findIndex((p: any) => p.id === data.userId);
+    latestGameStateSnapshot = data.snapshot;
+    latestPlayersSnapshot = data.snapshot.players;
+
+    if (elAirportModal) elAirportModal.style.display = 'none';
+    if (airportFloatingBar) airportFloatingBar.style.display = 'none';
+    if (airportConfirmModal) airportConfirmModal.style.display = 'none';
+
+    sounds.playCardChime();
+    const destName = boardTilesData[data.newPosition]?.name || 'ô mới';
+    showToast(`🛫 ${player ? player.username : 'Người chơi'} đang bay đến [${destName}]!`);
+
+    boardScene.tokenManager.flyTokenDirect(
+      data.userId,
+      data.newPosition,
+      slot,
+      () => {
+        const token = boardScene.tokenManager.tokens.get(data.userId);
+        const landingPos = token ? token.mesh.position : boardScene.getTileWorldPosition(data.newPosition);
+
+        boardScene.highlightTile(data.newPosition);
+        const currentTile = boardTilesData[data.newPosition];
+        showTileInspector(data.newPosition, currentTile);
+
+        if (currentTile && currentTile.type === 'RAILROAD') {
+          sounds.playTrainWhistle();
+          boardScene.vfxManager.spawnTrainSmoke(landingPos, 14);
+        } else if (currentTile && (currentTile.type === 'GO_TO_JAIL' || (currentTile.type === 'JAIL' && player && player.inJail))) {
+          sounds.playJailSlam();
+        }
+
+        if (data.passedGo) {
+          sounds.playCashTransaction();
+          boardScene.vfxManager.spawnFloatingDollar('200M (Lương)', landingPos, true);
+          boardScene.vfxManager.spawnStarBurst(landingPos, 20);
+        }
+
+        handleTileActionResult(data.actionResult, isMe, player, landingPos);
+        const snap = latestGameStateSnapshot || data.snapshot;
+        checkMyTurn(snap);
+
+        const isModalOpen = (elPropertyModal && elPropertyModal.style.display === 'flex') ||
+                            (elCardModal && elCardModal.style.display === 'flex');
+        if (isMe && snap?.turnState?.phase === 'END_TURN' && !isModalOpen) {
+          scheduleAutoEndTurn(1500, 'Giao dịch chuyến bay hoàn tất');
+        }
+      }
+    );
 
     latestGameStateSnapshot = data.snapshot;
     latestPropertiesSnapshot = data.snapshot.properties || latestPropertiesSnapshot;
@@ -2280,6 +2512,8 @@ function checkMyTurn(snapshot?: any) {
           : '🎲 Đang tới lượt bạn — Hãy đổ xúc xắc!';
       } else if (phase === 'BUY_PROPERTY') {
         turnStatusText.textContent = '🏠 Đang cân nhắc mua bất động sản...';
+      } else if (phase === 'AIRPORT_SELECT') {
+        turnStatusText.textContent = '✈️ Đang chọn điểm đến chuyến bay...';
       } else {
         turnStatusText.textContent = autoEndTurnTimer
           ? '✅ Giao dịch hoàn tất — Đang tự động kết thúc lượt...'
@@ -2290,6 +2524,8 @@ function checkMyTurn(snapshot?: any) {
         ? `🎲 Đang chờ ${activePlayer.username} đổ xúc xắc...`
         : phase === 'BUY_PROPERTY'
         ? `🏠 Đang chờ ${activePlayer.username} quyết định mua đất...`
+        : phase === 'AIRPORT_SELECT'
+        ? `✈️ Đang chờ ${activePlayer.username} chọn điểm đến chuyến bay...`
         : `⏳ Đang chờ ${activePlayer.username} hoàn tất lượt...`;
     }
   }
@@ -2312,6 +2548,12 @@ function checkMyTurn(snapshot?: any) {
       sounds.playTurnNotification();
       btnRollDice.style.display = 'inline-flex';
       btnEndTurn.style.display = 'none';
+    } else if (phase === 'AIRPORT_SELECT') {
+      btnRollDice.style.display = 'none';
+      btnEndTurn.style.display = 'none';
+      if (elAirportModal.style.display !== 'flex' && airportFloatingBar.style.display !== 'flex') {
+        showAirportModal();
+      }
     } else if (phase === 'END_TURN') {
       btnRollDice.style.display = 'none';
       btnEndTurn.style.display = 'inline-flex';
@@ -2401,12 +2643,13 @@ function handleTileActionResult(action: any, isMe: boolean, player: any, pos: an
     cardTitle.textContent = action.card.title;
     cardDesc.textContent = `${action.card.description}\n(${action.result})`;
     elCardModal.style.display = 'flex';
-  } else if (action.type === 'AIRPORT') {
+  } else if (action.type === 'AIRPORT' || action.type === 'AIRPORT_SELECT') {
     sounds.playCardChime();
-    sounds.playCashTransaction();
     boardScene.vfxManager.spawnStarBurst(pos, 24);
-    boardScene.vfxManager.spawnFloatingDollar(`+${action.reward || 200}M ✈️`, pos, true);
-    showToast(`✈️ ${player.username} đáp Sân Bay Quốc Tế, bay thẳng về Khởi Hành (GO) nhận +${action.reward || 200}M!`);
+    showToast(`✈️ ${player.username} đáp Sân Bay Quốc Tế!`);
+    if (isMe) {
+      showAirportModal();
+    }
   } else if (action.type === 'GO_TO_JAIL') {
     sounds.playJailSlam();
     boardScene.vfxManager.triggerCameraShake(0.4);

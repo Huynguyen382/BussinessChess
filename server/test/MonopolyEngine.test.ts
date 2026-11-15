@@ -129,7 +129,7 @@ async function runAllTests() {
   // ----------------------------------------------------
   console.log('\n--- Suite 2: Jail Mechanics ---');
 
-  await test('Landing on AIRPORT tile (tile 30) flies player to GO and grants 200M flight bonus', () => {
+  await test('Landing on AIRPORT tile (tile 30) enters AIRPORT_SELECT phase and allows choosing any destination except Airport', () => {
     const game = createGameWithPlayers(2);
     const p1 = game.players[0];
     p1.position = 26; // Hai Phong
@@ -139,12 +139,24 @@ async function runAllTests() {
     try {
       Math.random = () => 0.2; // d1=2, d2=2 -> steps = 4 -> newPos = 30
       const res = game.rollDice(p1.id);
-      assert.equal(res.actionResult.type, 'AIRPORT');
+      assert.equal(res.actionResult.type, 'AIRPORT_SELECT');
       assert.equal(p1.inJail, false);
-      assert.equal(p1.position, 0); // Flew directly to GO
-      assert.equal(p1.balance, startBalance + 200);
-      assert.equal(res.actionResult.reward, 200);
-      assert.equal(res.actionResult.destination, 0);
+      assert.equal(p1.position, 30); // At Airport
+      assert.equal(game.turnState.phase, 'AIRPORT_SELECT');
+
+      // Reject selecting Airport (tile 30) again
+      const invalidChoice = game.chooseAirportDestination(p1.id, 30);
+      assert.equal(invalidChoice.success, false);
+      assert.equal(invalidChoice.error, 'Không thể chọn bay lại vào ô Sân Bay!');
+
+      // Select valid destination: Tile 3 (Cà Mau) which is < 30 so it passes GO (+200M)
+      const validChoice = game.chooseAirportDestination(p1.id, 3);
+      assert.equal(validChoice.success, true);
+      assert.equal(validChoice.prevPosition, 30);
+      assert.equal(validChoice.newPosition, 3);
+      assert.equal(validChoice.passedGo, true);
+      assert.equal(p1.balance, startBalance + 200); // Received GO salary
+      assert.equal(game.turnState.phase, 'BUY_PROPERTY'); // Cà Mau is unowned, so player can buy it
     } finally {
       Math.random = origRandom;
     }

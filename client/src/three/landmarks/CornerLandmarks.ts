@@ -605,29 +605,31 @@ export class CornerLandmarks {
     const wingChord = 0.30;
     const wingThick = 0.030;
 
-    // Cánh trái (Left Wing): vát chéo góc lùi về sau với góc nâng cánh dihedral
+    // Cánh trái (Left Wing): vát chéo góc lùi về sau (-Z) chuẩn khí động học với góc nâng dihedral
     const wingGeoL = new THREE.BoxGeometry(wingSemiSpan, wingThick, wingChord);
     const wingL = new THREE.Mesh(wingGeoL, jetWhiteMat);
-    wingL.position.set(-wingSemiSpan / 2 - 0.06, -0.02, -0.02);
-    wingL.rotation.y = 0.24; // Quét lùi về sau (-Z)
+    wingL.position.set(-wingSemiSpan / 2 - 0.06, -0.02, -0.04);
+    wingL.rotation.y = -0.28; // Quét lùi về sau (-Z) chuẩn hàng không dân dụng
     wingL.rotation.z = -0.03; // Dihedral nâng đầu cánh nhẹ
     wingL.castShadow = true;
 
-    // Cánh phải (Right Wing): vát chéo góc lùi về sau với góc nâng cánh dihedral
+    // Cánh phải (Right Wing): vát chéo góc lùi về sau (-Z) chuẩn khí động học với góc nâng dihedral
     const wingGeoR = new THREE.BoxGeometry(wingSemiSpan, wingThick, wingChord);
     const wingR = new THREE.Mesh(wingGeoR, jetWhiteMat);
-    wingR.position.set(wingSemiSpan / 2 + 0.06, -0.02, -0.02);
-    wingR.rotation.y = -0.24; // Quét lùi về sau (-Z)
+    wingR.position.set(wingSemiSpan / 2 + 0.06, -0.02, -0.04);
+    wingR.rotation.y = 0.28; // Quét lùi về sau (-Z) chuẩn hàng không dân dụng
     wingR.rotation.z = 0.03; // Dihedral nâng đầu cánh nhẹ
     wingR.castShadow = true;
 
     // Cánh phụ vút cong ở 2 đầu mút cánh (Aero Blended Winglets)
     const wingletL = new THREE.Mesh(new THREE.BoxGeometry(0.022, 0.12, 0.075), flagRedMat);
-    wingletL.position.set(-wingSemiSpan - 0.08, 0.045, -0.085);
+    wingletL.position.set(-wingSemiSpan - 0.08, 0.045, -0.125);
+    wingletL.rotation.y = -0.28;
     wingletL.rotation.z = -0.32;
 
     const wingletR = new THREE.Mesh(new THREE.BoxGeometry(0.022, 0.12, 0.075), flagRedMat);
-    wingletR.position.set(wingSemiSpan + 0.08, 0.045, -0.085);
+    wingletR.position.set(wingSemiSpan + 0.08, 0.045, -0.125);
+    wingletR.rotation.y = 0.28;
     wingletR.rotation.z = 0.32;
 
     // 7. Hai động cơ phản lực Turbofan mạ crom dưới cánh với chân pylon liên kết vững chãi
@@ -635,40 +637,40 @@ export class CornerLandmarks {
     [-0.32, 0.32].forEach(xOff => {
       // Chân đỡ pylon khí động học nối liền đáy cánh với thân động cơ
       const pylon = new THREE.Mesh(new THREE.BoxGeometry(0.024, 0.06, 0.20), jetWhiteMat);
-      pylon.position.set(xOff, -0.05, 0.02);
+      pylon.position.set(xOff, -0.05, -0.04);
 
       const nacelle = new THREE.Mesh(new THREE.CylinderGeometry(0.076, 0.070, 0.28, 16), jetWhiteMat);
       nacelle.rotation.x = Math.PI / 2;
-      nacelle.position.set(xOff, -0.10, 0.02);
+      nacelle.position.set(xOff, -0.10, -0.04);
 
       // Nón cánh quạt spinner chỉ thẳng về phía trước (+Z)
       const spinnerGeo = new THREE.ConeGeometry(0.04, 0.08, 14);
       spinnerGeo.rotateX(Math.PI / 2); // Chóp nhọn hướng ra phía trước (+Z)
       const spinner = new THREE.Mesh(spinnerGeo, chromeEngineMat);
-      spinner.position.set(xOff, -0.10, 0.16);
+      spinner.position.set(xOff, -0.10, 0.10);
 
       // Vành hút gió mạ crom sáng loáng
       const intakeRing = new THREE.Mesh(new THREE.TorusGeometry(0.072, 0.012, 8, 18), chromeEngineMat);
-      intakeRing.position.set(xOff, -0.10, 0.14);
+      intakeRing.position.set(xOff, -0.10, 0.08);
 
       // Ống xả luồng phụt phía sau (-Z)
       const exhaust = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.065, 0.06, 14), chromeEngineMat);
       exhaust.rotation.x = Math.PI / 2;
-      exhaust.position.set(xOff, -0.10, -0.14);
+      exhaust.position.set(xOff, -0.10, -0.20);
 
       airplane.add(pylon, nacelle, spinner, intakeRing, exhaust);
     });
 
-    // 8. Cánh đuôi ngang (Horizontal Stabilizers) vát chéo phía sau
+    // 8. Cánh đuôi ngang (Horizontal Stabilizers) vát chéo lùi về sau (-Z)
     const hStabSemiSpan = 0.25;
     const hStabChord = 0.14;
     const hStabL = new THREE.Mesh(new THREE.BoxGeometry(hStabSemiSpan, 0.02, hStabChord), jetWhiteMat);
     hStabL.position.set(-hStabSemiSpan / 2 - 0.04, 0.05, -0.68);
-    hStabL.rotation.y = 0.24;
+    hStabL.rotation.y = -0.24;
 
     const hStabR = new THREE.Mesh(new THREE.BoxGeometry(hStabSemiSpan, 0.02, hStabChord), jetWhiteMat);
     hStabR.position.set(hStabSemiSpan / 2 + 0.04, 0.05, -0.68);
-    hStabR.rotation.y = -0.24;
+    hStabR.rotation.y = 0.24;
 
     // 9. Cánh đuôi đứng (Vertical Tail Fin) gắn CHUẨN XÁC trên sống lưng phần đuôi
     // Đáy cánh đuôi nằm từ z = -0.48 đến z = -0.76 trên thân máy bay, quét lùi về sau

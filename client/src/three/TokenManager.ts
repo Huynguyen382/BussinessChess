@@ -762,6 +762,64 @@ export class TokenManager {
     animateNextStep();
   }
 
+  public flyTokenDirect(
+    userId: string,
+    toTile: number,
+    slot: number,
+    onAllDone?: () => void
+  ) {
+    const token = this.tokens.get(userId);
+    if (!token) {
+      if (onAllDone) onAllDone();
+      return;
+    }
+
+    token.isMoving = true;
+    const startPos = token.mesh.position.clone();
+    const endPos = this.getTilePosition(toTile, slot);
+    const duration = 1200;
+    const startTime = performance.now();
+
+    const flightStep = (time: number) => {
+      const elapsed = time - startTime;
+      const t = Math.min(1, elapsed / duration);
+      const easeT = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+
+      // Parabolic flight arc high up in the sky (Cất cánh vút bay lên cao rồi hạ cánh êm dịu)
+      const arcHeight = Math.sin(t * Math.PI) * 4.2;
+      token.mesh.position.lerpVectors(startPos, endPos, easeT);
+      token.mesh.position.y = THREE.MathUtils.lerp(startPos.y, endPos.y, easeT) + arcHeight;
+
+      // Góc chúc mũi / ngóc đầu khí động học
+      const pitchAngle = Math.cos(t * Math.PI) * 0.35;
+      const dir = endPos.clone().sub(startPos).normalize();
+      if (dir.lengthSq() > 0.001) {
+        const yawAngle = Math.atan2(dir.x, dir.z);
+        token.mesh.rotation.y = yawAngle;
+        token.mesh.rotation.x = -pitchAngle;
+      }
+
+      // Bóng dưới mặt đất mờ dần và thu nhỏ khi bay cao
+      const shadowScale = THREE.MathUtils.lerp(1.0, 0.2, arcHeight / 4.2);
+      token.shadowDisc.scale.set(shadowScale, shadowScale, 1);
+      (token.shadowDisc.material as THREE.MeshBasicMaterial).opacity = THREE.MathUtils.lerp(0.85, 0.1, arcHeight / 4.2);
+
+      if (t < 1) {
+        requestAnimationFrame(flightStep);
+      } else {
+        token.mesh.position.copy(endPos);
+        token.mesh.rotation.x = 0;
+        token.shadowDisc.scale.set(1, 1, 1);
+        (token.shadowDisc.material as THREE.MeshBasicMaterial).opacity = 0.85;
+        token.currentTile = toTile;
+        token.isMoving = false;
+        if (onAllDone) onAllDone();
+      }
+    };
+
+    requestAnimationFrame(flightStep);
+  }
+
   public update(delta: number) {
     this.animClock += delta;
 

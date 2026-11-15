@@ -245,6 +245,55 @@ export class RoomManager {
     }
   }
 
+  public handleChooseAirportDestination(socket: Socket, targetTileId: number) {
+    const roomCode = this.userToRoom.get(socket.id);
+    if (!roomCode) return;
+    const room = this.rooms.get(roomCode);
+    if (!room || !room.engine || room.status !== 'PLAYING') return;
+
+    try {
+      const player = room.engine.players.find(p => p.id === socket.id);
+      const result = room.engine.chooseAirportDestination(socket.id, targetTileId);
+      if (!result.success) {
+        socket.emit('error:message', { message: result.error || 'Không thể chọn ô này' });
+        return;
+      }
+
+      if (player && result.passedGo) {
+        AchievementEngine.onPassedGo(room.roomCode, player, room.engine);
+      }
+
+      if (player && result.actionResult && result.actionResult.type === 'PAY_RENT') {
+        const prop = room.engine.properties.get(result.actionResult.tileId);
+        const owner = room.engine.players.find(p => p.id === prop?.ownerId);
+        if (owner) {
+          AchievementEngine.onRentPaid(
+            room.roomCode,
+            player,
+            owner,
+            result.actionResult.amount,
+            room.engine
+          );
+        }
+      }
+
+      this.io.to(room.roomCode).emit('game:airport_flight_result', {
+        userId: socket.id,
+        prevPosition: result.prevPosition,
+        newPosition: result.newPosition,
+        passedGo: result.passedGo,
+        actionResult: result.actionResult,
+        snapshot: room.engine.getSnapshot()
+      });
+
+      this.resetTurnTimer(room);
+      this.checkBankruptcyOrGameOver(room);
+      this.checkTriggerBot(room);
+    } catch (err: any) {
+      socket.emit('error:message', { message: err.message });
+    }
+  }
+
   public handleBuyProperty(socket: Socket, tileId: number) {
     const roomCode = this.userToRoom.get(socket.id);
     if (!roomCode) return;
@@ -450,6 +499,26 @@ export class RoomManager {
               this.checkBankruptcyOrGameOver(room);
               this.checkTriggerBot(room);
             } catch (e) {}
+          } else if (room.engine.turnState.phase === 'AIRPORT_SELECT') {
+            try {
+              const res = room.engine.chooseAirportDestination(curPlayer.id, 0); // Mặc định bay về GO
+              if (res.success) {
+                if (res.passedGo) {
+                  AchievementEngine.onPassedGo(room.roomCode, curPlayer, room.engine);
+                }
+                this.io.to(room.roomCode).emit('game:airport_flight_result', {
+                  userId: curPlayer.id,
+                  prevPosition: res.prevPosition,
+                  newPosition: res.newPosition,
+                  passedGo: res.passedGo,
+                  actionResult: res.actionResult,
+                  snapshot: room.engine.getSnapshot()
+                });
+                this.resetTurnTimer(room);
+                this.checkBankruptcyOrGameOver(room);
+                this.checkTriggerBot(room);
+              }
+            } catch (e) {}
           } else {
             // Tự động kết thúc lượt
             try {
@@ -530,6 +599,39 @@ export class RoomManager {
               snapshot: room.engine!.getSnapshot()
             });
             this.checkTriggerBot(room);
+          } catch (e) {}
+        } else if (action === 'AIRPORT_DESTINATION') {
+          try {
+            const res = room.engine!.chooseAirportDestination(curPlayer.id, payload.tileId);
+            if (res.success) {
+              if (res.passedGo) {
+                AchievementEngine.onPassedGo(room.roomCode, curPlayer, room.engine!);
+              }
+              if (res.actionResult && res.actionResult.type === 'PAY_RENT') {
+                const prop = room.engine!.properties.get(res.actionResult.tileId);
+                const owner = room.engine!.players.find(p => p.id === prop?.ownerId);
+                if (owner) {
+                  AchievementEngine.onRentPaid(
+                    room.roomCode,
+                    curPlayer,
+                    owner,
+                    res.actionResult.amount,
+                    room.engine!
+                  );
+                }
+              }
+              this.io.to(room.roomCode).emit('game:airport_flight_result', {
+                userId: curPlayer.id,
+                prevPosition: res.prevPosition,
+                newPosition: res.newPosition,
+                passedGo: res.passedGo,
+                actionResult: res.actionResult,
+                snapshot: room.engine!.getSnapshot()
+              });
+              this.resetTurnTimer(room);
+              this.checkBankruptcyOrGameOver(room);
+              this.checkTriggerBot(room);
+            }
           } catch (e) {}
         } else if (action === 'BUY_PROPERTY') {
           const res = room.engine!.buyProperty(curPlayer.id, payload.tileId);

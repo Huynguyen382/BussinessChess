@@ -218,6 +218,12 @@ test('Tile 30 (AIRPORT / Sân Bay Quốc Tế) - Terminal, Jetliner, Control Tow
   const starR = starMeshes.find(s => s.position.x > 0);
   assert(starL, 'Left tail star must be present');
   assert(starR, 'Right tail star must be present');
+
+  // Verify Airplane wings are swept-back towards rear (-Z)
+  const wingL = airplane.children.find(m => (m as THREE.Mesh).geometry instanceof THREE.BoxGeometry && m.position.x < -0.2 && (m as THREE.Mesh).rotation.y < 0);
+  const wingR = airplane.children.find(m => (m as THREE.Mesh).geometry instanceof THREE.BoxGeometry && m.position.x > 0.2 && (m as THREE.Mesh).rotation.y > 0);
+  assert(wingL, 'Airplane left wing must be swept-back (rotation.y < 0)');
+  assert(wingR, 'Airplane right wing must be swept-back (rotation.y > 0)');
 });
 
 // ====================================================

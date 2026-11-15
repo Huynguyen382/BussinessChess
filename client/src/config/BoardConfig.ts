@@ -76,7 +76,7 @@ export const DEFAULT_BOARD_TILES: BoardTileMeta[] = [
   { id: 28, name: 'Công Ty Nước Sạch', type: 'UTILITY', price: 150, baseRent: 15 },
   { id: 29, name: 'Tràng An', type: 'PROPERTY', district: 6, districtColor: '#FDCB6E', price: 280, baseRent: 26, rentHouse1: 130, rentHouse2: 390, rentHouse3: 1100, rentHotel: 1500, houseCost: 150 },
 
-  { id: 30, name: 'Sân Bay Quốc Tế', type: 'AIRPORT', price: 0, baseRent: 0, description: 'Chuyến bay thẳng về Khởi Hành (GO), nhận 200M trợ cấp du lịch' },
+  { id: 30, name: 'Sân Bay Quốc Tế', type: 'AIRPORT', price: 0, baseRent: 0, description: 'Chọn chuyến bay đến bất kỳ ô nào trên bàn cờ (ngoại trừ Sân Bay)!' },
   { id: 31, name: 'Hồ Tây (Hà Nội)', type: 'PROPERTY', district: 7, districtColor: '#00B894', price: 300, baseRent: 28, rentHouse1: 150, rentHouse2: 450, rentHouse3: 1200, rentHotel: 1650, houseCost: 200 },
   { id: 32, name: 'Phố Cổ (Hà Nội)', type: 'PROPERTY', district: 7, districtColor: '#00B894', price: 310, baseRent: 28, rentHouse1: 150, rentHouse2: 450, rentHouse3: 1200, rentHotel: 1650, houseCost: 200 },
   { id: 33, name: 'Khí Vận', type: 'COMMUNITY_CHEST', price: 0, baseRent: 0 },

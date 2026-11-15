@@ -32,7 +32,7 @@ export interface PropertyState {
   isMortgaged: boolean;
 }
 
-export type TurnPhase = 'ROLL_DICE' | 'TILE_ACTION' | 'BUY_PROPERTY' | 'END_TURN';
+export type TurnPhase = 'ROLL_DICE' | 'TILE_ACTION' | 'BUY_PROPERTY' | 'AIRPORT_SELECT' | 'END_TURN';
 
 export interface TurnState {
   currentUserId: string;
@@ -394,12 +394,13 @@ export class MonopolyEngine {
       }
 
       case 'AIRPORT': {
-        const flightBonus = 200;
-        player.balance += flightBonus;
-        player.position = 0; // Bay thẳng về ô Khởi Hành (GO)
-        this.addLog(`✈️ ${player.username} đáp xuống [Sân Bay Quốc Tế]! Lên chuyên cơ bay thẳng về Khởi Hành (GO) và nhận ${flightBonus}M trợ cấp du lịch hàng không!`, 'MONEY', player.id, player.username);
-        this.setNextPhaseAfterAction(player);
-        return { type: 'AIRPORT', reward: flightBonus, destination: 0, message: `Bay chuyên cơ về Khởi Hành (GO) và nhận ${flightBonus}M!` };
+        this.turnState.phase = 'AIRPORT_SELECT';
+        this.addLog(`✈️ ${player.username} đáp xuống [Sân Bay Quốc Tế]! Hãy chọn một ô bất kỳ trên bàn cờ để bay tới (ngoại trừ Sân Bay)!`, 'ACTION', player.id, player.username);
+        return {
+          type: 'AIRPORT_SELECT',
+          tileId: 30,
+          message: 'Đáp Sân Bay Quốc Tế! Hãy chọn địa danh trên bàn cờ để bay tới (ngoại trừ Sân Bay).'
+        };
       }
 
       case 'GO_TO_JAIL':
@@ -996,6 +997,61 @@ export class MonopolyEngine {
       return { success: true, phase };
     }
     return { success: false, phase: this.turnState.phase };
+  }
+
+  public chooseAirportDestination(userId: string, targetTileId: number): {
+    success: boolean;
+    error?: string;
+    prevPosition?: number;
+    newPosition?: number;
+    passedGo?: boolean;
+    actionResult?: any;
+  } {
+    if (this.isGameOver) {
+      return { success: false, error: 'Ván chơi đã kết thúc' };
+    }
+    if (this.turnState.currentUserId !== userId) {
+      return { success: false, error: 'Chưa đến lượt của bạn' };
+    }
+    if (this.turnState.phase !== 'AIRPORT_SELECT') {
+      return { success: false, error: 'Không trong giai đoạn chọn chuyến bay' };
+    }
+    if (targetTileId < 0 || targetTileId >= BOARD_TILES.length) {
+      return { success: false, error: 'Ô đến không hợp lệ' };
+    }
+    if (targetTileId === 30) {
+      return { success: false, error: 'Không thể chọn bay lại vào ô Sân Bay!' };
+    }
+
+    const player = this.players.find(p => p.id === userId);
+    if (!player || player.isBankrupt) {
+      return { success: false, error: 'Người chơi không hợp lệ' };
+    }
+
+    const prevPosition = player.position;
+    player.position = targetTileId;
+
+    let passedGo = false;
+    // Bay qua GO (từ vị trí 30 bay tới các ô có chỉ số nhỏ hơn 30 như ô 0 -> 29)
+    if (targetTileId < prevPosition) {
+      passedGo = true;
+      player.balance += 200;
+      this.addLog(`✈️ ${player.username} bay qua ô Khởi Hành (GO), nhận 200M tiền lương!`, 'MONEY', player.id, player.username);
+    }
+
+    const destTile = BOARD_TILES[targetTileId];
+    this.addLog(`✈️ Chuyến bay hạ cánh! ${player.username} đáp xuống [${destTile.name}] (ô #${targetTileId}).`, 'ACTION', player.id, player.username);
+
+    const actionResult = this.evaluateTileAction(player, destTile, 7);
+    this.updateNetWorth();
+
+    return {
+      success: true,
+      prevPosition,
+      newPosition: targetTileId,
+      passedGo,
+      actionResult
+    };
   }
 
   public mortgageProperty(userId: string, tileId: number): {

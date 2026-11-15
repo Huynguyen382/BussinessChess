@@ -303,6 +303,12 @@ io.on('connection', (socket: Socket) => {
     roomManager.handleRollDice(socket);
   });
 
+  socket.on('game:choose_airport_destination', (data: { tileId: number }) => {
+    if (typeof data?.tileId === 'number') {
+      roomManager.handleChooseAirportDestination(socket, data.tileId);
+    }
+  });
+
   socket.on('game:buy_property', (data: { tileId: number }) => {
     roomManager.handleBuyProperty(socket, data.tileId);
   });
