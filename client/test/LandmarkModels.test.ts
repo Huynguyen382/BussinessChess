@@ -210,6 +210,14 @@ test('Tile 30 (AIRPORT / Sân Bay Quốc Tế) - Terminal, Jetliner, Control Tow
 
   const tailMesh = airplane.children.find(m => m.position.z < -0.5);
   assert(tailMesh, 'Airplane must have vertical/horizontal tail assembly at rear (-Z)');
+
+  // Verify Airplane tail fin has genuine 5-pointed star geometry (ShapeGeometry from 10 vertices)
+  const starMeshes = airplane.children.filter(m => (m as THREE.Mesh).geometry instanceof THREE.ShapeGeometry);
+  assert(starMeshes.length >= 2, `Airplane tail must have 5-pointed star on both sides, found ${starMeshes.length}`);
+  const starL = starMeshes.find(s => s.position.x < 0);
+  const starR = starMeshes.find(s => s.position.x > 0);
+  assert(starL, 'Left tail star must be present');
+  assert(starR, 'Right tail star must be present');
 });
 
 // ====================================================
@@ -364,6 +372,30 @@ test('Tile 34 (Tràng Tiền / Cột Cờ Hà Nội): Authentic 5-pointed star f
 
   assert(flagFound, 'Cột Cờ Hà Nội flag must have fluttering float_wave animation');
   assert(starMeshes >= 2, `Cột Cờ Hà Nội must have 5-pointed stars on both sides (front and back), found ${starMeshes}`);
+});
+
+test('Tile 31 (Hồ Tây / Chùa Trấn Quốc): 11-Tier Hexagonal Stupa with 66 Buddha Niches & Lotus Throne Base', () => {
+  const model = LandmarkModels.createCityLandmark(31);
+  assert(model, 'Tile 31 model must be instantiated');
+
+  let buddhaCount = 0;
+  let lotusTorusFound = false;
+
+  model.traverse((child) => {
+    if (child instanceof THREE.Group && child.children.length === 3) {
+      // Buddha figurine has 3 children: bBase, bTorso, bHead
+      buddhaCount++;
+    }
+    if ((child as THREE.Mesh).isMesh) {
+      const mesh = child as THREE.Mesh;
+      if (mesh.geometry instanceof THREE.TorusGeometry) {
+        lotusTorusFound = true;
+      }
+    }
+  });
+
+  assert(buddhaCount >= 66, `Chùa Trấn Quốc Bảo Tháp must contain 66 Buddha figurines across 11 tiers (6 faces each), found ${buddhaCount}`);
+  assert(lotusTorusFound, 'Bệ tháp phải có vành cánh sen đá TorusGeometry chạm nổi');
 });
 
 test('Tile 6 (Vũng Tàu / Hải Đăng Núi Nhỏ): Lighthouse beacon arm & expanding cone alignment', () => {

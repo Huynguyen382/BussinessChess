@@ -679,7 +679,15 @@ export class BoardEnvironment {
     );
     this.skyDome = new THREE.Mesh(skyGeo, skyMat);
     this.skyDome.position.y = -8;
-    this.islandWaterGroup.add(this.skyDome);
+    this.environmentGroup.add(this.skyDome);
+
+    // Theo yêu cầu thiết kế khắt khe: Bàn cờ Cờ Tỷ Phú là một trò chơi sa bàn thượng lưu trong Studio sang trọng,
+    // nền bàn cờ vững chãi trên mặt bàn gỗ sồi và thảm nỉ Slate Blue đẳng cấp với bóng đổ mềm mại.
+    // Loại bỏ hoàn toàn hiệu ứng bóng nước/đầm nước không hợp lý bao quanh nền bàn cờ:
+    this.waterShaderMesh.visible = false;
+    lagoonBed.visible = false;
+    sandRim.visible = false;
+    this.islandWaterGroup.visible = false;
   }
 
   // 6. Atmospheric Particles: Công Viên Đom Đóm / Bụi Nắng & Sương Mù Thể Tích

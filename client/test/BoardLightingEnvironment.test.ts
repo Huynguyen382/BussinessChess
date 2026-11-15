@@ -104,6 +104,10 @@ test('Animated Water Shader mesh and GLSL material initialization', () => {
     Math.round(normalizedSun.x * 100),
     'Sun direction uniform must be normalized'
   );
+
+  // Verify that unnatural ground water is disabled by default for clean tabletop studio environment
+  assert.strictEqual(env.waterShaderMesh.visible, false, 'waterShaderMesh must be disabled on the floor');
+  assert.strictEqual((env as any).islandWaterGroup.visible, false, 'islandWaterGroup must be disabled on the floor');
 });
 
 test('Warm Golden Celestial Sky Dome initialization', () => {

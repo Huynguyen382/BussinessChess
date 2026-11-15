@@ -533,6 +533,8 @@ export class CornerLandmarks {
     // ==========================================
     // D. MÁY BAY PHẢN LỰC DÂN DỤNG (Commercial Jetliner - Vietnam Airlines Spirit)
     // ==========================================
+    // C. MÁY BAY CHỞ KHÁCH QUỐC TẾ BOEING / AIRBUS VIP (Modern Jetliner)
+    // ==========================================
     const airplane = new THREE.Group();
     // Đặt máy bay đỗ ngay ngắn trên sân đỗ bãi đỗ apron cạnh ống lồng nhà ga
     // Máy bay hướng mũi về phía trước (+Z), đuôi hướng về sau (-Z)
@@ -541,26 +543,39 @@ export class CornerLandmarks {
     // 1. Thân máy bay khí động học thon dài (Fuselage)
     const fuselageLength = 1.15;
     const fuselageRadius = 0.135;
-    const fuselageGeo = new THREE.CylinderGeometry(fuselageRadius, fuselageRadius, fuselageLength, 20);
+    const fuselageGeo = new THREE.CylinderGeometry(fuselageRadius, fuselageRadius, fuselageLength, 24);
     fuselageGeo.rotateX(Math.PI / 2); // Thân nằm ngang dọc theo trục Z
     const fuselage = new THREE.Mesh(fuselageGeo, jetWhiteMat);
     fuselage.position.z = -0.05;
     fuselage.castShadow = true;
 
-    // 2. Mũi máy bay thuôn nhọn chuẩn khí động học (Streamlined Nose Cone)
-    // Chóp nhọn hướng thẳng ra phía trước (+Z), đáy tròn áp sát mặt trước thân máy bay tại z = +0.525
+    // Đường sọc vàng kim sang trọng (Royal Golden Cheatline) dọc 2 bên thân máy bay
+    const cheatlineMat = LandmarkMaterials.getMat('lotusGoldCheatline', () => new THREE.MeshStandardMaterial({
+      color: '#E5A93C',
+      roughness: 0.28,
+      metalness: 0.72
+    }));
+    const cheatlineL = new THREE.Mesh(new THREE.BoxGeometry(0.004, 0.016, 1.05), cheatlineMat);
+    cheatlineL.position.set(-fuselageRadius - 0.001, 0.005, -0.04);
+    const cheatlineR = new THREE.Mesh(new THREE.BoxGeometry(0.004, 0.016, 1.05), cheatlineMat);
+    cheatlineR.position.set(fuselageRadius + 0.001, 0.005, -0.04);
+
+    // Bụng máy bay bầu cánh (Wing-Body Belly Fairing)
+    const bellyFairing = new THREE.Mesh(new RoundedBoxGeometry(0.32, 0.07, 0.44, 2, 0.02), jetWhiteMat);
+    bellyFairing.position.set(0, -0.08, -0.02);
+
+    // 2. Mũi máy bay thuôn cong khí động học chuẩn Airliner (Streamlined Aerodynamic Nose)
+    // Chóp nhọn hướng thẳng ra phía trước (+Z), tiếp giáp mặt trước thân máy bay tại z = +0.525
     const noseLength = 0.32;
-    const noseGeo = new THREE.ConeGeometry(fuselageRadius, noseLength, 20);
-    // Trong Three.js: ConeGeometry có đỉnh nhọn ở +Y, đáy ở -Y.
-    // Xoay quanh X một góc +Math.PI/2: Đỉnh nhọn (+Y) chuyển sang +Z, đáy (-Y) chuyển sang -Z.
+    const noseGeo = new THREE.ConeGeometry(fuselageRadius, noseLength, 24);
     noseGeo.rotateX(Math.PI / 2);
     const nose = new THREE.Mesh(noseGeo, jetWhiteMat);
     nose.position.z = 0.525 + noseLength / 2; // = 0.685 (đáy tại 0.525, chóp tại 0.845)
     nose.castShadow = true;
 
-    // Chóp bọc radar mũi tròn mịn (Radome Cap) tại đầu mũi máy bay
-    const noseTip = new THREE.Mesh(new THREE.SphereGeometry(0.035, 12, 12), jetWhiteMat);
-    noseTip.position.z = 0.84;
+    // Chóp bọc radar mũi tròn mịn chuẩn (Radome Cap) tại đầu mũi máy bay
+    const noseTip = new THREE.Mesh(new THREE.SphereGeometry(0.038, 16, 14), jetWhiteMat);
+    noseTip.position.z = 0.842;
 
     // 3. Kính buồng lái phi công (Cockpit Windshield) ôm sát sống mũi
     const cockpit = new THREE.Mesh(new RoundedBoxGeometry(0.15, 0.065, 0.13, 2, 0.015), cockpitDarkMat);
@@ -568,74 +583,84 @@ export class CornerLandmarks {
     cockpit.rotation.x = -0.25; // Vát nghiêng khí động học theo sống mũi
 
     // 4. Hàng cửa sổ hành khách kính Cyan phản quang dọc 2 bên thân
-    const windowStripeL = new THREE.Mesh(new THREE.BoxGeometry(0.006, 0.024, 0.68), terminalGlassMat);
-    windowStripeL.position.set(-fuselageRadius - 0.002, 0.03, -0.05);
-    const windowStripeR = new THREE.Mesh(new THREE.BoxGeometry(0.006, 0.024, 0.68), terminalGlassMat);
-    windowStripeR.position.set(fuselageRadius + 0.002, 0.03, -0.05);
+    const windowStripeL = new THREE.Mesh(new THREE.BoxGeometry(0.006, 0.022, 0.68), terminalGlassMat);
+    windowStripeL.position.set(-fuselageRadius - 0.002, 0.032, -0.05);
+    const windowStripeR = new THREE.Mesh(new THREE.BoxGeometry(0.006, 0.022, 0.68), terminalGlassMat);
+    windowStripeR.position.set(fuselageRadius + 0.002, 0.032, -0.05);
 
     // 5. Côn vuốt nhọn đuôi máy bay (Tail Cone APU Exhaust)
     const tailConeLength = 0.28;
-    const tailConeGeo = new THREE.ConeGeometry(fuselageRadius, tailConeLength, 16);
-    // Đáy tròn tiếp giáp đuôi thân máy bay tại z = -0.625, đỉnh nhọn vuốt về sau (-Z)
+    const tailConeGeo = new THREE.ConeGeometry(fuselageRadius, tailConeLength, 18);
     tailConeGeo.rotateX(-Math.PI / 2);
     const tailCone = new THREE.Mesh(tailConeGeo, jetWhiteMat);
     tailCone.position.z = -0.625 - tailConeLength / 2; // = -0.765 (đáy tại -0.625, chóp tại -0.905)
 
-    // 6. Đôi cánh chính xuôi về sau (Swept-Back Wings)
-    const wingSemiSpan = 0.58;
-    const wingChord = 0.28;
-    const wingThick = 0.032;
+    // Lỗ phụt khí APU đuôi máy bay
+    const apuNozzle = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.028, 0.04, 12), chromeEngineMat);
+    apuNozzle.rotation.x = Math.PI / 2;
+    apuNozzle.position.z = -0.91;
 
-    // Cánh trái (Left Wing): vát chéo góc lùi về sau
+    // 6. Đôi cánh chính xuôi về sau (Swept-Back & Tapered Wings)
+    const wingSemiSpan = 0.62;
+    const wingChord = 0.30;
+    const wingThick = 0.030;
+
+    // Cánh trái (Left Wing): vát chéo góc lùi về sau với góc nâng cánh dihedral
     const wingGeoL = new THREE.BoxGeometry(wingSemiSpan, wingThick, wingChord);
     const wingL = new THREE.Mesh(wingGeoL, jetWhiteMat);
     wingL.position.set(-wingSemiSpan / 2 - 0.06, -0.02, -0.02);
-    wingL.rotation.y = 0.22; // Quét lùi về sau (-Z)
+    wingL.rotation.y = 0.24; // Quét lùi về sau (-Z)
+    wingL.rotation.z = -0.03; // Dihedral nâng đầu cánh nhẹ
     wingL.castShadow = true;
 
-    // Cánh phải (Right Wing): vát chéo góc lùi về sau
+    // Cánh phải (Right Wing): vát chéo góc lùi về sau với góc nâng cánh dihedral
     const wingGeoR = new THREE.BoxGeometry(wingSemiSpan, wingThick, wingChord);
     const wingR = new THREE.Mesh(wingGeoR, jetWhiteMat);
     wingR.position.set(wingSemiSpan / 2 + 0.06, -0.02, -0.02);
-    wingR.rotation.y = -0.22; // Quét lùi về sau (-Z)
+    wingR.rotation.y = -0.24; // Quét lùi về sau (-Z)
+    wingR.rotation.z = 0.03; // Dihedral nâng đầu cánh nhẹ
     wingR.castShadow = true;
 
-    // Cánh phụ vút cong ở 2 đầu mút cánh (Aero Winglets)
-    const wingletL = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.11, 0.07), flagRedMat);
-    wingletL.position.set(-wingSemiSpan - 0.08, 0.04, -0.08);
-    wingletL.rotation.z = -0.3;
+    // Cánh phụ vút cong ở 2 đầu mút cánh (Aero Blended Winglets)
+    const wingletL = new THREE.Mesh(new THREE.BoxGeometry(0.022, 0.12, 0.075), flagRedMat);
+    wingletL.position.set(-wingSemiSpan - 0.08, 0.045, -0.085);
+    wingletL.rotation.z = -0.32;
 
-    const wingletR = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.11, 0.07), flagRedMat);
-    wingletR.position.set(wingSemiSpan + 0.08, 0.04, -0.08);
-    wingletR.rotation.z = 0.3;
+    const wingletR = new THREE.Mesh(new THREE.BoxGeometry(0.022, 0.12, 0.075), flagRedMat);
+    wingletR.position.set(wingSemiSpan + 0.08, 0.045, -0.085);
+    wingletR.rotation.z = 0.32;
 
-    // 7. Hai động cơ phản lực Turbofan mạ crom dưới cánh
+    // 7. Hai động cơ phản lực Turbofan mạ crom dưới cánh với chân pylon liên kết vững chãi
     // Phễu hút gió và nón spinner hướng ra PHÍA TRƯỚC (+Z), luồng phụt hướng về SAU (-Z)
     [-0.32, 0.32].forEach(xOff => {
-      const nacelle = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.07, 0.28, 14), jetWhiteMat);
+      // Chân đỡ pylon khí động học nối liền đáy cánh với thân động cơ
+      const pylon = new THREE.Mesh(new THREE.BoxGeometry(0.024, 0.06, 0.20), jetWhiteMat);
+      pylon.position.set(xOff, -0.05, 0.02);
+
+      const nacelle = new THREE.Mesh(new THREE.CylinderGeometry(0.076, 0.070, 0.28, 16), jetWhiteMat);
       nacelle.rotation.x = Math.PI / 2;
       nacelle.position.set(xOff, -0.10, 0.02);
 
       // Nón cánh quạt spinner chỉ thẳng về phía trước (+Z)
-      const spinnerGeo = new THREE.ConeGeometry(0.04, 0.08, 12);
+      const spinnerGeo = new THREE.ConeGeometry(0.04, 0.08, 14);
       spinnerGeo.rotateX(Math.PI / 2); // Chóp nhọn hướng ra phía trước (+Z)
       const spinner = new THREE.Mesh(spinnerGeo, chromeEngineMat);
       spinner.position.set(xOff, -0.10, 0.16);
 
       // Vành hút gió mạ crom sáng loáng
-      const intakeRing = new THREE.Mesh(new THREE.TorusGeometry(0.072, 0.012, 8, 16), chromeEngineMat);
+      const intakeRing = new THREE.Mesh(new THREE.TorusGeometry(0.072, 0.012, 8, 18), chromeEngineMat);
       intakeRing.position.set(xOff, -0.10, 0.14);
 
       // Ống xả luồng phụt phía sau (-Z)
-      const exhaust = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.065, 0.06, 12), chromeEngineMat);
+      const exhaust = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.065, 0.06, 14), chromeEngineMat);
       exhaust.rotation.x = Math.PI / 2;
       exhaust.position.set(xOff, -0.10, -0.14);
 
-      airplane.add(nacelle, spinner, intakeRing, exhaust);
+      airplane.add(pylon, nacelle, spinner, intakeRing, exhaust);
     });
 
     // 8. Cánh đuôi ngang (Horizontal Stabilizers) vát chéo phía sau
-    const hStabSemiSpan = 0.24;
+    const hStabSemiSpan = 0.25;
     const hStabChord = 0.14;
     const hStabL = new THREE.Mesh(new THREE.BoxGeometry(hStabSemiSpan, 0.02, hStabChord), jetWhiteMat);
     hStabL.position.set(-hStabSemiSpan / 2 - 0.04, 0.05, -0.68);
@@ -664,14 +689,18 @@ export class CornerLandmarks {
     const verticalFin = new THREE.Mesh(finGeo, flagRedMat);
     verticalFin.castShadow = true;
 
-    // Ngôi sao vàng năm cánh sắc nét trên cả 2 mặt cánh đuôi đỏ
-    const starL = new THREE.Mesh(new THREE.CircleGeometry(0.048, 5), goldStarMat);
-    starL.rotation.y = -Math.PI / 2;
-    starL.position.set(-0.016, 0.31, -0.66);
+    // Ngôi sao vàng năm cánh CHUẨN XÁC ĐA GIÁC 10 ĐỈNH trên cả 2 mặt cánh đuôi đỏ
+    const starShape = LandmarkHelpers.create5PointStarShape(0.046, 0.018);
+    const starGeoL = new THREE.ShapeGeometry(starShape);
+    const starGeoR = new THREE.ShapeGeometry(starShape);
 
-    const starR = new THREE.Mesh(new THREE.CircleGeometry(0.048, 5), goldStarMat);
+    const starL = new THREE.Mesh(starGeoL, goldStarMat);
+    starL.rotation.y = -Math.PI / 2;
+    starL.position.set(-0.0145, 0.30, -0.68);
+
+    const starR = new THREE.Mesh(starGeoR, goldStarMat);
     starR.rotation.y = Math.PI / 2;
-    starR.position.set(0.016, 0.31, -0.66);
+    starR.position.set(0.0145, 0.30, -0.68);
 
     // 10. Hệ thống càng đáp 3 cụm (Tricycle Landing Gear) tiếp đất vững chãi tại y_world = 0.14
     // Trong airplane space: airplane.position.y = 0.38, nên đáy lốp xe phải tại y = -0.24!
@@ -701,12 +730,16 @@ export class CornerLandmarks {
 
     airplane.add(
       fuselage,
+      cheatlineL,
+      cheatlineR,
+      bellyFairing,
       nose,
       noseTip,
       cockpit,
       windowStripeL,
       windowStripeR,
       tailCone,
+      apuNozzle,
       wingL,
       wingR,
       wingletL,

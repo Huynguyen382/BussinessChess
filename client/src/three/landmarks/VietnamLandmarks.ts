@@ -4742,56 +4742,260 @@ export class VietnamLandmarks {
       // PHÂN KHU 7: THỦ ĐÔ HÀ NỘI - HỒ TÂY, PHỐ CỔ, BA ĐÌNH (Emerald Green)
       // =====================================================
       case 31: {
-        // Hà Nội (Hồ Tây): Chùa Trấn Quốc Bảo Tháp Lục Độ Đài Sen & Cây Bồ Đề Cổ Thụ
-        const pagodaTerracotta = LandmarkMaterials.getMat('tranQuocTerracotta', () => new THREE.MeshStandardMaterial({ color: '#C0392B', roughness: 0.42 }));
-        const goldSpireMat = LandmarkMaterials.getMat('tranQuocGoldRoof', () => new THREE.MeshStandardMaterial({ color: '#F1C40F', roughness: 0.22, metalness: 0.18 }));
-        const lakeMat = LandmarkMaterials.getMat('westLakeWater', () => new THREE.MeshStandardMaterial({ color: '#0984E3', roughness: 0.08, metalness: 0.15 }));
-        const whiteBuddhaMat = LandmarkMaterials.getMat('whiteBuddha', () => new THREE.MeshStandardMaterial({ color: '#FFFFFF', roughness: 0.25 }));
-        const bodhiLeafMat = LandmarkMaterials.getMat('bodhiCanopyGreen', () => new THREE.MeshStandardMaterial({ color: '#00B894', roughness: 0.35 }));
-        const bodhiTrunkMat = LandmarkMaterials.getMat('pineTrunkBark', () => new THREE.MeshStandardMaterial({ color: '#4E342E', roughness: 0.7 }));
+        // Hà Nội (Hồ Tây): Chùa Trấn Quốc - Bảo Tháp Lục Độ Đài Sen 11 Tầng & Cây Bồ Đề Cổ Thụ
+        const pagodaTerracotta = LandmarkMaterials.getMat('tranQuocTerracotta', () => new THREE.MeshStandardMaterial({
+          color: '#B83227',
+          roughness: 0.46,
+          metalness: 0.04
+        }));
+        const goldSpireMat = LandmarkMaterials.getMat('tranQuocGoldRoof', () => new THREE.MeshStandardMaterial({
+          color: '#F1C40F',
+          roughness: 0.24,
+          metalness: 0.22,
+          emissive: '#D68910',
+          emissiveIntensity: 0.18
+        }));
+        const nicheArchMat = LandmarkMaterials.getMat('tranQuocNicheArch', () => new THREE.MeshStandardMaterial({
+          color: '#78281F',
+          roughness: 0.55
+        }));
+        const stoneLotusMat = LandmarkMaterials.getMat('tranQuocLotusBase', () => new THREE.MeshStandardMaterial({
+          color: '#CFD8DC',
+          roughness: 0.38,
+          metalness: 0.05
+        }));
+        const whiteBuddhaMat = LandmarkMaterials.getMat('whiteBuddha', () => new THREE.MeshStandardMaterial({
+          color: '#FFFFFF',
+          roughness: 0.20,
+          metalness: 0.08,
+          emissive: '#F8F9F9',
+          emissiveIntensity: 0.15
+        }));
+        const lakeMat = LandmarkMaterials.getMat('westLakeWater', () => new THREE.MeshStandardMaterial({
+          color: '#0984E3',
+          roughness: 0.12,
+          metalness: 0.18,
+          transparent: true,
+          opacity: 0.88
+        }));
+        const bodhiLeafMat = LandmarkMaterials.getMat('bodhiCanopyGreen', () => new THREE.MeshStandardMaterial({
+          color: '#16A085',
+          roughness: 0.42
+        }));
+        const bodhiTrunkMat = LandmarkMaterials.getMat('bodhiBarkOld', () => new THREE.MeshStandardMaterial({
+          color: '#4E342E',
+          roughness: 0.75
+        }));
+        const lotusPinkMat = LandmarkMaterials.getMat('westLakeLotusPink', () => new THREE.MeshStandardMaterial({
+          color: '#FD79A8',
+          roughness: 0.35,
+          emissive: '#E84393',
+          emissiveIntensity: 0.2
+        }));
+        const lotusPadMat = LandmarkMaterials.getMat('westLakeLotusPad', () => new THREE.MeshStandardMaterial({
+          color: '#00B894',
+          roughness: 0.55
+        }));
 
-        // Mặt nước Hồ Tây & Bán đảo xanh
-        const lake = new THREE.Mesh(new RoundedBoxGeometry(1.3, 0.08, 0.9, 3, 0.03), lakeMat);
+        // 1. Mặt nước Hồ Tây phẳng lặng & Bán đảo Chùa Trấn Quốc
+        const lake = new THREE.Mesh(new RoundedBoxGeometry(1.36, 0.08, 0.96, 3, 0.03), lakeMat);
         lake.position.set(0, 0.04, 0);
 
-        const lotusBase = new THREE.Mesh(new THREE.CylinderGeometry(0.58, 0.66, 0.14, 24), LandmarkMaterials.getMat('lotusStoneBase', () => new THREE.MeshStandardMaterial({ color: '#BDC3C7' })));
-        lotusBase.position.set(-0.1, 0.08, 0);
+        // Bán đảo sân chùa lát gạch Bát Tràng cổ
+        const courtyard = new THREE.Mesh(
+          new RoundedBoxGeometry(0.92, 0.09, 0.78, 3, 0.02),
+          LandmarkMaterials.getMat('tranQuocCourtyard', () => new THREE.MeshStandardMaterial({ color: '#A0522D', roughness: 0.65 }))
+        );
+        courtyard.position.set(-0.06, 0.05, 0);
+        courtyard.receiveShadow = true;
 
-        // Bảo tháp Lục Độ Đài Sen 11 tầng lục giác màu đỏ son cao 1.55 units theo đúng chuẩn Mục 4
-        // Mỗi tầng có mái lợp ngói hoàng lưu ly đua ra và tượng Phật bằng đá trắng quý giá trong các hốc vòm
-        let currentY = 0.16;
-        for (let t = 0; t < 11; t++) {
-          const ratio = t / 10;
-          const rTier = 0.45 - ratio * 0.31; // 0.45 ở tầng 1 thuôn dần về 0.14 ở tầng 11
-          const h = 0.095 - ratio * 0.025;   // ~0.095 xuống ~0.07
+        // Lan can đá hoa văn bao quanh bán đảo chùa
+        const balustrade = new THREE.Mesh(
+          new RoundedBoxGeometry(0.96, 0.05, 0.82, 2, 0.01),
+          stoneLotusMat
+        );
+        balustrade.position.set(-0.06, 0.09, 0);
 
-          const body = new THREE.Mesh(new THREE.CylinderGeometry(rTier * 0.88, rTier, h, 6), pagodaTerracotta);
-          body.position.set(-0.1, currentY + h / 2, 0);
-          if (t === 0) body.castShadow = true;
+        // Những cụm lá sen và hoa sen hồng nở ngát trên mặt nước Hồ Tây
+        const padPositions = [
+          [0.48, 0.082, 0.32, 0.09],
+          [0.44, 0.082, -0.34, 0.08],
+          [-0.52, 0.082, 0.30, 0.075],
+          [-0.48, 0.082, -0.32, 0.085],
+          [0.54, 0.082, 0.04, 0.07]
+        ];
+        padPositions.forEach(([px, py, pz, pr]) => {
+          const pad = new THREE.Mesh(new THREE.CircleGeometry(pr, 10), lotusPadMat);
+          pad.rotation.x = -Math.PI / 2;
+          pad.position.set(px, py, pz);
 
-          const eave = new THREE.Mesh(new THREE.CylinderGeometry(rTier * 0.65, rTier * 1.35, 0.032, 6), goldSpireMat);
-          eave.position.set(-0.1, currentY + h + 0.016, 0);
+          // Hoa sen hồng nổi bật ở giữa lá
+          const blossom = new THREE.Mesh(new THREE.ConeGeometry(pr * 0.48, pr * 0.7, 8), lotusPinkMat);
+          blossom.position.set(px, py + pr * 0.35, pz);
+          group.add(pad, blossom);
+        });
 
-          const buddha = new THREE.Mesh(new THREE.SphereGeometry(0.024 + (1 - ratio) * 0.014, 6, 6), whiteBuddhaMat);
-          buddha.position.set(-0.1, currentY + h * 0.48, rTier * 0.88);
+        // 2. Bệ tháp Lục Độ Đài Sen: Bệ sen đá 2 tầng lục giác chạm khắc cánh sen
+        const stupaX = -0.16;
+        const stupaZ = -0.02;
 
-          group.add(body, eave, buddha);
-          currentY += h + 0.028;
+        const baseTier1 = new THREE.Mesh(new THREE.CylinderGeometry(0.52, 0.58, 0.07, 6), stoneLotusMat);
+        baseTier1.position.set(stupaX, 0.10, stupaZ);
+        baseTier1.receiveShadow = true;
+
+        const baseTier2 = new THREE.Mesh(new THREE.CylinderGeometry(0.46, 0.50, 0.07, 6), stoneLotusMat);
+        baseTier2.position.set(stupaX, 0.16, stupaZ);
+
+        // Vành cánh sen đá chạm nổi xung quanh bệ tháp
+        const lotusRim = new THREE.Mesh(new THREE.TorusGeometry(0.48, 0.022, 6, 24), stoneLotusMat);
+        lotusRim.rotation.x = Math.PI / 2;
+        lotusRim.position.set(stupaX, 0.19, stupaZ);
+
+        group.add(baseTier1, baseTier2, lotusRim);
+
+        // 3. Bảo Tháp Lục Độ Đài Sen 11 tầng lục giác gạch son đỏ
+        // ĐẶC BIỆT: Mỗi tầng có đầy đủ 6 HỐC VÒM CUỐN trên cả 6 MẶT, mỗi hốc an vị TƯỢNG PHẬT A DI ĐÀ bằng đá trắng
+        let currentY = 0.20;
+        const totalTiers = 11;
+
+        for (let t = 0; t < totalTiers; t++) {
+          const ratio = t / (totalTiers - 1); // 0 ở tầng 1 -> 1 ở tầng 11
+          const rBottom = 0.43 - ratio * 0.28; // Tầng 1: 0.43 -> Tầng 11: 0.15
+          const rTop = rBottom * 0.90;
+          const tierH = 0.096 - ratio * 0.024; // Chiều cao mỗi tầng thuôn dần
+
+          // Thân tháp gạch son lục giác
+          const tierBody = new THREE.Mesh(new THREE.CylinderGeometry(rTop, rBottom, tierH, 6), pagodaTerracotta);
+          tierBody.position.set(stupaX, currentY + tierH / 2, stupaZ);
+          if (t === 0) tierBody.castShadow = true;
+          group.add(tierBody);
+
+          // Phào chỉ gạch viền mép đỡ mái
+          const corbel = new THREE.Mesh(new THREE.CylinderGeometry(rTop * 1.05, rTop * 0.96, 0.016, 6), pagodaTerracotta);
+          corbel.position.set(stupaX, currentY + tierH - 0.008, stupaZ);
+          group.add(corbel);
+
+          // Mái ngói hoàng lưu ly vàng đua ra cong nhẹ ở 6 góc mái
+          const roofEave = new THREE.Mesh(new THREE.CylinderGeometry(rTop * 0.65, rBottom * 1.28, 0.034, 6), goldSpireMat);
+          roofEave.position.set(stupaX, currentY + tierH + 0.017, stupaZ);
+          group.add(roofEave);
+
+          // 6 Hốc vòm cuốn & 6 Tượng Phật A Di Đà bằng đá trắng trên cả 6 mặt lục giác
+          const buddhaScale = 0.034 - ratio * 0.016; // Tượng lớn ở tầng dưới, nhỏ dần lên ngọn
+          const faceDist = (rBottom + rTop) * 0.44;  // Bán kính tiếp giáp mặt tường ngoài
+
+          for (let f = 0; f < 6; f++) {
+            const angle = (f * Math.PI) / 3;
+            const fx = stupaX + Math.sin(angle) * faceDist;
+            const fz = stupaZ + Math.cos(angle) * faceDist;
+            const fy = currentY + tierH * 0.42;
+
+            // Hốc vòm cuốn tường gạch trầm
+            const niche = new THREE.Mesh(new RoundedBoxGeometry(buddhaScale * 1.5, buddhaScale * 2.2, 0.012, 2, 0.003), nicheArchMat);
+            niche.position.set(fx, fy, fz);
+            niche.rotation.y = angle;
+
+            // Tượng Phật đá trắng tinh xảo ngồi thiền định (Tòa sen + Thân áo cà sa + Đầu nhục kế Ushnisha)
+            const buddhaGroup = new THREE.Group();
+            buddhaGroup.position.set(fx, fy - buddhaScale * 0.15, fz);
+            buddhaGroup.rotation.y = angle;
+
+            // Đế tọa thiền
+            const bBase = new THREE.Mesh(new THREE.CylinderGeometry(buddhaScale * 0.8, buddhaScale * 0.95, buddhaScale * 0.4, 8), whiteBuddhaMat);
+            bBase.position.y = 0;
+
+            // Thân tượng trang nghiêm
+            const bTorso = new THREE.Mesh(new THREE.CylinderGeometry(buddhaScale * 0.42, buddhaScale * 0.72, buddhaScale * 0.75, 8), whiteBuddhaMat);
+            bTorso.position.y = buddhaScale * 0.55;
+
+            // Đầu Phật với nhục kế Ushnisha giác ngộ
+            const bHead = new THREE.Mesh(new THREE.SphereGeometry(buddhaScale * 0.38, 8, 8), whiteBuddhaMat);
+            bHead.position.y = buddhaScale * 1.15;
+
+            buddhaGroup.add(bBase, bTorso, bHead);
+            group.add(niche, buddhaGroup);
+          }
+
+          currentY += tierH + 0.026;
         }
 
-        // Đỉnh tháp Cửu Phẩm Liên Hoa cao tới 1.55 units (Đài sen 9 tầng & hồ lô ngọc)
-        const lotusCrown = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.22, 12), goldSpireMat);
-        lotusCrown.position.set(-0.1, currentY + 0.11, 0);
+        // 4. Đỉnh tháp Cửu Phẩm Liên Hoa (Đài Sen 9 Tầng & Hồ Lô Tháp Ngọc Bích)
+        // 9 tầng đài sen nhỏ thuôn dần lên chóp đỉnh
+        let crownY = currentY + 0.02;
+        for (let s = 0; s < 9; s++) {
+          const sRatio = s / 8;
+          const sR = 0.10 - sRatio * 0.065;
+          const sDisc = new THREE.Mesh(new THREE.CylinderGeometry(sR * 0.82, sR, 0.018, 12), goldSpireMat);
+          sDisc.position.set(stupaX, crownY, stupaZ);
+          group.add(sDisc);
+          crownY += 0.018;
+        }
 
-        // Cây Bồ Đề xum xuê tỏa bóng mát bên cạnh Bảo Tháp
-        const bodhiTrunk = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.065, 0.48, 10), bodhiTrunkMat);
-        bodhiTrunk.position.set(0.42, 0.28, 0.08);
-        const bodhiCanopy = new THREE.Mesh(new THREE.SphereGeometry(0.28, 16, 12), bodhiLeafMat);
-        bodhiCanopy.scale.set(1.2, 0.85, 1.2);
-        bodhiCanopy.position.set(0.42, 0.62, 0.08);
-        bodhiCanopy.castShadow = true;
+        // Búp sen ngọc bích & hồ lô chóp đỉnh tháp
+        const lotusBud = new THREE.Mesh(new THREE.SphereGeometry(0.042, 12, 10), goldSpireMat);
+        lotusBud.scale.set(1.0, 1.4, 1.0);
+        lotusBud.position.set(stupaX, crownY + 0.035, stupaZ);
 
-        group.add(lake, lotusBase, lotusCrown, bodhiTrunk, bodhiCanopy);
+        const spireNeedle = new THREE.Mesh(new THREE.ConeGeometry(0.016, 0.08, 10), goldSpireMat);
+        spireNeedle.position.set(stupaX, crownY + 0.10, stupaZ);
+
+        group.add(lotusBud, spireNeedle);
+
+        // 5. Cây Bồ Đề Cổ Thụ (Bodhi Tree) xum xuê tỏa bóng mát góc sân chùa
+        const treeX = 0.38;
+        const treeZ = 0.12;
+
+        // Thân cây bồ đề cổ thụ vững chãi, xù xì bạnh rễ
+        const bodhiTrunk = new THREE.Mesh(new THREE.CylinderGeometry(0.052, 0.088, 0.44, 10), bodhiTrunkMat);
+        bodhiTrunk.position.set(treeX, 0.26, treeZ);
+        bodhiTrunk.castShadow = true;
+
+        // 3 nhánh lớn vươn rộng che mát sân chùa
+        const branch1 = new THREE.Mesh(new THREE.CylinderGeometry(0.032, 0.044, 0.28, 8), bodhiTrunkMat);
+        branch1.rotation.z = 0.45;
+        branch1.position.set(treeX - 0.07, 0.44, treeZ);
+
+        const branch2 = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.038, 0.26, 8), bodhiTrunkMat);
+        branch2.rotation.x = -0.42;
+        branch2.position.set(treeX, 0.44, treeZ + 0.06);
+
+        // Tán lá Bồ Đề đa tầng xanh biếc xếp lớp sinh động
+        const canopy1 = new THREE.Mesh(new THREE.SphereGeometry(0.26, 14, 10), bodhiLeafMat);
+        canopy1.scale.set(1.25, 0.72, 1.25);
+        canopy1.position.set(treeX - 0.05, 0.60, treeZ);
+        canopy1.castShadow = true;
+
+        const canopy2 = new THREE.Mesh(new THREE.SphereGeometry(0.21, 12, 8), bodhiLeafMat);
+        canopy2.scale.set(1.15, 0.68, 1.15);
+        canopy2.position.set(treeX + 0.08, 0.72, treeZ + 0.04);
+
+        const canopy3 = new THREE.Mesh(new THREE.SphereGeometry(0.18, 10, 8), bodhiLeafMat);
+        canopy3.scale.set(1.0, 0.65, 1.0);
+        canopy3.position.set(treeX - 0.06, 0.78, treeZ - 0.05);
+
+        // Án thờ & lư hương đá dưới gốc Bồ Đề
+        const incenseAltar = new THREE.Mesh(
+          new RoundedBoxGeometry(0.14, 0.08, 0.10, 2, 0.01),
+          stoneLotusMat
+        );
+        incenseAltar.position.set(treeX - 0.16, 0.13, treeZ);
+
+        const censer = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.032, 0.04, 8), goldSpireMat);
+        censer.position.set(treeX - 0.16, 0.19, treeZ);
+
+        group.add(
+          lake,
+          courtyard,
+          balustrade,
+          bodhiTrunk,
+          branch1,
+          branch2,
+          canopy1,
+          canopy2,
+          canopy3,
+          incenseAltar,
+          censer
+        );
         break;
       }
 

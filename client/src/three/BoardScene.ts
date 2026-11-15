@@ -231,7 +231,7 @@ export class BoardScene {
     rimLight.position.set(-22, 28, 22);
     this.scene.add(rimLight);
 
-    // 5. Upward Table & Water Basin Bounce Fill (Subtle GI reflection to lift dark undersides)
+    // 5. Upward Oak Tabletop Bounce Fill (Subtle warm GI reflection to lift dark undersides)
     const bounceLight = new THREE.DirectionalLight('#FFE5B4', 0.24);
     bounceLight.position.set(12, -8, 12);
     this.scene.add(bounceLight);
