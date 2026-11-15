@@ -1060,9 +1060,7 @@ function bindSocketEvents() {
 
     updateHudPlayers(data.snapshot);
     sounds.playTurnNotification();
-    if ((boardScene as any).syncProperties) {
-      (boardScene as any).syncProperties(data.snapshot.properties || [], data.snapshot.players || []);
-    }
+    boardScene.syncProperties(data.snapshot.properties || [], data.snapshot.players || []);
     latestGameStateSnapshot = data.snapshot;
     checkMyTurn(data.snapshot);
   });
@@ -1147,11 +1145,7 @@ function bindSocketEvents() {
 
   socketClient.on('game:property_updated', (data: any) => {
     latestGameStateSnapshot = data.snapshot;
-    if ((boardScene as any).syncProperties) {
-      (boardScene as any).syncProperties(data.snapshot.properties || [], data.snapshot.players || []);
-    } else {
-      boardScene.updateBuilding(data.tileId, data.level);
-    }
+    boardScene.syncProperties(data.snapshot.properties || [], data.snapshot.players || []);
     const tilePos = boardScene.getTileWorldPosition(data.tileId);
     boardScene.vfxManager.spawnShockwave(tilePos, '#00B894', 3.0);
     latestPlayersSnapshot = data.snapshot.players;
@@ -1179,9 +1173,7 @@ function bindSocketEvents() {
     latestGameStateSnapshot = data.snapshot;
     latestPlayersSnapshot = data.snapshot.players;
     latestPropertiesSnapshot = data.snapshot.properties || latestPropertiesSnapshot;
-    if ((boardScene as any).syncProperties) {
-      (boardScene as any).syncProperties(data.snapshot.properties || [], data.snapshot.players || []);
-    }
+    boardScene.syncProperties(data.snapshot.properties || [], data.snapshot.players || []);
     if (currentInspectedTileId !== null) {
       showTileInspector(currentInspectedTileId);
     }

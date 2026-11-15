@@ -34,12 +34,13 @@ export class LandmarkMaterials {
 
   public static createContactShadow(sx: number, sz: number, opacity = 0.45): THREE.Mesh {
     const geo = new THREE.PlaneGeometry(sx, sz);
-    const mat = new THREE.MeshBasicMaterial({
+    const matKey = `contact_shadow_${opacity.toFixed(2)}`;
+    const mat = this.getMat(matKey, () => new THREE.MeshBasicMaterial({
       map: this.getContactShadowTexture(),
       transparent: true,
       opacity,
       depthWrite: false
-    });
+    }));
     const mesh = new THREE.Mesh(geo, mat);
     mesh.rotation.x = -Math.PI / 2;
     mesh.position.y = 0.008;

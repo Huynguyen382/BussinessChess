@@ -26,6 +26,14 @@ export class BuildingMesh {
   public removeBuilding(tileId: number) {
     const existing = this.buildingMap.get(tileId);
     if (existing) {
+      existing.traverse((child) => {
+        if ((child as THREE.Mesh).isMesh) {
+          const mesh = child as THREE.Mesh;
+          if (mesh.geometry) {
+            mesh.geometry.dispose();
+          }
+        }
+      });
       this.group.remove(existing);
       this.buildingMap.delete(tileId);
       this.bouncingItems = this.bouncingItems.filter(b => b.group !== existing);

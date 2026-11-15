@@ -18,6 +18,7 @@ export class DicePhysics {
   private hasTriggeredImpactVFX: boolean = false;
   private currentD1: number = 1;
   private currentD2: number = 1;
+  private onRollCompleteCallback: (() => void) | null = null;
 
   // Góc xoay mặt xúc xắc theo chuẩn Three.js BoxGeometry
   // Kết hợp độ nghiêng góc nhìn nhẹ (~12 độ) để mặt số ngửa thẳng về phía camera Isometric
@@ -227,12 +228,7 @@ export class DicePhysics {
     this.targetRot1.set(rot1[0] + Math.PI * 6, rot1[1] + Math.PI * 4, rot1[2]);
     this.targetRot2.set(rot2[0] + Math.PI * 4, rot2[1] + Math.PI * 6, rot2[2]);
 
-    const checkDone = () => {
-      if (!this.isRolling && onComplete) {
-        onComplete();
-      }
-    };
-    (this as any)._onRollComplete = checkDone;
+    this.onRollCompleteCallback = onComplete || null;
   }
 
   public update(delta: number) {
@@ -296,8 +292,10 @@ export class DicePhysics {
         this.vfxManager.spawnFloatingText(text, new THREE.Vector3(3.4, 3.2, 3.4), true);
       }
 
-      if ((this as any)._onRollComplete) {
-        (this as any)._onRollComplete();
+      if (this.onRollCompleteCallback) {
+        const callback = this.onRollCompleteCallback;
+        this.onRollCompleteCallback = null;
+        callback();
       }
     }
   }

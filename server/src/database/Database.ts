@@ -62,6 +62,28 @@ export interface UserAchievementRow {
   frame_name?: string;
 }
 
+export interface FriendshipRow {
+  id: string;
+  user_id: string;
+  friend_id: string;
+  status: 'PENDING' | 'ACCEPTED' | 'REJECTED';
+  created_at: string;
+  updated_at: string;
+}
+
+export interface FriendSummaryRow {
+  request_id?: string;
+  id: string;
+  username: string;
+  email: string;
+  avatar_url: string | null;
+  gold_balance: number;
+  total_matches?: number;
+  total_wins?: number;
+  equipped_frame?: string;
+  created_at?: string;
+}
+
 // DatabaseSync dynamic loader for Node 22+
 let DatabaseSyncClass: any;
 try {
@@ -488,7 +510,7 @@ export class DatabaseService {
       WHERE ua.user_id = ?
       ORDER BY a.level ASC, ua.unlocked_at DESC
     `);
-    const rows = stmt.all(userId) as any[];
+    const rows = stmt.all(userId) as (UserAchievementRow & { is_claimed: number })[];
     return rows.map(r => ({
       ...r,
       is_claimed: Boolean(r.is_claimed)
@@ -539,7 +561,7 @@ export class DatabaseService {
       SELECT * FROM user_achievements 
       WHERE user_id = ? AND achievement_id = ?
     `);
-    const record = stmt.get(userId, ach.id) as any;
+    const record = stmt.get(userId, ach.id) as (UserAchievementRow & { is_claimed: number }) | undefined;
     if (!record) {
       return { success: false, error: 'Thành tựu chưa được mở khóa' };
     }
@@ -597,7 +619,7 @@ export class DatabaseService {
       WHERE ua.user_id = ?
       ORDER BY a.level ASC
     `);
-    const unlockedRows = stmt.all(userId) as any[];
+    const unlockedRows = stmt.all(userId) as (AchievementRow & { achievement_code: string; achievement_name: string })[];
 
     const frames = [defaultFrame];
     for (const row of unlockedRows) {
@@ -697,7 +719,7 @@ export class DatabaseService {
       SELECT * FROM friendships 
       WHERE (user_id = ? AND friend_id = ?) OR (user_id = ? AND friend_id = ?)
     `);
-    const existing = existingStmt.get(userId, targetUser.id, targetUser.id, userId) as any;
+    const existing = existingStmt.get(userId, targetUser.id, targetUser.id, userId) as FriendshipRow | undefined;
 
     if (existing) {
       if (existing.status === 'ACCEPTED') {
@@ -766,7 +788,7 @@ export class DatabaseService {
       WHERE (f.user_id = ? OR f.friend_id = ?) AND f.status = 'ACCEPTED'
       ORDER BY u.username ASC
     `);
-    const friends = friendsStmt.all(userId, userId, userId) as any[];
+    const friends = friendsStmt.all(userId, userId, userId) as FriendSummaryRow[];
 
     // 2. Incoming Requests (others sent to userId)
     const incomingStmt = this.db.prepare(`
@@ -783,7 +805,7 @@ export class DatabaseService {
       WHERE f.friend_id = ? AND f.status = 'PENDING'
       ORDER BY f.created_at DESC
     `);
-    const incomingRequests = incomingStmt.all(userId) as any[];
+    const incomingRequests = incomingStmt.all(userId) as FriendSummaryRow[];
 
     // 3. Outgoing Requests (userId sent to others)
     const outgoingStmt = this.db.prepare(`
@@ -800,7 +822,7 @@ export class DatabaseService {
       WHERE f.user_id = ? AND f.status = 'PENDING'
       ORDER BY f.created_at DESC
     `);
-    const outgoingRequests = outgoingStmt.all(userId) as any[];
+    const outgoingRequests = outgoingStmt.all(userId) as FriendSummaryRow[];
 
     return { friends, incomingRequests, outgoingRequests };
   }
@@ -809,7 +831,7 @@ export class DatabaseService {
     const reqStmt = this.db.prepare(`
       SELECT * FROM friendships WHERE id = ? AND friend_id = ? AND status = 'PENDING'
     `);
-    const req = reqStmt.get(requestId, userId) as any;
+    const req = reqStmt.get(requestId, userId) as FriendshipRow | undefined;
     if (!req) {
       return { success: false, error: 'Lời mời kết bạn không tồn tại hoặc đã được xử lý' };
     }

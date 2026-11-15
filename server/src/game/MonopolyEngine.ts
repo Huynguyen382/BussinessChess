@@ -32,9 +32,11 @@ export interface PropertyState {
   isMortgaged: boolean;
 }
 
+export type TurnPhase = 'ROLL_DICE' | 'TILE_ACTION' | 'BUY_PROPERTY' | 'END_TURN';
+
 export interface TurnState {
   currentUserId: string;
-  phase: 'ROLL_DICE' | 'TILE_ACTION' | 'BUY_PROPERTY' | 'END_TURN';
+  phase: TurnPhase;
   dice: [number, number];
   isDouble: boolean;
   consecutiveDoubles: number;
@@ -983,17 +985,17 @@ export class MonopolyEngine {
     };
   }
 
-  public skipBuyProperty(userId: string): { success: boolean; phase: 'ROLL_DICE' | 'END_TURN' } {
+  public skipBuyProperty(userId: string): { success: boolean; phase: TurnPhase } {
     const player = this.getCurrentPlayer();
     if (!player || player.id !== userId) {
-      return { success: false, phase: this.turnState.phase as any };
+      return { success: false, phase: this.turnState.phase };
     }
     if (this.turnState.phase === 'BUY_PROPERTY') {
       const phase = this.setNextPhaseAfterAction(player);
       this.addLog(`${player.username} quyết định không mua ô cờ này.`, 'ACTION', player.id, player.username);
       return { success: true, phase };
     }
-    return { success: false, phase: this.turnState.phase as any };
+    return { success: false, phase: this.turnState.phase };
   }
 
   public mortgageProperty(userId: string, tileId: number): {

@@ -975,7 +975,10 @@ export class BoardScene {
     }
   }
 
-  public syncProperties(properties: any[], players: any[]) {
+  public syncProperties(
+    properties: Array<{ tileId: number; ownerId: string; level?: number }>,
+    players: Array<{ id: string; color: string }>
+  ) {
     const playerColorMap = new Map<string, string>();
     if (Array.isArray(players)) {
       players.forEach(p => {

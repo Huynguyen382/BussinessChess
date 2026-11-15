@@ -56,6 +56,7 @@ export class RoomManager {
       password?: string;
       initialCash?: number;
       turnTimeout?: number;
+      frame?: string;
     }
   ): RoomInfo {
     const roomCode = this.generateRoomCode();
@@ -79,7 +80,7 @@ export class RoomManager {
 
     this.rooms.set(roomCode, room);
     this.userToRoom.set(socket.id, roomCode);
-    let userFrame = (payload as any).frame || 'frame_default';
+    let userFrame = payload.frame || 'frame_default';
     if (payload.userId) {
       this.socketToUserId.set(socket.id, payload.userId);
       const user = dbService.getUserById(payload.userId);
