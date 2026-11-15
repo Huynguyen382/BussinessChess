@@ -150,7 +150,7 @@ async function runAllTests() {
     }
   });
 
-  await test('In Jail: Non-double roll keeps player in jail up to 3 turns', () => {
+  await test('In Jail: Non-double roll keeps player in jail on 1st turn', () => {
     const game = createGameWithPlayers(2);
     const p1 = game.players[0];
     p1.inJail = true;
@@ -196,12 +196,12 @@ async function runAllTests() {
     }
   });
 
-  await test('In Jail: 3 failed attempts forces paying 50M bail and releases player', () => {
+  await test('In Jail: 2 failed attempts releases player without paying fine and moves', () => {
     const game = createGameWithPlayers(2);
     const p1 = game.players[0];
     p1.inJail = true;
     p1.position = 10;
-    p1.jailTurns = 2; // will become 3rd failed turn
+    p1.jailTurns = 1; // will become 2nd failed turn (reaches 2)
     const startBalance = p1.balance;
 
     const origRandom = Math.random;
@@ -215,7 +215,7 @@ async function runAllTests() {
       const res = game.rollDice(p1.id);
       assert.equal(p1.inJail, false);
       assert.equal(p1.jailTurns, 0);
-      assert.equal(p1.balance, startBalance - 50);
+      assert.equal(p1.balance, startBalance, 'Không bị trừ 50M tiền phạt');
       assert.equal(p1.position, 13); // 10 + 3
     } finally {
       Math.random = origRandom;

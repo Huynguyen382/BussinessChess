@@ -189,18 +189,13 @@ export class MonopolyEngine {
         this.addLog(`${player.username} đổ đôi (${d1}-${d2}) và được tự do ra tù!`, 'JAIL', player.id, player.username);
       } else {
         player.jailTurns++;
-        if (player.jailTurns >= 3) {
-          if (player.balance < 50) {
-            this.autoMortgageToCoverDebt(player, 50);
-          }
-          const actualPaid = Math.min(player.balance, 50);
-          player.balance = Math.max(0, player.balance - 50);
-          this.freeParkingJackpot += actualPaid;
+        if (player.jailTurns >= 2) {
+          // Hết 2 lượt tạm giam: Được tự do ra tù mà không cần nộp phạt
           player.inJail = false;
           player.jailTurns = 0;
-          this.addLog(`${player.username} hết hạn tạm giam, nộp 50M tiền bảo lãnh để ra tù.`, 'JAIL', player.id, player.username);
+          this.addLog(`${player.username} đã chấp hành xong 2 lượt tạm giam, được tự do ra tù mà không cần nộp phạt!`, 'JAIL', player.id, player.username);
         } else {
-          this.addLog(`${player.username} không đổ đôi (${d1}-${d2}) và tiếp tục ở lại tù (${player.jailTurns}/3).`, 'JAIL', player.id, player.username);
+          this.addLog(`${player.username} không đổ đôi (${d1}-${d2}) và tiếp tục ở lại tù (${player.jailTurns}/2 lượt).`, 'JAIL', player.id, player.username);
           this.turnState.phase = 'END_TURN';
           return {
             dice: [d1, d2],
