@@ -484,6 +484,31 @@ export class RoomManager {
     }
   }
 
+  private broadcastAuctionResolved(
+    room: RoomInfo,
+    resolveRes?: { winnerId: string | null; tileId: number | null; amount: number }
+  ) {
+    if (!room.engine) return;
+    const winner = resolveRes?.winnerId
+      ? room.engine.players.find(p => p.id === resolveRes.winnerId)
+      : null;
+    const tile =
+      resolveRes?.tileId !== null && resolveRes?.tileId !== undefined
+        ? BOARD_TILES[resolveRes.tileId]
+        : null;
+
+    this.io.to(room.roomCode).emit('game:auction_resolved', {
+      snapshot: room.engine.getSnapshot(),
+      winnerName: winner?.username || null,
+      amount: resolveRes?.amount || 0,
+      tileName: tile?.name || null
+    });
+    this.io.to(room.roomCode).emit('game:state_sync', { snapshot: room.engine.getSnapshot() });
+    this.resetTurnTimer(room);
+    this.checkBankruptcyOrGameOver(room);
+    this.checkTriggerBot(room);
+  }
+
   public handleAuctionBid(socket: Socket, amount: number) {
     const roomCode = this.userToRoom.get(socket.id);
     if (!roomCode) return;
@@ -493,11 +518,7 @@ export class RoomManager {
     const res = room.engine.placeAuctionBid(socket.id, amount);
     if (res.success) {
       if (res.resolved) {
-        this.io.to(room.roomCode).emit('game:auction_resolved', { snapshot: room.engine.getSnapshot() });
-        this.io.to(room.roomCode).emit('game:state_sync', { snapshot: room.engine.getSnapshot() });
-        this.resetTurnTimer(room);
-        this.checkBankruptcyOrGameOver(room);
-        this.checkTriggerBot(room);
+        this.broadcastAuctionResolved(room, res.resolveRes);
       } else {
         this.io.to(room.roomCode).emit('game:state_sync', { snapshot: room.engine.getSnapshot() });
         this.triggerAuctionBots(room);
@@ -516,11 +537,7 @@ export class RoomManager {
     const res = room.engine.passAuction(socket.id);
     if (res.success) {
       if (res.resolved) {
-        this.io.to(room.roomCode).emit('game:auction_resolved', { snapshot: room.engine.getSnapshot() });
-        this.io.to(room.roomCode).emit('game:state_sync', { snapshot: room.engine.getSnapshot() });
-        this.resetTurnTimer(room);
-        this.checkBankruptcyOrGameOver(room);
-        this.checkTriggerBot(room);
+        this.broadcastAuctionResolved(room, res.resolveRes);
       } else {
         this.io.to(room.roomCode).emit('game:state_sync', { snapshot: room.engine.getSnapshot() });
       }
@@ -730,12 +747,8 @@ export class RoomManager {
       // Check Auction Timer
       if (room.engine.turnState.phase === 'AUCTION' && room.engine.auctionState) {
         if (Date.now() >= room.engine.auctionState.endTime) {
-          room.engine.resolveAuction();
-          this.io.to(room.roomCode).emit('game:auction_resolved', { snapshot: room.engine.getSnapshot() });
-          this.io.to(room.roomCode).emit('game:state_sync', { snapshot: room.engine.getSnapshot() });
-          this.resetTurnTimer(room);
-          this.checkBankruptcyOrGameOver(room);
-          this.checkTriggerBot(room);
+          const resolveRes = room.engine.resolveAuction();
+          this.broadcastAuctionResolved(room, resolveRes);
         }
         return;
       }
@@ -1070,11 +1083,7 @@ export class RoomManager {
         const res = room.engine.placeAuctionBid(botId, payload.amount);
         if (res.success) {
           if (res.resolved) {
-            this.io.to(room.roomCode).emit('game:auction_resolved', { snapshot: room.engine.getSnapshot() });
-            this.io.to(room.roomCode).emit('game:state_sync', { snapshot: room.engine.getSnapshot() });
-            this.resetTurnTimer(room);
-            this.checkBankruptcyOrGameOver(room);
-            this.checkTriggerBot(room);
+            this.broadcastAuctionResolved(room, res.resolveRes);
           } else {
             this.io.to(room.roomCode).emit('game:state_sync', { snapshot: room.engine.getSnapshot() });
             this.triggerAuctionBots(room);
@@ -1084,11 +1093,7 @@ export class RoomManager {
         const res = room.engine.passAuction(botId);
         if (res.success) {
           if (res.resolved) {
-            this.io.to(room.roomCode).emit('game:auction_resolved', { snapshot: room.engine.getSnapshot() });
-            this.io.to(room.roomCode).emit('game:state_sync', { snapshot: room.engine.getSnapshot() });
-            this.resetTurnTimer(room);
-            this.checkBankruptcyOrGameOver(room);
-            this.checkTriggerBot(room);
+            this.broadcastAuctionResolved(room, res.resolveRes);
           } else {
             this.io.to(room.roomCode).emit('game:state_sync', { snapshot: room.engine.getSnapshot() });
           }
@@ -1306,6 +1311,23 @@ export class RoomManager {
 
     socket.emit('room:left', { roomCode });
     callback?.({ success: true, roomCode });
+  }
+
+  public handleGameChat(socket: Socket, data: { text: string; username?: string }) {
+    if (!data || typeof data.text !== 'string' || !data.text.trim()) return;
+    const roomCode = this.userToRoom.get(socket.id);
+    if (!roomCode) return;
+
+    const room = this.rooms.get(roomCode);
+    const player = room?.engine?.players.find(p => p.id === socket.id || p.socketId === socket.id);
+    const username = data.username || player?.username || 'Người chơi';
+
+    this.io.to(roomCode).emit('game:chat', {
+      userId: socket.id,
+      sender: username,
+      username,
+      text: data.text.trim().substring(0, 200)
+    });
   }
 
   public broadcastRoomUpdate(room: RoomInfo) {

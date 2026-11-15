@@ -459,7 +459,11 @@ async function runTests() {
     assert.equal(engine.auctionState?.currentBid, 50);
     mgr.handleAuctionPass(s1 as any);
     assert.equal(engine.properties.get(1)?.ownerId, p2.id);
-    assert.ok(io.broadcastedEvents.some(e => e.event === 'game:auction_resolved'));
+    const auctionEvent = io.broadcastedEvents.find(e => e.event === 'game:auction_resolved');
+    assert.ok(auctionEvent);
+    assert.equal(auctionEvent.data.winnerName, 'Bob');
+    assert.equal(auctionEvent.data.amount, 50);
+    assert.ok(auctionEvent.data.tileName);
 
     // Trade P2's tile 1 to P1 for 100M
     io.clear();
@@ -473,6 +477,28 @@ async function runTests() {
     mgr.handleAcceptTrade(s1 as any, tradeId);
     assert.equal(engine.properties.get(1)?.ownerId, p1.id);
     assert.ok(io.broadcastedEvents.some(e => e.event === 'game:state_sync'));
+  });
+
+  await test('4.10 handleGameChat broadcasts message to room members', () => {
+    const io = new MockServer();
+    const mgr = new RoomManager(io as any);
+    const s1 = new MockSocket('p1');
+    const s2 = new MockSocket('p2');
+
+    const room = mgr.createRoom(s1 as any, { name: 'Chat Room', username: 'Alice' });
+    mgr.joinRoom(s2 as any, { roomCode: room.roomCode, username: 'Bob' });
+    mgr.handleToggleReady(s2 as any);
+    mgr.startGame(s1 as any);
+
+    io.clear();
+    mgr.handleGameChat(s1 as any, { text: 'Chào mọi người!' });
+
+    const chatEvent = io.broadcastedEvents.find(e => e.event === 'game:chat');
+    assert.ok(chatEvent, 'game:chat event should be emitted');
+    assert.equal(chatEvent.room, room.roomCode);
+    assert.equal(chatEvent.data.userId, s1.id);
+    assert.equal(chatEvent.data.text, 'Chào mọi người!');
+    assert.equal(chatEvent.data.sender, 'Alice');
   });
 
   console.log('\n--- Suite 5: Disconnect & Room Recovery ---');

@@ -1251,6 +1251,7 @@ export class MonopolyEngine {
     resolved?: boolean;
     error?: string;
     auctionState?: AuctionState | null;
+    resolveRes?: { success: boolean; winnerId: string | null; tileId: number | null; amount: number };
   } {
     if (this.isGameOver) return { success: false, error: 'Ván chơi đã kết thúc' };
     if (this.turnState.phase !== 'AUCTION' || !this.auctionState) {
@@ -1290,14 +1291,19 @@ export class MonopolyEngine {
       p => !p.isBankrupt && p.id !== userId && !this.auctionState!.passedPlayerIds.includes(p.id)
     );
     if (otherActive.length === 0) {
-      this.resolveAuction();
-      return { success: true, resolved: true, auctionState: null };
+      const resolveRes = this.resolveAuction();
+      return { success: true, resolved: true, auctionState: null, resolveRes };
     }
 
     return { success: true, resolved: false, auctionState: this.auctionState };
   }
 
-  public passAuction(userId: string): { success: boolean; resolved?: boolean; error?: string } {
+  public passAuction(userId: string): {
+    success: boolean;
+    resolved?: boolean;
+    error?: string;
+    resolveRes?: { success: boolean; winnerId: string | null; tileId: number | null; amount: number };
+  } {
     if (this.isGameOver) return { success: false, error: 'Ván chơi đã kết thúc' };
     if (this.turnState.phase !== 'AUCTION' || !this.auctionState) {
       return { success: false, error: 'Không có phiên đấu giá nào đang diễn ra' };
@@ -1321,8 +1327,8 @@ export class MonopolyEngine {
     );
 
     if (remainingBidders.length === 0) {
-      this.resolveAuction();
-      return { success: true, resolved: true };
+      const resolveRes = this.resolveAuction();
+      return { success: true, resolved: true, resolveRes };
     }
 
     return { success: true, resolved: false };

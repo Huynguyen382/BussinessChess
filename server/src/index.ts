@@ -436,6 +436,10 @@ io.on('connection', (socket: Socket) => {
     roomManager.handleEndTurn(socket);
   });
 
+  socket.on('game:chat', (data: { text: string; username?: string }) => {
+    roomManager.handleGameChat(socket, data);
+  });
+
   socket.on('game:leave_match', (callback?: (res: any) => void) => {
     roomManager.handleLeaveMatch(socket, typeof callback === 'function' ? callback : undefined);
   });
