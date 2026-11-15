@@ -17,8 +17,15 @@ if (typeof globalThis.document === 'undefined') {
             beginPath: () => {},
             moveTo: () => {},
             lineTo: () => {},
+            arc: () => {},
+            fill: () => {},
             stroke: () => {},
-            closePath: () => {}
+            closePath: () => {},
+            save: () => {},
+            restore: () => {},
+            scale: () => {},
+            translate: () => {},
+            rotate: () => {}
           }),
           addEventListener: () => {},
           removeEventListener: () => {}
@@ -43,6 +50,7 @@ if (typeof (globalThis.window as any).addEventListener === 'undefined') {
 import assert from 'node:assert';
 import * as THREE from 'three';
 import { BoardEnvironment } from '../src/three/BoardEnvironment';
+import { VFXManager } from '../src/three/VFXManager';
 
 console.log('====================================================');
 console.log(' RUNNING BOARD LIGHTING & ENVIRONMENT AUTOMATED TESTS');
@@ -226,7 +234,67 @@ test('setFocusMode() toggles visibility of secondary background anim props', () 
   assert.strictEqual(env.volumetricHazeGroup?.visible, true);
 });
 
-console.log('\n--- Suite 6: Memory Safety & Resource Disposal ---');
+console.log('\n--- Suite 6: Studio Tabletop Reflection Environment Map & IBL ---');
+
+test('Studio Tabletop Reflection Environment Map & IBL setup', () => {
+  const scene = new THREE.Scene();
+  const env = new BoardEnvironment(scene);
+
+  assert(scene.environment !== null, 'scene.environment must be assigned');
+  assert(env.studioEnvTexture instanceof THREE.Texture, 'studioEnvTexture must be initialized');
+  assert.strictEqual(
+    env.studioEnvTexture.mapping,
+    THREE.EquirectangularReflectionMapping,
+    'studioEnvTexture must use EquirectangularReflectionMapping for PBR IBL'
+  );
+
+  // Calling setupStudioReflectionEnv again runs safely
+  const returnedEnv = env.setupStudioReflectionEnv();
+  assert(returnedEnv !== null, 'setupStudioReflectionEnv must return active environment map');
+
+  // Verify dispose cleans up scene.environment
+  env.dispose();
+  assert.strictEqual(scene.environment, null, 'scene.environment must be cleared on dispose');
+});
+
+console.log('\n--- Suite 7: VFXManager Next-Gen Particles & Disposal ---');
+
+test('VFXManager shockwaves, golden confetti, fireworks, jet landing sparkles & dispose', () => {
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 1000);
+  const domContainer = document.createElement('div') as any;
+  domContainer.appendChild = () => {};
+  domContainer.removeChild = () => {};
+
+  const vfx = new VFXManager(scene, camera, domContainer);
+  assert(vfx instanceof VFXManager, 'VFXManager must instantiate');
+
+  // Spawn effects
+  const origin = new THREE.Vector3(0, 0, 0);
+  vfx.spawnShockwave(origin, '#00CEC9', 3.0);
+  vfx.spawnJetLandingSparkles(origin, 24);
+  vfx.spawnConfetti3D(origin, 32, true);
+  vfx.spawnTrainSmoke(origin, 10);
+  vfx.spawnFireworkBurst(origin, 0xFDCB6E);
+  vfx.triggerCameraShake(0.4);
+
+  // Update across 60Hz, 120Hz, 144Hz
+  for (const dt of [0.01667, 0.00833, 0.00694]) {
+    vfx.update(dt);
+  }
+
+  // Camera shake offset must be finite
+  assert(Number.isFinite(vfx.cameraShakeOffset.x), 'Camera shake x must be finite');
+  assert(Number.isFinite(vfx.cameraShakeOffset.y), 'Camera shake y must be finite');
+  assert(Number.isFinite(vfx.cameraShakeOffset.z), 'Camera shake z must be finite');
+
+  // Dispose cleanly
+  assert.doesNotThrow(() => {
+    vfx.dispose();
+  }, 'VFXManager.dispose() must execute cleanly without throwing');
+});
+
+console.log('\n--- Suite 8: Memory Safety & Resource Disposal ---');
 
 test('dispose() cleans up WebGL geometries, materials, and textures without throwing', () => {
   const scene = new THREE.Scene();

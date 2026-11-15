@@ -51,7 +51,7 @@ export class BoardScene {
 
     // Cinematic Tone Mapping with crisp contrast and rich dynamic range
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.15;
+    this.renderer.toneMappingExposure = 1.18;
 
     container.appendChild(this.renderer.domElement);
 
@@ -474,9 +474,10 @@ export class BoardScene {
     l: number
   ): THREE.Mesh {
     const canvas = document.createElement('canvas');
-    canvas.width = 640;
-    canvas.height = 1024;
+    canvas.width = 1280;
+    canvas.height = 2048;
     const ctx = canvas.getContext('2d')!;
+    ctx.scale(2, 2);
 
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
@@ -486,7 +487,8 @@ export class BoardScene {
     // 1. Thẻ bài nền trắng sứ sang trọng với viền màu phân khu dày 14px cực kỳ bắt mắt
     const cardBgGrad = ctx.createLinearGradient(0, 0, 0, 1024);
     cardBgGrad.addColorStop(0, '#FFFFFF');
-    cardBgGrad.addColorStop(1, '#F8FAFC');
+    cardBgGrad.addColorStop(0.5, '#FBFDFE');
+    cardBgGrad.addColorStop(1, '#F1F5F9');
     ctx.fillStyle = cardBgGrad;
     this.drawRoundedRect(ctx, 10, 10, 620, 1004, 38);
     ctx.fill();
@@ -495,11 +497,24 @@ export class BoardScene {
     ctx.lineWidth = 14;
     ctx.stroke();
 
-    // Đường viền chỉ vàng kim mảnh bên trong tạo chiều sâu Luxury
-    ctx.strokeStyle = 'rgba(241, 196, 15, 0.42)';
-    ctx.lineWidth = 4;
-    this.drawRoundedRect(ctx, 24, 24, 592, 976, 30);
+    // Đường viền chỉ vàng kim đôi Luxury sang trọng
+    const goldGrad = ctx.createLinearGradient(24, 24, 616, 1000);
+    goldGrad.addColorStop(0, '#F1C40F');
+    goldGrad.addColorStop(0.5, '#FFEAA7');
+    goldGrad.addColorStop(1, '#F39C12');
+    ctx.strokeStyle = goldGrad;
+    ctx.lineWidth = 4.5;
+    this.drawRoundedRect(ctx, 24, 24, 592, 976, 28);
     ctx.stroke();
+
+    // Điểm nhấn 4 góc tán vàng kim phong cách Monopoly GO! Luxury Edition
+    const cornerDots = [[32, 32], [608, 32], [32, 992], [608, 992]];
+    ctx.fillStyle = '#F1C40F';
+    cornerDots.forEach(([cx, cy]) => {
+      ctx.beginPath();
+      ctx.arc(cx, cy, 4, 0, Math.PI * 2);
+      ctx.fill();
+    });
 
     if (tile.type === 'PROPERTY') {
       // ==========================================
@@ -820,8 +835,9 @@ export class BoardScene {
     const texture = new THREE.CanvasTexture(canvas);
     texture.generateMipmaps = true;
     texture.minFilter = THREE.LinearMipmapLinearFilter;
+    texture.magFilter = THREE.LinearFilter;
     if (this.renderer) {
-      texture.anisotropy = this.renderer.capabilities.getMaxAnisotropy() || 8;
+      texture.anisotropy = Math.max(16, this.renderer.capabilities.getMaxAnisotropy() || 16);
     }
 
     // Material nâng cấp: bật polygonOffset để triệt tiêu hoàn toàn z-fighting, không bị nhấp nháy mờ đục
@@ -840,9 +856,10 @@ export class BoardScene {
   // Tạo Đồ Họa Riêng Cho 4 Ô Góc Lớn (GO, Jail, Free Parking, Go To Jail)
   private createCornerLabel(tile: BoardTileMeta, w: number, l: number): THREE.Mesh {
     const canvas = document.createElement('canvas');
-    canvas.width = 1024;
-    canvas.height = 1024;
+    canvas.width = 2048;
+    canvas.height = 2048;
     const ctx = canvas.getContext('2d')!;
+    ctx.scale(2, 2);
 
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
@@ -852,6 +869,16 @@ export class BoardScene {
     ctx.fill();
     ctx.strokeStyle = '#2D3436';
     ctx.lineWidth = 14;
+    ctx.stroke();
+
+    // Viền chỉ vàng kim luxury bên trong
+    const cornerGoldGrad = ctx.createLinearGradient(28, 28, 996, 996);
+    cornerGoldGrad.addColorStop(0, '#F1C40F');
+    cornerGoldGrad.addColorStop(0.5, '#FFEAA7');
+    cornerGoldGrad.addColorStop(1, '#F39C12');
+    ctx.strokeStyle = cornerGoldGrad;
+    ctx.lineWidth = 6;
+    this.drawRoundedRect(ctx, 32, 32, 960, 960, 40);
     ctx.stroke();
 
     if (tile.type === 'GO') {
@@ -943,8 +970,9 @@ export class BoardScene {
     const texture = new THREE.CanvasTexture(canvas);
     texture.generateMipmaps = true;
     texture.minFilter = THREE.LinearMipmapLinearFilter;
+    texture.magFilter = THREE.LinearFilter;
     if (this.renderer) {
-      texture.anisotropy = this.renderer.capabilities.getMaxAnisotropy() || 8;
+      texture.anisotropy = Math.max(16, this.renderer.capabilities.getMaxAnisotropy() || 16);
     }
 
     const planeGeo = new THREE.PlaneGeometry(w, l);

@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { TextureGenerator } from './TextureGenerator';
 import { DetailedModels } from './DetailedModels';
 import { LandmarkModels } from './LandmarkModels';
@@ -42,14 +43,19 @@ export class BoardEnvironment {
   public waterMaterial: THREE.ShaderMaterial | null = null;
   public skyDome: THREE.Mesh | null = null;
 
+  // Studio Reflection & PMREM Environment Map
+  public studioEnvTexture: THREE.Texture | null = null;
+  public studioPMREMRenderTarget: THREE.WebGLRenderTarget | null = null;
+
   // Disposables tracker for zero memory leak
   private disposables = {
     geometries: new Set<THREE.BufferGeometry>(),
     materials: new Set<THREE.Material>(),
-    textures: new Set<THREE.Texture>()
+    textures: new Set<THREE.Texture>(),
+    renderTargets: new Set<THREE.WebGLRenderTarget>()
   };
 
-  constructor(scene: THREE.Scene) {
+  constructor(scene: THREE.Scene, renderer?: THREE.WebGLRenderer) {
     this.scene = scene;
 
     this.scene.add(this.environmentGroup);
@@ -58,6 +64,7 @@ export class BoardEnvironment {
     this.scene.add(this.centerGroup);
     this.scene.add(this.islandWaterGroup);
 
+    this.setupStudioReflectionEnv(renderer);
     this.setupStudioEnvironment();
     this.setupBoardPlinth();
     this.setupStreetLamps();
@@ -79,6 +86,97 @@ export class BoardEnvironment {
   private trackTexture<T extends THREE.Texture>(tex: T): T {
     this.disposables.textures.add(tex);
     return tex;
+  }
+
+  /**
+   * Tạo môi trường ánh sáng phản chiếu Studio bàn cờ cao cấp (Tabletop Studio Reflection IBL):
+   * Kết hợp bản đồ phản xạ Equirectangular dải sáng softbox ấm & lạnh,
+   * cùng nướng PMREM (Prefiltered Mipmapped Radiance Environment Map) từ RoomEnvironment
+   * để gán vào `scene.environment`.
+   * Nhờ đó, mọi vật liệu PBR (Vàng 24K, Kính Sapphire, Kim loại xe cộ, Viên xúc xắc, Quân cờ)
+   * phản chiếu lộng lẫy, có chiều sâu chân thực mà không tốn chi phí render đắt đỏ.
+   */
+  public setupStudioReflectionEnv(renderer?: THREE.WebGLRenderer): THREE.Texture | null {
+    // 1. Tạo Studio Equirectangular Reflection Canvas Texture làm nền tảng IBL
+    const envTex = this.trackTexture(this.createStudioEquirectTexture());
+    this.studioEnvTexture = envTex;
+    this.scene.environment = envTex;
+
+    // 2. Nếu có WebGLRenderer hỗ trợ PMREM, nướng bản đồ phản xạ RoomEnvironment chuyên nghiệp
+    if (renderer && typeof renderer.getContext === 'function') {
+      try {
+        const pmremGenerator = new THREE.PMREMGenerator(renderer);
+        pmremGenerator.compileEquirectangularShader();
+
+        const roomScene = new RoomEnvironment();
+        const envRenderTarget = pmremGenerator.fromScene(roomScene, 0.04);
+        this.disposables.renderTargets.add(envRenderTarget);
+        this.studioPMREMRenderTarget = envRenderTarget;
+        this.scene.environment = envRenderTarget.texture;
+
+        roomScene.dispose();
+        pmremGenerator.dispose();
+      } catch (_e) {
+        // Giữ fallback studioEnvTexture đã được gán an toàn
+      }
+    }
+
+    return this.scene.environment;
+  }
+
+  private createStudioEquirectTexture(): THREE.CanvasTexture {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1024;
+    canvas.height = 512;
+    const ctx = canvas.getContext('2d')!;
+
+    // Nền gradient studio sang trọng: đỉnh xám than -> giữa xám ấm -> phản quang bàn sồi
+    const bgGrad = ctx.createLinearGradient(0, 0, 0, 512);
+    bgGrad.addColorStop(0, '#2F3640');
+    bgGrad.addColorStop(0.45, '#1E272E');
+    bgGrad.addColorStop(0.8, '#2D3436');
+    bgGrad.addColorStop(1, '#3E2F23');
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, 1024, 512);
+
+    // Softbox 1: Đèn Key Nắng Vàng Ấm Áp (Góc trên bên trái sa bàn)
+    const keyBox = ctx.createRadialGradient(280, 150, 10, 280, 150, 180);
+    keyBox.addColorStop(0, 'rgba(255, 252, 240, 1.0)');
+    keyBox.addColorStop(0.35, 'rgba(255, 238, 204, 0.85)');
+    keyBox.addColorStop(0.7, 'rgba(255, 215, 150, 0.25)');
+    keyBox.addColorStop(1, 'rgba(255, 200, 120, 0.0)');
+    ctx.fillStyle = keyBox;
+    ctx.fillRect(50, 0, 460, 320);
+
+    // Softbox 2: Đèn Fill Xanh Bạc Dịu Mắt (Góc trên đối diện)
+    const fillBox = ctx.createRadialGradient(780, 180, 10, 780, 180, 160);
+    fillBox.addColorStop(0, 'rgba(240, 248, 255, 0.95)');
+    fillBox.addColorStop(0.4, 'rgba(215, 235, 255, 0.6)');
+    fillBox.addColorStop(0.75, 'rgba(180, 215, 245, 0.18)');
+    fillBox.addColorStop(1, 'rgba(150, 195, 235, 0.0)');
+    ctx.fillStyle = fillBox;
+    ctx.fillRect(580, 20, 400, 320);
+
+    // Đèn Trần / Dải Softbox Rim Light (Đỉnh đầu, viền specular sắc nét cho vàng 24k)
+    const rimStrip = ctx.createLinearGradient(300, 40, 724, 40);
+    rimStrip.addColorStop(0, 'rgba(255, 255, 255, 0.1)');
+    rimStrip.addColorStop(0.5, 'rgba(255, 255, 255, 0.9)');
+    rimStrip.addColorStop(1, 'rgba(255, 255, 255, 0.1)');
+    ctx.fillStyle = rimStrip;
+    ctx.fillRect(260, 30, 504, 35);
+
+    // Phản xạ mặt bàn nỉ Slate Blue & Gỗ Sồi bên dưới
+    const matBounce = ctx.createRadialGradient(512, 440, 20, 512, 440, 300);
+    matBounce.addColorStop(0, 'rgba(58, 75, 94, 0.7)');
+    matBounce.addColorStop(0.6, 'rgba(195, 165, 130, 0.35)');
+    matBounce.addColorStop(1, 'rgba(30, 39, 46, 0.0)');
+    ctx.fillStyle = matBounce;
+    ctx.fillRect(100, 340, 824, 172);
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.mapping = THREE.EquirectangularReflectionMapping;
+    texture.needsUpdate = true;
+    return texture;
   }
 
   // 1. Natural Studio Environment: Warm Oak Wood Table & Window Sunbeam
@@ -942,6 +1040,15 @@ export class BoardEnvironment {
 
     this.disposables.textures.forEach(tex => tex.dispose());
     this.disposables.textures.clear();
+
+    this.disposables.renderTargets.forEach(rt => rt.dispose());
+    this.disposables.renderTargets.clear();
+    this.studioPMREMRenderTarget = null;
+    this.studioEnvTexture = null;
+
+    if (this.scene.environment) {
+      this.scene.environment = null;
+    }
 
     this.scene.remove(this.environmentGroup);
     this.scene.remove(this.plinthGroup);

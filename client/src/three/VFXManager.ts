@@ -217,7 +217,9 @@ export class VFXManager {
       color: new THREE.Color(color),
       side: THREE.DoubleSide,
       transparent: true,
-      opacity: 0.95
+      opacity: 0.95,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false
     });
     const ring = new THREE.Mesh(ringGeo, ringMat);
     ring.rotation.x = -Math.PI / 2;
@@ -230,6 +232,33 @@ export class VFXManager {
       maxScale,
       alpha: 0.95
     });
+  }
+
+  // Vệt tia lửa ma sát bánh máy bay đáp đường băng & đèn hiệu dẫn đường (Jet Landing Sparkles)
+  public spawnJetLandingSparkles(pos: THREE.Vector3, count = 36) {
+    if (!this.starParticles) return;
+    const posAttr = this.starParticles.geometry.attributes.position as THREE.BufferAttribute;
+
+    for (let i = 0; i < count; i++) {
+      const idx = (this.activeStarCount + i) % this.maxStars;
+      posAttr.setXYZ(idx, pos.x + (Math.random() - 0.5) * 0.4, pos.y + 0.08, pos.z + (Math.random() - 0.5) * 0.4);
+
+      // Tia lửa bắn tóe ngang dọc theo đường băng (+/- X và +/- Z)
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 3.2 + Math.random() * 4.2;
+      this.starVelocities[idx].set(
+        Math.cos(angle) * speed,
+        1.2 + Math.random() * 2.4, // Bắn thấp nảy tưng trên mặt sân bay
+        Math.sin(angle) * speed
+      );
+    }
+    this.activeStarCount = (this.activeStarCount + count) % this.maxStars;
+    posAttr.needsUpdate = true;
+
+    // Vòng sóng hạ cánh màu Cyan ngọc bích / Vàng kim
+    this.spawnShockwave(pos, '#00CEC9', 3.2);
+    this.spawnShockwave(pos, '#FDCB6E', 2.0);
+    this.triggerCameraShake(0.32);
   }
 
   // Rung màn hình nhẹ (Screen Micro-shake)
@@ -321,37 +350,39 @@ export class VFXManager {
   }
 
   // Bắn giấy màu ăn mừng 3D (3D Celebratory Confetti Ribbons)
-  public spawnConfetti3D(pos: THREE.Vector3, count = 36) {
-    const palette = [0xFDCB6E, 0x00CEC9, 0xE84393, 0x00B894, 0x6C5CE7, 0xFC5C65, 0x0984E3];
+  public spawnConfetti3D(pos: THREE.Vector3, count = 48, isGoldTheme = false) {
+    const goldPalette = [0xFDCB6E, 0xF1C40F, 0xE1B12C, 0xF39C12, 0xFFEAA7, 0x00CEC9, 0xE84393];
+    const rainbowPalette = [0xFDCB6E, 0x00CEC9, 0xE84393, 0x00B894, 0x6C5CE7, 0xFC5C65, 0x0984E3];
+    const palette = isGoldTheme ? goldPalette : rainbowPalette;
 
     for (let i = 0; i < count; i++) {
-      const geo = new THREE.PlaneGeometry(0.25, 0.14);
+      const geo = new THREE.PlaneGeometry(0.26, 0.14);
       const col = palette[Math.floor(Math.random() * palette.length)];
       const mat = new THREE.MeshBasicMaterial({
         color: col,
         side: THREE.DoubleSide,
         transparent: true,
-        opacity: 0.95
+        opacity: 0.96
       });
       const mesh = new THREE.Mesh(geo, mat);
       mesh.position.set(
-        pos.x + (Math.random() - 0.5) * 0.8,
-        pos.y + 1.2 + Math.random() * 0.8,
-        pos.z + (Math.random() - 0.5) * 0.8
+        pos.x + (Math.random() - 0.5) * 0.9,
+        pos.y + 1.2 + Math.random() * 0.9,
+        pos.z + (Math.random() - 0.5) * 0.9
       );
 
       const angle = Math.random() * Math.PI * 2;
-      const speed = 2.2 + Math.random() * 3.5;
+      const speed = 2.4 + Math.random() * 3.8;
       const vel = new THREE.Vector3(
         Math.cos(angle) * speed,
-        4.5 + Math.random() * 4.0,
+        4.8 + Math.random() * 4.5,
         Math.sin(angle) * speed
       );
 
       const rotVel = new THREE.Vector3(
-        (Math.random() - 0.5) * 12,
-        (Math.random() - 0.5) * 12,
-        (Math.random() - 0.5) * 12
+        (Math.random() - 0.5) * 14,
+        (Math.random() - 0.5) * 14,
+        (Math.random() - 0.5) * 14
       );
 
       this.particleGroup.add(mesh);
@@ -372,19 +403,20 @@ export class VFXManager {
     setTimeout(() => this.spawnFireworkBurst(pos.clone().add(new THREE.Vector3(0.8, 0.5, 0.8)), 0xE84393), 200);
     setTimeout(() => this.spawnFireworkBurst(pos.clone().add(new THREE.Vector3(-0.8, 0.8, -0.6)), 0x00B894), 400);
 
-    // 2. Mưa hoa giấy 3D phủ kín sa bàn
-    this.spawnConfetti3D(pos, 50);
+    // 2. Mưa hoa giấy 3D vàng kim phủ kín sa bàn
+    this.spawnConfetti3D(pos, 60, true);
 
-    // 3. Shockwave vàng vương giả
-    this.spawnShockwave(pos, '#FDCB6E', 4.2);
-    this.triggerCameraShake(0.45);
+    // 3. Shockwave vàng vương giả đa tầng
+    this.spawnShockwave(pos, '#FDCB6E', 4.5);
+    this.spawnShockwave(pos, '#FFA801', 2.8);
+    this.triggerCameraShake(0.48);
 
     // 4. Màn pháo giấy 2D Canvas Confetti phủ ngập tràn màn hình cho cảm giác chiến thắng hoành tráng
     confetti({
-      particleCount: 120,
-      spread: 90,
-      origin: { y: 0.65 },
-      colors: ['#FDCB6E', '#00CEC9', '#E84393', '#00B894', '#6C5CE7']
+      particleCount: 140,
+      spread: 95,
+      origin: { y: 0.62 },
+      colors: ['#FDCB6E', '#F1C40F', '#00CEC9', '#E84393', '#00B894', '#6C5CE7']
     });
   }
 
@@ -449,6 +481,9 @@ export class VFXManager {
   }
 
   public update(delta: number) {
+    // 60-144Hz Finite Math Clamp: Ngăn chặn hiện tượng phân kỳ do delta drop hoặc chuyển tab
+    const dt = Math.min(Math.max(Number.isFinite(delta) ? delta : 0.016, 0.0001), 0.1);
+
     // 1. Update Camera Shake
     if (this.shakeIntensity > 0.01) {
       this.cameraShakeOffset.set(
@@ -456,7 +491,7 @@ export class VFXManager {
         (Math.random() - 0.5) * this.shakeIntensity * 0.5,
         (Math.random() - 0.5) * this.shakeIntensity
       );
-      this.shakeIntensity *= Math.pow(this.shakeDecay, delta * 60);
+      this.shakeIntensity *= Math.pow(this.shakeDecay, dt * 60);
     } else {
       this.cameraShakeOffset.set(0, 0, 0);
       this.shakeIntensity = 0;
@@ -469,13 +504,13 @@ export class VFXManager {
         let y = posAttr.getY(i);
         if (y > -50) {
           const vel = this.starVelocities[i];
-          posAttr.setXYZ(
-            i,
-            posAttr.getX(i) + vel.x * delta,
-            y + vel.y * delta,
-            posAttr.getZ(i) + vel.z * delta
-          );
-          vel.y -= 9.8 * delta; // Gravity
+          const newX = posAttr.getX(i) + vel.x * dt;
+          const newY = y + vel.y * dt;
+          const newZ = posAttr.getZ(i) + vel.z * dt;
+          if (Number.isFinite(newX) && Number.isFinite(newY) && Number.isFinite(newZ)) {
+            posAttr.setXYZ(i, newX, newY, newZ);
+          }
+          vel.y -= 9.8 * dt; // Gravity
           vel.x *= 0.96;
           vel.z *= 0.96;
 
@@ -490,10 +525,12 @@ export class VFXManager {
     // 3. Update Shockwaves
     for (let i = this.shockwaves.length - 1; i >= 0; i--) {
       const sw = this.shockwaves[i];
-      sw.scale += delta * 3.8;
-      sw.alpha -= delta * 1.3;
+      sw.scale += dt * 3.8;
+      sw.alpha -= dt * 1.3;
 
-      sw.mesh.scale.set(sw.scale, sw.scale, 1);
+      if (Number.isFinite(sw.scale)) {
+        sw.mesh.scale.set(sw.scale, sw.scale, 1);
+      }
       (sw.mesh.material as THREE.MeshBasicMaterial).opacity = Math.max(0, sw.alpha);
 
       if (sw.alpha <= 0 || sw.scale >= sw.maxScale) {
@@ -507,20 +544,22 @@ export class VFXManager {
     // 4. Update Train Puff Smoke
     for (let i = this.smokeParticles.length - 1; i >= 0; i--) {
       const sp = this.smokeParticles[i];
-      sp.life += delta;
+      sp.life += dt;
       const progress = sp.life / sp.maxLife;
 
-      sp.mesh.position.addScaledVector(sp.velocity, delta);
+      sp.mesh.position.addScaledVector(sp.velocity, dt);
       sp.velocity.y *= 0.98;
       sp.velocity.x += (Math.random() - 0.5) * 0.05;
 
       // Expand scale as smoke puffs outwards
       const currentScale = sp.scale + (sp.maxScale - sp.scale) * progress;
-      sp.mesh.scale.set(currentScale, currentScale, 1);
+      if (Number.isFinite(currentScale)) {
+        sp.mesh.scale.set(currentScale, currentScale, 1);
+      }
 
       // Billboard quaternion to face camera
       sp.mesh.quaternion.copy(this.camera.quaternion);
-      sp.mesh.rotateZ(sp.rotationSpeed * delta);
+      sp.mesh.rotateZ(sp.rotationSpeed * dt);
 
       // Fade out
       const mat = sp.mesh.material as THREE.MeshBasicMaterial;
@@ -541,16 +580,18 @@ export class VFXManager {
 
       for (let i = this.fireworkParticles.length - 1; i >= 0; i--) {
         const fp = this.fireworkParticles[i];
-        fp.life += delta;
+        fp.life += dt;
         const progress = fp.life / fp.maxLife;
 
-        fp.pos.addScaledVector(fp.vel, delta);
-        fp.vel.y -= 6.5 * delta; // Gravity
+        fp.pos.addScaledVector(fp.vel, dt);
+        fp.vel.y -= 6.5 * dt; // Gravity
         fp.vel.x *= 0.96;
         fp.vel.z *= 0.96;
 
         const writeIdx = i % this.maxFireworks;
-        posAttr.setXYZ(writeIdx, fp.pos.x, fp.pos.y, fp.pos.z);
+        if (Number.isFinite(fp.pos.x) && Number.isFinite(fp.pos.y) && Number.isFinite(fp.pos.z)) {
+          posAttr.setXYZ(writeIdx, fp.pos.x, fp.pos.y, fp.pos.z);
+        }
 
         const fade = Math.max(0, 1 - progress);
         colAttr.setXYZ(writeIdx, fp.color.r * fade, fp.color.g * fade, fp.color.b * fade);
@@ -567,17 +608,17 @@ export class VFXManager {
     // 6. Update 3D Confetti Ribbons
     for (let i = this.confetti3DList.length - 1; i >= 0; i--) {
       const cf = this.confetti3DList[i];
-      cf.life += delta;
+      cf.life += dt;
       const progress = cf.life / cf.maxLife;
 
-      cf.mesh.position.addScaledVector(cf.velocity, delta);
-      cf.velocity.y -= 7.5 * delta; // Gravity
+      cf.mesh.position.addScaledVector(cf.velocity, dt);
+      cf.velocity.y -= 7.5 * dt; // Gravity
       cf.velocity.x *= 0.98;
       cf.velocity.z *= 0.98;
 
-      cf.mesh.rotation.x += cf.rotVelocity.x * delta;
-      cf.mesh.rotation.y += cf.rotVelocity.y * delta;
-      cf.mesh.rotation.z += cf.rotVelocity.z * delta;
+      cf.mesh.rotation.x += cf.rotVelocity.x * dt;
+      cf.mesh.rotation.y += cf.rotVelocity.y * dt;
+      cf.mesh.rotation.z += cf.rotVelocity.z * dt;
 
       const mat = cf.mesh.material as THREE.MeshBasicMaterial;
       mat.opacity = Math.max(0, 1 - progress * 0.9);
@@ -593,18 +634,22 @@ export class VFXManager {
     // 7. Update Floating 3D Texts & Dollar Badges
     for (let i = this.floatingTexts.length - 1; i >= 0; i--) {
       const ft = this.floatingTexts[i];
-      ft.life -= delta;
-      ft.worldPos.y += ft.velocity * delta;
+      ft.life -= dt;
+      ft.worldPos.y += ft.velocity * dt;
       ft.velocity *= 0.95;
       ft.opacity = Math.max(0, ft.life / 1.5);
 
       // Project world coordinates to screen pixels
       const screenPos = ft.worldPos.clone().project(this.camera);
-      const x = (screenPos.x * 0.5 + 0.5) * window.innerWidth;
-      const y = (-(screenPos.y * 0.5) + 0.5) * window.innerHeight;
+      const w = typeof window !== 'undefined' ? window.innerWidth : 1920;
+      const h = typeof window !== 'undefined' ? window.innerHeight : 1080;
+      const x = (screenPos.x * 0.5 + 0.5) * w;
+      const y = (-(screenPos.y * 0.5) + 0.5) * h;
 
-      ft.element.style.left = `${x}px`;
-      ft.element.style.top = `${y}px`;
+      if (Number.isFinite(x) && Number.isFinite(y)) {
+        ft.element.style.left = `${x}px`;
+        ft.element.style.top = `${y}px`;
+      }
       ft.element.style.opacity = `${ft.opacity}`;
       ft.element.style.transform = `translate(-50%, -50%) scale(${0.85 + (1 - ft.opacity) * 0.45})`;
 
@@ -615,5 +660,72 @@ export class VFXManager {
         this.floatingTexts.splice(i, 1);
       }
     }
+  }
+
+  /**
+   * Dọn dẹp triệt để toàn bộ hạt, mesh, geometry, material, texture và DOM elements (Zero Memory Leak)
+   */
+  public dispose() {
+    // 1. Shockwaves
+    for (const sw of this.shockwaves) {
+      this.particleGroup.remove(sw.mesh);
+      sw.mesh.geometry.dispose();
+      (sw.mesh.material as THREE.Material).dispose();
+    }
+    this.shockwaves = [];
+
+    // 2. Smoke particles
+    for (const sp of this.smokeParticles) {
+      this.particleGroup.remove(sp.mesh);
+      sp.mesh.geometry.dispose();
+      (sp.mesh.material as THREE.Material).dispose();
+    }
+    this.smokeParticles = [];
+
+    // 3. 3D Confetti
+    for (const cf of this.confetti3DList) {
+      this.particleGroup.remove(cf.mesh);
+      cf.mesh.geometry.dispose();
+      (cf.mesh.material as THREE.Material).dispose();
+    }
+    this.confetti3DList = [];
+
+    // 4. Star Particles Points
+    if (this.starParticles) {
+      this.particleGroup.remove(this.starParticles);
+      this.starParticles.geometry.dispose();
+      const sMat = this.starParticles.material as THREE.PointsMaterial;
+      if (sMat.map) sMat.map.dispose();
+      sMat.dispose();
+      this.starParticles = null;
+    }
+
+    // 5. Firework Points
+    if (this.fireworkPoints) {
+      this.particleGroup.remove(this.fireworkPoints);
+      this.fireworkPoints.geometry.dispose();
+      const fMat = this.fireworkPoints.material as THREE.PointsMaterial;
+      if (fMat.map) fMat.map.dispose();
+      fMat.dispose();
+      this.fireworkPoints = null;
+    }
+    this.fireworkParticles = [];
+
+    // 6. Smoke Texture
+    if (this.smokeTexture) {
+      this.smokeTexture.dispose();
+      this.smokeTexture = null;
+    }
+
+    // 7. Floating Texts DOM
+    for (const ft of this.floatingTexts) {
+      if (ft.element.parentNode === this.domContainer) {
+        this.domContainer.removeChild(ft.element);
+      }
+    }
+    this.floatingTexts = [];
+
+    // 8. Particle Group
+    this.scene.remove(this.particleGroup);
   }
 }

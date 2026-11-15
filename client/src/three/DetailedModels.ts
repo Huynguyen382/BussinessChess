@@ -273,82 +273,82 @@ export class DetailedModels {
     const waterFalls: THREE.Mesh[] = [];
     const waterJets: THREE.Mesh[] = [];
 
-    // --- BẢNG VẬT LIỆU CAO CẤP DÙNG CHUNG ---
+    // --- BẢNG VẬT LIỆU CAO CẤP DÙNG CHUNG (High-End Stylized PBR) ---
     const marbleWhiteMat = DetailedModels.getMat('fountain_marble_white', () => new THREE.MeshStandardMaterial({
-      color: '#F8F9FA',
-      roughness: 0.24,
-      metalness: 0.06
+      color: '#FAF9F6',
+      roughness: 0.16,
+      metalness: 0.08
     }));
 
     const basaltMat = DetailedModels.getMat('fountain_basalt', () => new THREE.MeshStandardMaterial({
       color: '#2C3E50',
-      roughness: 0.48,
-      metalness: 0.18
+      roughness: 0.45,
+      metalness: 0.22
     }));
 
     const goldOrnamentMat = DetailedModels.getMat('fountain_gold', () => new THREE.MeshStandardMaterial({
-      color: '#F1C40F',
-      emissive: '#F1C40F',
-      emissiveIntensity: 0.35,
-      metalness: 0.92,
-      roughness: 0.14
+      color: '#FDCB6E',
+      emissive: '#FDCB6E',
+      emissiveIntensity: 0.42,
+      metalness: 0.94,
+      roughness: 0.10
     }));
 
     const mosaicMat = DetailedModels.getMat('fountain_mosaic', () => new THREE.MeshStandardMaterial({
       color: '#0A3D62',
-      roughness: 0.25,
-      metalness: 0.12
+      roughness: 0.22,
+      metalness: 0.15
     }));
 
     const poolWaterMat = DetailedModels.getMat('fountain_pool_water', () => new THREE.MeshStandardMaterial({
-      color: '#00A8FF',
-      emissive: '#00CEC9',
-      emissiveIntensity: 0.38,
+      color: '#00D2D3',
+      emissive: '#0984E3',
+      emissiveIntensity: 0.45,
       transparent: true,
-      opacity: 0.82,
-      roughness: 0.05,
-      metalness: 0.12
+      opacity: 0.86,
+      roughness: 0.03,
+      metalness: 0.15
     }));
 
     const cascadeMat = DetailedModels.getMat('fountain_cascade', () => new THREE.MeshStandardMaterial({
       color: '#74B9FF',
       emissive: '#E0F2FE',
-      emissiveIntensity: 0.55,
+      emissiveIntensity: 0.65,
       transparent: true,
-      opacity: 0.58,
+      opacity: 0.65,
       side: THREE.DoubleSide,
-      roughness: 0.1
+      roughness: 0.06
     }));
 
     const waterJetMat = DetailedModels.getMat('fountain_water_jet', () => new THREE.MeshStandardMaterial({
       color: '#81ECEC',
       emissive: '#E0F2FE',
-      emissiveIntensity: 0.80,
+      emissiveIntensity: 0.90,
       transparent: true,
-      opacity: 0.82,
-      roughness: 0.08
+      opacity: 0.85,
+      roughness: 0.05
     }));
 
     const foamMat = DetailedModels.getMat('fountain_foam', () => new THREE.MeshStandardMaterial({
       color: '#FFFFFF',
       emissive: '#E0F2FE',
-      emissiveIntensity: 0.50,
+      emissiveIntensity: 0.55,
       transparent: true,
-      opacity: 0.72,
-      roughness: 0.3
+      opacity: 0.78,
+      roughness: 0.25
     }));
 
     const diamondMat = DetailedModels.getMat('fountain_diamond', () => new THREE.MeshStandardMaterial({
-      color: '#00CEC9',
-      emissive: '#00CEC9',
-      emissiveIntensity: 1.45,
-      roughness: 0.05,
-      metalness: 0.1
+      color: '#FFF275',
+      emissive: '#FFEAA7',
+      emissiveIntensity: 1.65,
+      roughness: 0.03,
+      metalness: 0.15
     }));
 
     const royalCapeMat = DetailedModels.getMat('fountain_royal_cape', () => new THREE.MeshStandardMaterial({
       color: '#C0392B',
-      roughness: 0.65,
+      roughness: 0.55,
       side: THREE.DoubleSide
     }));
 
@@ -833,22 +833,24 @@ export class DetailedModels {
     const lamp = new THREE.Group();
 
     const ironMat = DetailedModels.getMat('lamp_iron', () => new THREE.MeshStandardMaterial({
-      color: '#2F3542',
-      roughness: 0.42,
-      metalness: 0.82
+      color: '#1E272E',
+      roughness: 0.35,
+      metalness: 0.88
     }));
     const goldMat = DetailedModels.getMat('lamp_gold', () => new THREE.MeshStandardMaterial({
-      color: '#F1C40F',
-      metalness: 0.85,
-      roughness: 0.2
+      color: '#FDCB6E',
+      emissive: '#FDCB6E',
+      emissiveIntensity: 0.35,
+      metalness: 0.94,
+      roughness: 0.12
     }));
     const glassMat = DetailedModels.getMat('lamp_glass', () => new THREE.MeshStandardMaterial({
       color: '#FFF275',
-      emissive: '#FFB142',
-      emissiveIntensity: 1.2,
+      emissive: '#FDCB6E',
+      emissiveIntensity: 1.35,
       transparent: true,
-      opacity: 0.85,
-      roughness: 0.15
+      opacity: 0.88,
+      roughness: 0.10
     }));
     const bulbMat = DetailedModels.getMat('lamp_bulb', () => new THREE.MeshBasicMaterial({
       color: '#FFFFFF'
@@ -946,19 +948,19 @@ export class DetailedModels {
     const bench = new THREE.Group();
 
     const woodMat = DetailedModels.getMat('bench_cedar_wood', () => new THREE.MeshStandardMaterial({
-      color: '#A0522D',
-      roughness: 0.50,
-      metalness: 0.05
+      color: '#B33925',
+      roughness: 0.38,
+      metalness: 0.04
     }));
     const ironMat = DetailedModels.getMat('bench_cast_iron', () => new THREE.MeshStandardMaterial({
-      color: '#2F3542',
-      roughness: 0.35,
-      metalness: 0.85
+      color: '#1E272E',
+      roughness: 0.28,
+      metalness: 0.88
     }));
     const boltMat = DetailedModels.getMat('bench_brass_bolt', () => new THREE.MeshStandardMaterial({
-      color: '#F1C40F',
-      metalness: 0.9,
-      roughness: 0.2
+      color: '#FDCB6E',
+      metalness: 0.95,
+      roughness: 0.12
     }));
 
     const makeLeg = (lx: number, hasArm = true) => {
