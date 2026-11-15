@@ -668,7 +668,7 @@ test('BuildingMesh Level 0: Owner boundary stake & plaque with custom owner colo
   assert(plaqueFound, 'Level 0 plaque must use the owner color (#E84118)');
 });
 
-test('BuildingMesh Level 1: Cozy cottage (cream walls, coral roof, chimney, glowing windows)', () => {
+test('BuildingMesh Level 1: Cozy cottage (cream walls, coral roof, chimney, glowing windows, flower fence & smoke)', () => {
   const bm = new BuildingMesh();
   bm.updateBuilding(3, 1, new THREE.Vector3(0, 0, 0), 0);
   const bGroup = (bm as any).buildingMap.get(3);
@@ -677,19 +677,29 @@ test('BuildingMesh Level 1: Cozy cottage (cream walls, coral roof, chimney, glow
 
   let roofFound = false;
   let chimneyFound = false;
+  let smokeAnimFound = false;
+  let planterFound = false;
   bGroup.traverse((child: any) => {
     if (child.isMesh && child.geometry instanceof THREE.ConeGeometry) {
       roofFound = true;
     }
-    if (child.isMesh && child.geometry?.type === 'BoxGeometry') {
+    if (child.isMesh && (child.geometry?.type === 'BoxGeometry' || child.geometry?.type === 'RoundedBoxGeometry')) {
       chimneyFound = true;
+    }
+    if (child.isMesh && child.geometry instanceof THREE.CylinderGeometry) {
+      planterFound = true;
+    }
+    if (child.userData?.animType === 'flicker') {
+      smokeAnimFound = true;
     }
   });
   assert(roofFound, 'Level 1 cottage must have a pyramidal shingled roof');
   assert(chimneyFound, 'Level 1 cottage must have a chimney / wall boxes');
+  assert(planterFound, 'Level 1 cottage must have a terracotta flower planter');
+  assert(smokeAnimFound, 'Level 1 cottage must have animated chimney smoke puffs with flicker animType');
 });
 
-test('BuildingMesh Level 2: Luxury villa (stepped 2-tier, balcony flowerbox, hipped roof)', () => {
+test('BuildingMesh Level 2: Luxury villa (stepped 2-tier, balcony flowerbox, hipped roof, mini lawn & pool)', () => {
   const bm = new BuildingMesh();
   bm.updateBuilding(6, 2, new THREE.Vector3(0, 0, 0), 0);
   const bGroup = (bm as any).buildingMap.get(6);
@@ -697,13 +707,21 @@ test('BuildingMesh Level 2: Luxury villa (stepped 2-tier, balcony flowerbox, hip
   assert.strictEqual(bGroup.position.y, 0.305, 'Baseline must sit flush at y = 0.305');
 
   let meshCount = 0;
+  let poolWaterFound = false;
+  let roofFound = false;
   bGroup.traverse((child: any) => {
-    if (child.isMesh) meshCount++;
+    if (child.isMesh) {
+      meshCount++;
+      if (child.geometry instanceof THREE.PlaneGeometry) poolWaterFound = true;
+      if (child.geometry instanceof THREE.ConeGeometry) roofFound = true;
+    }
   });
-  assert(meshCount >= 8, `Level 2 villa expected >= 8 meshes, found ${meshCount}`);
+  assert(meshCount >= 10, `Level 2 villa expected >= 10 meshes, found ${meshCount}`);
+  assert(poolWaterFound, 'Level 2 villa must feature a turquoise swimming pool water plane');
+  assert(roofFound, 'Level 2 villa must feature a hipped pyramid roof');
 });
 
-test('BuildingMesh Level 3: Modern skyscraper (cyan reflective glass, gold antenna, red beacon)', () => {
+test('BuildingMesh Level 3: Modern skyscraper (cyan reflective glass, gold antenna, red beacon & infinity pool)', () => {
   const bm = new BuildingMesh();
   bm.updateBuilding(8, 3, new THREE.Vector3(0, 0, 0), 0);
   const bGroup = (bm as any).buildingMap.get(8);
@@ -712,15 +730,21 @@ test('BuildingMesh Level 3: Modern skyscraper (cyan reflective glass, gold anten
 
   let antennaFound = false;
   let beaconFound = false;
+  let poolFound = false;
+  let beaconAnimFound = false;
   bGroup.traverse((child: any) => {
     if (child.isMesh && child.geometry instanceof THREE.CylinderGeometry) antennaFound = true;
     if (child.isMesh && child.geometry instanceof THREE.SphereGeometry) beaconFound = true;
+    if (child.isMesh && child.geometry instanceof THREE.PlaneGeometry) poolFound = true;
+    if (child.userData?.animType === 'pulse_red') beaconAnimFound = true;
   });
   assert(antennaFound, 'Level 3 skyscraper must feature communications antenna');
   assert(beaconFound, 'Level 3 skyscraper must feature red warning aircraft beacon orb');
+  assert(beaconAnimFound, 'Level 3 beacon orb must feature pulse_red animType');
+  assert(poolFound, 'Level 3 mansion must feature sky infinity pool');
 });
 
-test('BuildingMesh Level 4: Royal 5-Star Hotel (sapphire tower, red carpet, helipad, crown, crystal orb)', () => {
+test('BuildingMesh Level 4: Royal 5-Star Hotel (sapphire tower, red carpet, stanchions, helipad, crown, crystal orb & hotel sign)', () => {
   const bm = new BuildingMesh();
   bm.updateBuilding(9, 4, new THREE.Vector3(0, 0, 0), 0);
   const bGroup = (bm as any).buildingMap.get(9);
@@ -730,14 +754,40 @@ test('BuildingMesh Level 4: Royal 5-Star Hotel (sapphire tower, red carpet, heli
   let helipadFound = false;
   let crownFound = false;
   let orbFound = false;
+  let carpetFound = false;
+  let helipadAnimFound = false;
   bGroup.traverse((child: any) => {
     if (child.isMesh && child.geometry instanceof THREE.ConeGeometry) crownFound = true;
     if (child.isMesh && child.geometry instanceof THREE.CylinderGeometry) helipadFound = true;
     if (child.isMesh && child.geometry instanceof THREE.SphereGeometry) orbFound = true;
+    if (child.isMesh && child.geometry instanceof THREE.PlaneGeometry) carpetFound = true;
+    if (child.userData?.animType === 'spin_y') helipadAnimFound = true;
   });
   assert(crownFound, 'Level 4 hotel must feature Art Deco gold crown (ConeGeometry)');
   assert(helipadFound, 'Level 4 hotel must feature rooftop helipad cylinder');
   assert(orbFound, 'Level 4 hotel must feature glowing crystal spire orb');
+  assert(carpetFound, 'Level 4 hotel must feature royal VIP red carpet');
+  assert(helipadAnimFound, 'Level 4 hotel must feature rotating helipad beacon lights with spin_y animType');
+});
+
+test('BuildingMesh Business Tour architectural Zone A alignment (z = ±0.72) preventing landmark collisions', () => {
+  const bm = new BuildingMesh();
+  // Side 1 (tile 5): buildingZ must be -0.72
+  bm.updateBuilding(5, 2, new THREE.Vector3(0, 0, 0), 0);
+  const bGroup5 = (bm as any).buildingMap.get(5);
+  assert(bGroup5, 'Building for tile 5 must exist');
+  const subGroup5 = bGroup5.children.find((c: any) => c instanceof THREE.Group && c.position.z !== 0);
+  assert(subGroup5, 'Subgroup for tile 5 must be shifted into Zone A');
+  assert.strictEqual(subGroup5.position.z, -0.72, 'Tile 5 must reside in front zone A at z = -0.72');
+
+  // Side 3 (tile 25): buildingZ must be +0.72 with flipped orientation
+  bm.updateBuilding(25, 4, new THREE.Vector3(0, 0, 0), 0);
+  const bGroup25 = (bm as any).buildingMap.get(25);
+  assert(bGroup25, 'Building for tile 25 must exist');
+  const subGroup25 = bGroup25.children.find((c: any) => c instanceof THREE.Group && c.position.z !== 0);
+  assert(subGroup25, 'Subgroup for tile 25 must be shifted into Zone A');
+  assert.strictEqual(subGroup25.position.z, 0.72, 'Tile 25 must reside in front zone A at z = +0.72');
+  assert.strictEqual(subGroup25.rotation.y, Math.PI, 'Side 3 building must rotate PI to face inwards towards board avenue');
 });
 
 test('BuildingMesh delta-driven bounce animation update (without setInterval)', () => {
