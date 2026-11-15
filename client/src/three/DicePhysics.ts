@@ -18,6 +18,8 @@ export class DicePhysics {
   private hasTriggeredImpactVFX: boolean = false;
   private currentD1: number = 1;
   private currentD2: number = 1;
+  private currentSkinId: string = 'dice_ivory';
+  private skinMaterialsCache: Map<string, THREE.Material[]> = new Map();
   private onRollCompleteCallback: (() => void) | null = null;
 
   // Góc xoay mặt xúc xắc theo chuẩn Three.js BoxGeometry
@@ -42,7 +44,7 @@ export class DicePhysics {
     // 🎲 Khay Đổ Xúc Xắc Cổ Điển Hoàng Gia (Royal Velvet Rolling Tray)
     this.createDiceTray();
 
-    const materials = this.createDiceMaterials();
+    const materials = this.getOrCreateSkinMaterials('dice_ivory');
     // Viên xúc xắc to lớn, bo tròn góc mềm mại đạt chuẩn Monopoly GO! (1.4 x 1.4 x 1.4)
     const geometry = new RoundedBoxGeometry(1.4, 1.4, 1.4, 5, 0.25);
 
@@ -147,8 +149,82 @@ export class DicePhysics {
     this.vfxManager = vfx;
   }
 
-  // Kết cấu mặt xúc xắc độ phân giải Retina 512x512
-  private createDiceMaterials(): THREE.Material[] {
+  public setDiceSkin(skinId: string) {
+    const normalized = ['dice_ivory', 'dice_gold', 'dice_emerald', 'dice_obsidian', 'dice_ruby'].includes(skinId)
+      ? skinId
+      : 'dice_ivory';
+    if (this.currentSkinId === normalized) return;
+    this.currentSkinId = normalized;
+    const materials = this.getOrCreateSkinMaterials(normalized);
+    this.die1.material = materials;
+    this.die2.material = materials;
+  }
+
+  private getOrCreateSkinMaterials(skinId: string): THREE.Material[] {
+    const cached = this.skinMaterialsCache.get(skinId);
+    if (cached) return cached;
+    const created = this.createDiceMaterials(skinId);
+    this.skinMaterialsCache.set(skinId, created);
+    return created;
+  }
+
+  // Kết cấu mặt xúc xắc độ phân giải Retina 512x512 theo Skin
+  private createDiceMaterials(skinId: string = 'dice_ivory'): THREE.Material[] {
+    const skinConfigs: Record<string, {
+      bgStops: [string, string, string];
+      border: string;
+      pipOne: string;
+      pipOther: string;
+      roughness: number;
+      metalness: number;
+      emissive?: string;
+      emissiveIntensity?: number;
+    }> = {
+      dice_ivory: {
+        bgStops: ['#FFFFFF', '#F8F9FA', '#DFE4EA'],
+        border: 'rgba(0, 0, 0, 0.06)',
+        pipOne: '#D63031',
+        pipOther: '#1E272E',
+        roughness: 0.2,
+        metalness: 0.04
+      },
+      dice_gold: {
+        bgStops: ['#FFF3B0', '#F1C40F', '#B7860B'],
+        border: 'rgba(120, 75, 0, 0.25)',
+        pipOne: '#C0392B',
+        pipOther: '#2C1E0F',
+        roughness: 0.14,
+        metalness: 0.88
+      },
+      dice_emerald: {
+        bgStops: ['#55EFC4', '#00B894', '#006241'],
+        border: 'rgba(255, 234, 167, 0.35)',
+        pipOne: '#FFEAA7',
+        pipOther: '#FFFDF7',
+        roughness: 0.16,
+        metalness: 0.28
+      },
+      dice_obsidian: {
+        bgStops: ['#2D3436', '#1E272E', '#0B0F13'],
+        border: 'rgba(0, 206, 201, 0.45)',
+        pipOne: '#FD79A8',
+        pipOther: '#00CEC9',
+        roughness: 0.12,
+        metalness: 0.55,
+        emissive: '#00CEC9',
+        emissiveIntensity: 0.18
+      },
+      dice_ruby: {
+        bgStops: ['#FF7675', '#D63031', '#8E1616'],
+        border: 'rgba(255, 234, 167, 0.35)',
+        pipOne: '#FFEAA7',
+        pipOther: '#FFFFFF',
+        roughness: 0.16,
+        metalness: 0.32
+      }
+    };
+
+    const cfg = skinConfigs[skinId] || skinConfigs.dice_ivory;
     const faceIndices = [3, 4, 1, 6, 2, 5];
     return faceIndices.map(num => {
       const canvas = document.createElement('canvas');
@@ -156,29 +232,27 @@ export class DicePhysics {
       canvas.height = 512;
       const ctx = canvas.getContext('2d')!;
 
-      // Nền men sứ ngà bóng bẩy (Porcelain Gloss White)
       const bgGrad = ctx.createRadialGradient(256, 256, 60, 256, 256, 340);
-      bgGrad.addColorStop(0, '#FFFFFF');
-      bgGrad.addColorStop(0.8, '#F8F9FA');
-      bgGrad.addColorStop(1, '#DFE4EA');
+      bgGrad.addColorStop(0, cfg.bgStops[0]);
+      bgGrad.addColorStop(0.8, cfg.bgStops[1]);
+      bgGrad.addColorStop(1, cfg.bgStops[2]);
       ctx.fillStyle = bgGrad;
       ctx.fillRect(0, 0, 512, 512);
 
       // Viền vát cạnh bóng mờ
-      ctx.strokeStyle = 'rgba(0, 0, 0, 0.06)';
+      ctx.strokeStyle = cfg.border;
       ctx.lineWidth = 24;
       ctx.strokeRect(12, 12, 488, 488);
 
-      // Mặt 1 là nút Đỏ Ruby (#D63031) siêu to, các mặt 2-6 là màu Than Đen sâu (#1E272E)
       const dot = (x: number, y: number, r = 48) => {
         // Drop shadow cho chấm xúc xắc
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.28)';
         ctx.beginPath();
         ctx.arc(x, y + 4, r + 2, 0, Math.PI * 2);
         ctx.fill();
 
         // Chấm màu chính
-        ctx.fillStyle = num === 1 ? '#D63031' : '#1E272E';
+        ctx.fillStyle = num === 1 ? cfg.pipOne : cfg.pipOther;
         ctx.beginPath();
         ctx.arc(x, y, r, 0, Math.PI * 2);
         ctx.fill();
@@ -207,8 +281,10 @@ export class DicePhysics {
 
       return new THREE.MeshStandardMaterial({
         map: texture,
-        roughness: 0.2,
-        metalness: 0.04
+        roughness: cfg.roughness,
+        metalness: cfg.metalness,
+        emissive: cfg.emissive ? new THREE.Color(cfg.emissive) : new THREE.Color(0x000000),
+        emissiveIntensity: cfg.emissiveIntensity || 0
       });
     });
   }

@@ -26,14 +26,22 @@ export class BoardScene {
   public onTileClick: ((tileId: number, tile: BoardTileMeta) => void) | null = null;
   private tileMeshList: { mesh: THREE.Mesh; tileId: number }[] = [];
   private highlightBox: THREE.Mesh | null = null;
+  private festivalGroup: THREE.Group | null = null;
+  private festivalRing: THREE.Mesh | null = null;
+  private festivalEmblem: THREE.Group | null = null;
+  private festivalBadge: THREE.Sprite | null = null;
+  private currentFestivalTileId: number | null = null;
   private tilesParentGroup = new THREE.Group();
 
   private tilePositions: THREE.Vector3[] = [];
   private tileRotations: number[] = [];
   private animatedLandmarks: THREE.Group[] = [];
+  private animatedNodes: { node: THREE.Object3D; animType: string; landmarkIdx: number }[] = [];
   private tileLandmarkMap: Map<number, THREE.Group> = new Map();
 
   private clock = new THREE.Clock();
+  private rafId: number | null = null;
+  private boundOnResize: () => void;
 
   constructor(container: HTMLElement) {
     this.scene = new THREE.Scene();
@@ -42,22 +50,25 @@ export class BoardScene {
     this.scene.background = new THREE.Color('#DFE7F0');
     this.scene.fog = new THREE.FogExp2('#DFE7F0', 0.0058);
 
+    const isMobile = this.isMobileDevice();
     this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
     this.renderer.setSize(window.innerWidth, window.innerHeight);
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, isMobile ? 1.5 : 2));
+    this.renderer.domElement.style.touchAction = 'none';
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
-    // Cinematic Tone Mapping with crisp contrast and rich dynamic range
-    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.18;
+    // Matte Ceramic & Warm Studio Diorama Tone Mapping (Calm, non-glare color balance)
+    this.renderer.toneMapping = THREE.NeutralToneMapping;
+    this.renderer.toneMappingExposure = 0.94;
 
     container.appendChild(this.renderer.domElement);
 
     this.cameraManager = new CameraManager(this.renderer.domElement);
     this.vfxManager = new VFXManager(this.scene, this.cameraManager.camera, container);
     this.tokenManager = new TokenManager();
+    this.tokenManager.setVFXManager(this.vfxManager);
     this.dicePhysics = new DicePhysics();
     this.dicePhysics.setVFXManager(this.vfxManager);
     this.buildingMesh = new BuildingMesh();
@@ -69,7 +80,10 @@ export class BoardScene {
     this.scene.add(this.tilesParentGroup);
 
     this.setupLighting();
-    this.environment = new BoardEnvironment(this.scene);
+    this.environment = new BoardEnvironment(this.scene, this.renderer);
+    if ('environmentIntensity' in this.scene) {
+      (this.scene as any).environmentIntensity = 0.50;
+    }
     if (this.dirSunLight) {
       this.environment.setSunDirection(this.dirSunLight.position);
     }
@@ -79,18 +93,31 @@ export class BoardScene {
 
     this.setupTileRaycaster(container);
 
+    this.boundOnResize = this.onResize.bind(this);
     this.animate = this.animate.bind(this);
-    requestAnimationFrame(this.animate);
+    this.rafId = requestAnimationFrame(this.animate);
 
-    window.addEventListener('resize', this.onResize.bind(this));
+    window.addEventListener('resize', this.boundOnResize);
+  }
+
+  private isMobileDevice(): boolean {
+    return window.innerWidth <= 768 || (typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0);
   }
 
   // Tương tác chạm/click để tra cứu chi tiết tức thì bất kỳ ô nào trên bàn cờ
   private setupTileRaycaster(_container: HTMLElement) {
     let downX = 0;
     let downY = 0;
+    let activePointerId: number | null = null;
+    let isMultiTouch = false;
 
     this.renderer.domElement.addEventListener('pointerdown', (e) => {
+      if (activePointerId !== null && activePointerId !== e.pointerId) {
+        isMultiTouch = true;
+        return;
+      }
+      activePointerId = e.pointerId;
+      isMultiTouch = false;
       downX = e.clientX;
       downY = e.clientY;
     });
@@ -120,8 +147,17 @@ export class BoardScene {
     };
 
     this.renderer.domElement.addEventListener('pointerup', (e) => {
+      if (e.pointerId !== activePointerId) {
+        return;
+      }
+      activePointerId = null;
+      if (isMultiTouch) {
+        isMultiTouch = false;
+        return;
+      }
+
       const dist = Math.hypot(e.clientX - downX, e.clientY - downY);
-      if (dist > 8) return; // Kéo xoay màn hình, không phải click chọn
+      if (dist >= 8) return; // Kéo xoay màn hình, không phải click chọn
 
       const tileId = getIntersectedTileId(e);
       if (tileId !== null && this.boardTiles[tileId]) {
@@ -134,8 +170,14 @@ export class BoardScene {
       }
     });
 
-    // Con trỏ bàn tay (cursor pointer) khi rê chuột qua bất kỳ danh thắng hoặc ô cờ nào
+    this.renderer.domElement.addEventListener('pointercancel', () => {
+      activePointerId = null;
+      isMultiTouch = false;
+    });
+
+    // Con trỏ bàn tay (cursor pointer) khi rê chuột qua bất kỳ danh thắng hoặc ô cờ nào (bỏ qua trên touch)
     this.renderer.domElement.addEventListener('pointermove', (e) => {
+      if (e.pointerType === 'touch') return;
       const tileId = getIntersectedTileId(e);
       this.renderer.domElement.style.cursor = tileId !== null ? 'pointer' : 'default';
     });
@@ -174,6 +216,129 @@ export class BoardScene {
     }
   }
 
+  private createFestivalMarker(): THREE.Group {
+    const root = new THREE.Group();
+
+    // 1. Vòng hào quang vàng-hồng trên mặt ô cờ (x2 Rent Aura)
+    const ringGeo = new THREE.RingGeometry(0.95, 1.18, 36);
+    ringGeo.rotateX(-Math.PI / 2);
+    const ringMat = new THREE.MeshBasicMaterial({
+      color: '#FD79A8',
+      transparent: true,
+      opacity: 0.78,
+      side: THREE.DoubleSide,
+      depthWrite: false
+    });
+    this.festivalRing = new THREE.Mesh(ringGeo, ringMat);
+    this.festivalRing.position.y = 0.015;
+    root.add(this.festivalRing);
+
+    // 2. Viền sáng vàng kim cố định quanh mép ô
+    const borderGeo = new THREE.RingGeometry(0.86, 0.94, 36);
+    borderGeo.rotateX(-Math.PI / 2);
+    const borderMat = new THREE.MeshBasicMaterial({
+      color: '#FDCB6E',
+      transparent: true,
+      opacity: 0.9,
+      side: THREE.DoubleSide,
+      depthWrite: false
+    });
+    const borderRing = new THREE.Mesh(borderGeo, borderMat);
+    borderRing.position.y = 0.012;
+    root.add(borderRing);
+
+    // 3. Biểu tượng vương miện / pha lê Lễ Hội bay lơ lửng phía trên
+    const emblem = new THREE.Group();
+    emblem.position.y = 2.45;
+
+    const crystalGeo = new THREE.OctahedronGeometry(0.28, 0);
+    const crystalMat = new THREE.MeshStandardMaterial({
+      color: '#F1C40F',
+      emissive: '#E84393',
+      emissiveIntensity: 0.75,
+      metalness: 0.75,
+      roughness: 0.15
+    });
+    const crystal = new THREE.Mesh(crystalGeo, crystalMat);
+    emblem.add(crystal);
+
+    const haloGeo = new THREE.TorusGeometry(0.42, 0.032, 8, 28);
+    haloGeo.rotateX(Math.PI / 2);
+    const haloMat = new THREE.MeshBasicMaterial({
+      color: '#FFEAA7',
+      transparent: true,
+      opacity: 0.9
+    });
+    const halo = new THREE.Mesh(haloGeo, haloMat);
+    emblem.add(halo);
+
+    this.festivalEmblem = emblem;
+    root.add(emblem);
+
+    // 4. Bảng hiệu 🎪 LỄ HỘI x2 nổi bật nhìn rõ từ mọi góc camera
+    const canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 80;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      const grad = ctx.createLinearGradient(0, 0, 256, 80);
+      grad.addColorStop(0, '#E84393');
+      grad.addColorStop(1, '#F39C12');
+      ctx.fillStyle = grad;
+      this.drawRoundedRect(ctx, 4, 4, 248, 72, 36);
+      ctx.fill();
+
+      ctx.strokeStyle = '#FFEAA7';
+      ctx.lineWidth = 5;
+      ctx.stroke();
+
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = '900 30px system-ui, -apple-system, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('🎪 LỄ HỘI x2', 128, 41);
+    }
+    const badgeTex = new THREE.CanvasTexture(canvas);
+    const badgeMat = new THREE.SpriteMaterial({
+      map: badgeTex,
+      transparent: true,
+      depthTest: false
+    });
+    this.festivalBadge = new THREE.Sprite(badgeMat);
+    this.festivalBadge.scale.set(1.9, 0.6, 1);
+    this.festivalBadge.position.set(0, 3.15, 0);
+    root.add(this.festivalBadge);
+
+    root.visible = false;
+    this.scene.add(root);
+    return root;
+  }
+
+  public setFestivalTile(tileId: number | null) {
+    if (tileId === this.currentFestivalTileId) return;
+    this.currentFestivalTileId = tileId;
+
+    if (tileId === null || !this.tilePositions[tileId]) {
+      if (this.festivalGroup) {
+        this.festivalGroup.visible = false;
+      }
+      return;
+    }
+
+    if (!this.festivalGroup) {
+      this.festivalGroup = this.createFestivalMarker();
+    }
+
+    const pos = this.tilePositions[tileId];
+    this.festivalGroup.position.set(pos.x, 0.305, pos.z);
+    this.festivalGroup.rotation.y = this.tileRotations[tileId] || 0;
+    this.festivalGroup.visible = true;
+
+    const vfxPos = new THREE.Vector3(pos.x, 0.35, pos.z);
+    this.vfxManager.spawnShockwave(vfxPos, '#E84393', 2.8);
+    this.vfxManager.spawnStarBurst(vfxPos, 24, 0xFDCB6E);
+  }
+
   private bounceLandmark(lm: THREE.Group) {
     if (lm.userData.__bounceInterval) {
       clearInterval(lm.userData.__bounceInterval);
@@ -204,13 +369,15 @@ export class BoardScene {
   private dirSunLight: THREE.DirectionalLight | null = null;
 
   private setupLighting() {
-    // 1. Warm Key Sun Light (Morning Sunbeam) - Crisp directional light with clean shadows
-    const dirLight = new THREE.DirectionalLight('#FFF5E4', 1.68);
+    // 1. Warm Key Sun Light (Morning Sunbeam) - 4096px crisp directional shadows on PC/Desktop
+    const isMobile = this.isMobileDevice();
+    const shadowRes = isMobile ? 1024 : 4096;
+    const dirLight = new THREE.DirectionalLight('#FFF5E4', 1.20);
     dirLight.position.set(26, 42, 24);
     dirLight.castShadow = true;
-    dirLight.shadow.mapSize.width = 2048;
-    dirLight.shadow.mapSize.height = 2048;
-    dirLight.shadow.radius = 2.2;
+    dirLight.shadow.mapSize.width = shadowRes;
+    dirLight.shadow.mapSize.height = shadowRes;
+    dirLight.shadow.radius = isMobile ? 2.2 : 1.6;
     dirLight.shadow.camera.near = 0.5;
     dirLight.shadow.camera.far = 130;
     const d = 26;
@@ -218,13 +385,13 @@ export class BoardScene {
     dirLight.shadow.camera.right = d;
     dirLight.shadow.camera.top = d;
     dirLight.shadow.camera.bottom = -d;
-    dirLight.shadow.bias = -0.00015;
-    dirLight.shadow.normalBias = 0.024; // Prevents shadow acne on beveled geometries and curved surfaces
+    dirLight.shadow.bias = -0.0001;
+    dirLight.shadow.normalBias = 0.018; // Eliminates shadow acne on fine architectural details
     this.scene.add(dirLight);
     this.dirSunLight = dirLight;
 
     // 2. Warm Ambient Bounce from Oak Table and Walls
-    const hemiLight = new THREE.HemisphereLight('#EBF4FF', '#E8C99B', 0.88);
+    const hemiLight = new THREE.HemisphereLight('#EBF4FF', '#E8C99B', 0.82);
     this.scene.add(hemiLight);
 
     // 3. Soft Blue Sky Secondary Bounce Fill Light
@@ -233,12 +400,12 @@ export class BoardScene {
     this.scene.add(fillLight);
 
     // 4. Rim / Silhouette Accent Light - Sharpens edges and landmark silhouettes against background
-    const rimLight = new THREE.DirectionalLight('#FFF3D6', 0.52);
+    const rimLight = new THREE.DirectionalLight('#FFF0CC', 0.48);
     rimLight.position.set(-22, 28, 22);
     this.scene.add(rimLight);
 
     // 5. Upward Oak Tabletop Bounce Fill (Subtle warm GI reflection to lift dark undersides)
-    const bounceLight = new THREE.DirectionalLight('#FFE5B4', 0.24);
+    const bounceLight = new THREE.DirectionalLight('#FFE5B4', 0.20);
     bounceLight.position.set(12, -8, 12);
     this.scene.add(bounceLight);
   }
@@ -295,17 +462,18 @@ export class BoardScene {
     this.tilesParentGroup.clear();
     this.tileMeshList = [];
     this.animatedLandmarks = [];
+    this.animatedNodes = [];
     this.tileLandmarkMap.clear();
 
     const baseMat = LandmarkModels.getMat('boardTileBaseMat', () => new THREE.MeshStandardMaterial({
-      color: '#FCFCFC',
-      roughness: 0.28,
-      metalness: 0.04
+      color: '#F6F4EE',
+      roughness: 0.78,
+      metalness: 0.02
     }));
     const cornerPlinthMat = LandmarkModels.getMat('boardCornerPlinthMat', () => new THREE.MeshStandardMaterial({
-      color: '#2D3436',
-      metalness: 0.75,
-      roughness: 0.3
+      color: '#2C3437',
+      metalness: 0.08,
+      roughness: 0.82
     }));
 
     for (let i = 0; i < 40; i++) {
@@ -403,7 +571,7 @@ export class BoardScene {
         if (corner3D) {
           corner3D.position.set(0, tileHeight / 2 + 0.010, 0);
           tileGroup.add(corner3D);
-          this.animatedLandmarks.push(corner3D);
+          this.registerAnimatedLandmark(corner3D);
           this.tileLandmarkMap.set(i, corner3D);
         }
       } else {
@@ -414,8 +582,8 @@ export class BoardScene {
         const subPlinthColor = tile.districtColor || (tile.type === 'RAILROAD' ? '#2F3542' : tile.type === 'UTILITY' ? '#0984E3' : tile.type === 'TAX' ? (i === 38 ? '#6C5CE7' : '#D63031') : '#BDC3C7');
         const subPlinthMat = LandmarkModels.getMat(`subPlinth_${subPlinthColor}`, () => new THREE.MeshStandardMaterial({
           color: subPlinthColor,
-          roughness: 0.35,
-          metalness: 0.25
+          roughness: 0.70,
+          metalness: 0.05
         }));
 
         // 1. Đế chân giật cấp viền màu phân khu (Sub-plinth)
@@ -439,6 +607,9 @@ export class BoardScene {
         const labelMesh = this.createTileLabel(tile, lm, normalWidth * 0.95, cornerSize * 0.95);
         labelMesh.position.y = tileHeight / 2 + 0.004;
         labelMesh.rotation.x = -Math.PI / 2;
+        if (isSide3) {
+          labelMesh.rotation.z = Math.PI;
+        }
         tileGroup.add(labelMesh);
 
         // 4. MÔ HÌNH 3D ĐỘC BẢN: Chỉ gắn cho 22 Địa Danh (TIER 1) và 4 Ga Tàu Hỏa (TIER 3)
@@ -456,7 +627,7 @@ export class BoardScene {
           landmark3D.position.set(0, tileHeight / 2 + 0.010, landmarkZ);
           landmark3D.rotation.y = isSide3 ? Math.PI : 0;
           tileGroup.add(landmark3D);
-          this.animatedLandmarks.push(landmark3D);
+          this.registerAnimatedLandmark(landmark3D);
           this.tileLandmarkMap.set(i, landmark3D);
         }
       }
@@ -823,9 +994,10 @@ export class BoardScene {
       ctx.lineWidth = 6;
       ctx.stroke();
 
+      const taxAmt = tile.taxAmount ?? (isLuxuryTax ? 100 : 200);
       ctx.fillStyle = taxPrimary;
       ctx.font = '900 66px "Fredoka", sans-serif';
-      ctx.fillText('-100M', 320, 895);
+      ctx.fillText(`-${taxAmt}M`, 320, 895);
     }
 
     // Vạch kẻ phân làn & gờ nổi tích hợp tự nhiên vào mép ô cờ
@@ -964,7 +1136,7 @@ export class BoardScene {
 
       ctx.fillStyle = '#FFEAA7';
       ctx.font = '900 52px system-ui, sans-serif';
-      ctx.fillText('Bay Về GO Nhận 200M', 512, 760);
+      ctx.fillText('Bay Đến Ô Bất Kỳ', 512, 760);
     }
 
     const texture = new THREE.CanvasTexture(canvas);
@@ -1047,13 +1219,28 @@ export class BoardScene {
   }
 
   private onResize() {
+    const isMobile = this.isMobileDevice();
     this.renderer.setSize(window.innerWidth, window.innerHeight);
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, isMobile ? 1.5 : 2));
     this.cameraManager.onResize();
   }
 
+  private registerAnimatedLandmark(lm: THREE.Group) {
+    const landmarkIdx = this.animatedLandmarks.length;
+    this.animatedLandmarks.push(lm);
+    lm.traverse((child) => {
+      if (child.userData && typeof child.userData.animType === 'string') {
+        this.animatedNodes.push({
+          node: child,
+          animType: child.userData.animType,
+          landmarkIdx
+        });
+      }
+    });
+  }
+
   private animate() {
-    requestAnimationFrame(this.animate);
+    this.rafId = requestAnimationFrame(this.animate);
     const rawDelta = this.clock.getDelta();
     const delta = Math.min(rawDelta, 0.08); // Giới hạn delta an toàn, ngăn giật khựng trên màn hình 60Hz-144Hz và khi chuyển tab
     const elapsedTime = this.clock.getElapsedTime();
@@ -1072,37 +1259,48 @@ export class BoardScene {
     // Cập nhật hoạt ảnh môi trường (đài phun nước, xe cộ, cây cối, khói cà phê, bụi nắng, sóng nước, đom đóm)
     this.environment.update(delta, elapsedTime, this.cameraManager.camera);
 
-    // Micro-animations cho các bộ phận chi tiết của các kỳ quan và mô hình trên bàn cờ
-    this.animatedLandmarks.forEach((lm, idx) => {
-      // Xử lý chuyển động vi mô cho các bộ phận chi tiết của kỳ quan
-      lm.traverse((child) => {
-        if (child.userData && child.userData.animType) {
-          const type = child.userData.animType;
-          if (type === 'spin_y') {
-            child.rotation.y += delta * 1.5;
-          } else if (type === 'rotate_pulse') {
-            child.rotation.y += delta * 2.2;
-            const mat = (child as THREE.Mesh).material as THREE.MeshStandardMaterial;
-            if (mat && mat.emissiveIntensity !== undefined) {
-              mat.emissiveIntensity = 0.9 + Math.sin(elapsedTime * 6) * 0.4;
-            }
-          } else if (type === 'flicker') {
-            const scale = 1 + Math.sin(elapsedTime * 14) * 0.12;
-            child.scale.set(scale, scale * (1 + Math.cos(elapsedTime * 10) * 0.1), scale);
-          } else if (type === 'pulse_red') {
-            const pulse = (Math.sin(elapsedTime * 10) + 1) * 0.5;
-            child.scale.setScalar(0.9 + pulse * 0.25);
-          } else if (type === 'lighthouse') {
-            const mat = (child as THREE.Mesh).material as THREE.MeshStandardMaterial;
-            if (mat && mat.emissiveIntensity !== undefined) {
-              mat.emissiveIntensity = 0.8 + Math.sin(elapsedTime * 5 + idx) * 0.5;
-            }
-          } else if (type === 'float_wave') {
-            child.rotation.z = Math.sin(elapsedTime * 3 + idx) * 0.06;
-          }
+    // Micro-animations cho các bộ phận chi tiết của các kỳ quan và mô hình trên bàn cờ (cached)
+    for (let i = 0; i < this.animatedNodes.length; i++) {
+      const { node, animType, landmarkIdx } = this.animatedNodes[i];
+      if (animType === 'spin_y') {
+        node.rotation.y += delta * 1.5;
+      } else if (animType === 'rotate_pulse') {
+        node.rotation.y += delta * 2.2;
+        const mat = (node as THREE.Mesh).material as THREE.MeshStandardMaterial;
+        if (mat && mat.emissiveIntensity !== undefined) {
+          mat.emissiveIntensity = 0.9 + Math.sin(elapsedTime * 6) * 0.4;
         }
-      });
-    });
+      } else if (animType === 'flicker') {
+        const scale = 1 + Math.sin(elapsedTime * 14) * 0.12;
+        node.scale.set(scale, scale * (1 + Math.cos(elapsedTime * 10) * 0.1), scale);
+      } else if (animType === 'pulse_red') {
+        const pulse = (Math.sin(elapsedTime * 10) + 1) * 0.5;
+        node.scale.setScalar(0.9 + pulse * 0.25);
+      } else if (animType === 'lighthouse') {
+        const mat = (node as THREE.Mesh).material as THREE.MeshStandardMaterial;
+        if (mat && mat.emissiveIntensity !== undefined) {
+          mat.emissiveIntensity = 0.8 + Math.sin(elapsedTime * 5 + landmarkIdx) * 0.5;
+        }
+      } else if (animType === 'float_wave') {
+        node.rotation.z = Math.sin(elapsedTime * 3 + landmarkIdx) * 0.06;
+      }
+    }
+
+    // Hiệu ứng Lễ hội x2 trên ô cờ đang kích hoạt
+    if (this.festivalGroup && this.festivalGroup.visible) {
+      if (this.festivalRing) {
+        const pulse = 1.0 + Math.sin(elapsedTime * 4.5) * 0.08;
+        this.festivalRing.scale.set(pulse, 1, pulse);
+        (this.festivalRing.material as THREE.MeshBasicMaterial).opacity = 0.6 + Math.sin(elapsedTime * 4.5) * 0.25;
+      }
+      if (this.festivalEmblem) {
+        this.festivalEmblem.rotation.y += delta * 2.2;
+        this.festivalEmblem.position.y = 2.45 + Math.sin(elapsedTime * 3.5) * 0.16;
+      }
+      if (this.festivalBadge) {
+        this.festivalBadge.position.y = 3.15 + Math.sin(elapsedTime * 3.5) * 0.16;
+      }
+    }
 
     this.renderer.render(this.scene, this.cameraManager.camera);
   }
@@ -1116,7 +1314,33 @@ export class BoardScene {
   }
 
   public dispose() {
-    window.removeEventListener('resize', this.onResize);
+    if (this.rafId !== null) {
+      cancelAnimationFrame(this.rafId);
+      this.rafId = null;
+    }
+    window.removeEventListener('resize', this.boundOnResize);
+    if (this.festivalGroup) {
+      this.festivalGroup.traverse((obj) => {
+        if ((obj as THREE.Mesh).geometry) {
+          (obj as THREE.Mesh).geometry.dispose();
+        }
+        const mat = (obj as THREE.Mesh | THREE.Sprite).material;
+        if (Array.isArray(mat)) {
+          mat.forEach(m => m.dispose());
+        } else if (mat) {
+          if ((mat as THREE.SpriteMaterial).map) {
+            (mat as THREE.SpriteMaterial).map!.dispose();
+          }
+          mat.dispose();
+        }
+      });
+      this.scene.remove(this.festivalGroup);
+      this.festivalGroup = null;
+      this.festivalRing = null;
+      this.festivalEmblem = null;
+      this.festivalBadge = null;
+    }
+    this.vfxManager.dispose();
     this.environment.dispose();
     this.tokenManager.clearTokens();
     this.renderer.dispose();

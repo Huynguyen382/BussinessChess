@@ -101,6 +101,9 @@ export class BoardEnvironment {
     const envTex = this.trackTexture(this.createStudioEquirectTexture());
     this.studioEnvTexture = envTex;
     this.scene.environment = envTex;
+    if ('environmentIntensity' in this.scene) {
+      (this.scene as any).environmentIntensity = 0.50;
+    }
 
     // 2. Nếu có WebGLRenderer hỗ trợ PMREM, nướng bản đồ phản xạ RoomEnvironment chuyên nghiệp
     if (renderer && typeof renderer.getContext === 'function') {
@@ -113,6 +116,9 @@ export class BoardEnvironment {
         this.disposables.renderTargets.add(envRenderTarget);
         this.studioPMREMRenderTarget = envRenderTarget;
         this.scene.environment = envRenderTarget.texture;
+        if ('environmentIntensity' in this.scene) {
+          (this.scene as any).environmentIntensity = 0.50;
+        }
 
         roomScene.dispose();
         pmremGenerator.dispose();
@@ -214,27 +220,9 @@ export class BoardEnvironment {
     stitch.position.y = -0.59;
     this.environmentGroup.add(stitch);
 
-    // Window Light Shaft (Sunbeam cutting across the room)
-    const sunbeamGeo = this.trackGeometry(new THREE.PlaneGeometry(35, 70));
-    const sunbeamTex = this.trackTexture(TextureGenerator.createSunbeamTexture());
-    const sunbeamMat = this.trackMaterial(
-      new THREE.MeshBasicMaterial({
-        map: sunbeamTex,
-        transparent: true,
-        depthWrite: false,
-        blending: THREE.AdditiveBlending,
-        side: THREE.DoubleSide
-      })
-    );
-    const sunbeam = new THREE.Mesh(sunbeamGeo, sunbeamMat);
-    sunbeam.position.set(10, 15, -10);
-    sunbeam.rotation.x = Math.PI / 3;
-    sunbeam.rotation.y = -Math.PI / 6;
-    this.environmentGroup.add(sunbeam);
-
-    // Floating Ambient Dust Motes in warm sunlight
+    // Floating Ambient Dust Motes in warm sunlight (Subtle, non-glare atmospheric motes)
     const moteGeo = this.trackGeometry(new THREE.BufferGeometry());
-    const moteCount = 130;
+    const moteCount = 90;
     const motePositions = new Float32Array(moteCount * 3);
     for (let i = 0; i < moteCount; i++) {
       motePositions[i * 3] = (Math.random() - 0.5) * 50;
@@ -245,12 +233,11 @@ export class BoardEnvironment {
     const moteTex = this.trackTexture(TextureGenerator.createParticleTexture());
     const moteMat = this.trackMaterial(
       new THREE.PointsMaterial({
-        size: 0.25,
+        size: 0.16,
         map: moteTex,
-        color: '#FFEAA7',
+        color: '#E8D9B8',
         transparent: true,
-        opacity: 0.42,
-        blending: THREE.AdditiveBlending,
+        opacity: 0.22,
         depthWrite: false
       })
     );
@@ -711,15 +698,15 @@ export class BoardEnvironment {
         // Hiệu ứng góc nhìn Fresnel
         float fresnel = pow(1.0 - max(0.0, dot(viewDir, normal)), 3.2);
 
-        // Phản chiếu ánh sáng mặt trời Blinn-Phong Specular
+        // Phản chiếu ánh sáng mặt trời Blinn-Phong Specular (dịu nhẹ, không lóa)
         vec3 halfVector = normalize(uSunDirection + viewDir);
         float NdotH = max(0.0, dot(normal, halfVector));
-        float specular = pow(NdotH, 64.0) * 1.8;
+        float specular = pow(NdotH, 96.0) * 0.45;
 
         // Vết sáng kim cương lấp lánh tự nhiên dịu nhẹ (Subtle Diamond Specular Sparkles)
         vec2 sparkleCoord = floor(vWorldPosition.xz * 5.5);
         float sparkleNoise = hash(sparkleCoord + sin(uTime * 2.8));
-        float sparkle = pow(sparkleNoise, 16.0) * pow(NdotH, 22.0) * 1.5;
+        float sparkle = pow(sparkleNoise, 18.0) * pow(NdotH, 32.0) * 0.35;
 
         // Pha trộn màu nước: Đáy sâu Sapphire -> Nước nông ngọc bích nhiệt đới
         float depthMix = smoothstep(-0.18, 0.18, vWaveElevation);

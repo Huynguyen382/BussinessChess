@@ -1,18 +1,31 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
+import type { VFXManager } from './VFXManager';
 
-export type TokenType = 'car' | 'hat' | 'dog' | 'rocket';
+export type TokenType =
+  | 'car'
+  | 'hat'
+  | 'dog'
+  | 'rocket'
+  | 'cyclo'
+  | 'lotus'
+  | 'dragon'
+  | 'yacht'
+  | 'robot'
+  | 'crown';
 
 export interface TokenInstance {
   userId: string;
   tokenType: TokenType;
   color: string;
+  trailEffect?: string;
   currentTile: number;
   mesh: THREE.Group;
   innerModel: THREE.Group;
   shadowDisc: THREE.Mesh;
   isMoving: boolean;
   pathQueue: number[];
+  activeRafId?: number;
   wheels?: THREE.Mesh[];
   ears?: THREE.Mesh | THREE.Group;
   thrusterFlame?: THREE.Mesh;
@@ -20,10 +33,14 @@ export interface TokenInstance {
 }
 
 export class TokenManager {
+  // BoardScene places tile centers at y = 0.15 with tileHeight = 0.3 (top surface at y = 0.305)
+  private static readonly TILE_SURFACE_Y_OFFSET = 0.155;
+
   public group: THREE.Group;
   public tokens: Map<string, TokenInstance> = new Map();
   private tilePositions: THREE.Vector3[] = [];
   private shadowTexture: THREE.CanvasTexture;
+  private vfxManager: VFXManager | null = null;
   private animClock = 0;
 
   // 3D Turn Pointer Indicator Arrow (Mũi tên trỏ vào nhân vật lượt đi)
@@ -185,11 +202,28 @@ export class TokenManager {
   }
 
   public clearTokens() {
+    for (const token of this.tokens.values()) {
+      this.cancelTokenAnimation(token);
+    }
     this.group.clear();
     this.group.add(this.arrowGroup);
     this.tokens.clear();
     this.activeUserId = null;
     this.arrowGroup.visible = false;
+  }
+
+  private cancelTokenAnimation(token: TokenInstance) {
+    if (token.activeRafId !== undefined && typeof cancelAnimationFrame === 'function') {
+      cancelAnimationFrame(token.activeRafId);
+    }
+    token.activeRafId = undefined;
+    token.isMoving = false;
+    token.mesh.rotation.x = 0;
+    if (token.innerModel) {
+      token.innerModel.scale.set(1, 1, 1);
+    }
+    token.shadowDisc.scale.set(1, 1, 1);
+    (token.shadowDisc.material as THREE.MeshBasicMaterial).opacity = 0.85;
   }
 
   private createContactShadowTexture(): THREE.CanvasTexture {
@@ -212,6 +246,10 @@ export class TokenManager {
     this.tilePositions = positions;
   }
 
+  public setVFXManager(vfx: VFXManager) {
+    this.vfxManager = vfx;
+  }
+
   public getTilePosition(tileIndex: number, slotOffset = 0): THREE.Vector3 {
     const base = this.tilePositions[tileIndex] || new THREE.Vector3(0, 0, 0);
     const offsets = [
@@ -220,17 +258,21 @@ export class TokenManager {
       new THREE.Vector3(-0.35, 0, 0.35),
       new THREE.Vector3(0.35, 0, 0.35)
     ];
-    return base.clone().add(offsets[slotOffset % 4]);
+    const result = base.clone().add(offsets[slotOffset % 4]);
+    result.y += TokenManager.TILE_SURFACE_Y_OFFSET;
+    return result;
   }
 
-  public createToken(userId: string, tokenType: TokenType, color: string, slot: number): THREE.Group {
+  public createToken(userId: string, tokenType: TokenType | string, color: string, slot: number, trailEffect?: string): THREE.Group {
+    const validTypes: TokenType[] = ['car', 'hat', 'dog', 'rocket', 'cyclo', 'lotus', 'dragon', 'yacht', 'robot', 'crown'];
+    const resolvedType: TokenType = validTypes.includes(tokenType as TokenType) ? (tokenType as TokenType) : 'car';
     const tokenGroup = new THREE.Group();
     const wheels: THREE.Mesh[] = [];
     let earsMesh: THREE.Group | undefined;
     let flameMesh: THREE.Mesh | undefined;
     let tailMesh: THREE.Mesh | undefined;
 
-    if (tokenType === 'car') {
+    if (resolvedType === 'car') {
       // ==========================================
       // 🚗 1. XE THỂ THAO CỔ ĐIỂN SƠN BÓNG CANDY CLEARCOAT (Monopoly GO! Classic Cruiser)
       // ==========================================
@@ -381,7 +423,7 @@ export class TokenManager {
 
       tokenGroup.add(body, hood, cabin, windshieldTrim, grill, hoodOrnament, frontBumper, rearBumper, mirrorL, mirrorR);
 
-    } else if (tokenType === 'hat') {
+    } else if (resolvedType === 'hat') {
       // ==========================================
       // 🎩 2. MŨ PHỚT HOÀNG GIA ĐÍNH KIM CƯƠNG (Billionaire Royal Top Hat)
       // ==========================================
@@ -453,7 +495,7 @@ export class TokenManager {
 
       tokenGroup.add(brim, brimGoldRim, ribbon, ribbonCordBottom, ribbonCordTop, crown, crownTop, buckle, ruby, feather);
 
-    } else if (tokenType === 'dog') {
+    } else if (resolvedType === 'dog') {
       // ==========================================
       // 🐕 3. CHÚ CÚN PUG MAY MẮN SIÊU DỄ THƯƠNG (Lucky Pug)
       // ==========================================
@@ -559,6 +601,283 @@ export class TokenManager {
       tokenGroup.add(body, belly, head, muzzle, nose, tongue, collar, bell);
       if (earsMesh) tokenGroup.add(earsMesh);
       if (tailMesh) tokenGroup.add(tailMesh);
+
+    } else if (resolvedType === 'cyclo') {
+      // ==========================================
+      // 🚲 5. XÍCH LÔ PHỐ CỔ (Hanoi Heritage Cyclo)
+      // ==========================================
+      const frameMat = new THREE.MeshStandardMaterial({ color: color || '#00B894', roughness: 0.25, metalness: 0.55 });
+      const cushionMat = new THREE.MeshStandardMaterial({ color: '#D63031', roughness: 0.45 });
+      const chromeMat = new THREE.MeshStandardMaterial({ color: '#F5F6FA', metalness: 0.92, roughness: 0.1 });
+      const tireMat = new THREE.MeshStandardMaterial({ color: '#1E272E', roughness: 0.78 });
+
+      // Khoang ghế hành khách phía trước
+      const seatBase = new THREE.Mesh(new RoundedBoxGeometry(0.42, 0.14, 0.46, 3, 0.04), frameMat);
+      seatBase.position.set(0.16, 0.22, 0);
+      seatBase.castShadow = true;
+
+      const seatCushion = new THREE.Mesh(new RoundedBoxGeometry(0.32, 0.1, 0.4, 3, 0.04), cushionMat);
+      seatCushion.position.set(0.18, 0.31, 0);
+
+      const seatBack = new THREE.Mesh(new RoundedBoxGeometry(0.1, 0.32, 0.44, 3, 0.04), cushionMat);
+      seatBack.position.set(0.0, 0.44, 0);
+
+      // Mui che nắng cong cổ điển
+      const canopy = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.48, 12, 1, false, 0, Math.PI), frameMat);
+      canopy.rotation.z = Math.PI / 2;
+      canopy.rotation.y = Math.PI / 2;
+      canopy.position.set(0.12, 0.72, 0);
+      canopy.castShadow = true;
+
+      // Thanh khung nối ra bánh sau & yên đạp
+      const rearBar = new THREE.Mesh(new RoundedBoxGeometry(0.46, 0.06, 0.08, 2, 0.02), chromeMat);
+      rearBar.position.set(-0.2, 0.24, 0);
+
+      const saddle = new THREE.Mesh(new RoundedBoxGeometry(0.16, 0.06, 0.14, 2, 0.02), tireMat);
+      saddle.position.set(-0.24, 0.48, 0);
+
+      const seatPost = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.24, 8), chromeMat);
+      seatPost.position.set(-0.24, 0.36, 0);
+
+      // 3 Bánh xe (2 trước, 1 sau)
+      const wheelGeo = new THREE.TorusGeometry(0.16, 0.032, 8, 18);
+      const makeCycloWheel = (wx: number, wz: number) => {
+        const w = new THREE.Mesh(wheelGeo, tireMat);
+        w.position.set(wx, 0.16, wz);
+        w.castShadow = true;
+        tokenGroup.add(w);
+        wheels.push(w);
+      };
+      makeCycloWheel(0.18, 0.28);
+      makeCycloWheel(0.18, -0.28);
+      makeCycloWheel(-0.38, 0);
+
+      tokenGroup.add(seatBase, seatCushion, seatBack, canopy, rearBar, saddle, seatPost);
+
+    } else if (resolvedType === 'lotus') {
+      // ==========================================
+      // 🪷 6. ĐÀI SEN VÀNG (Golden Lotus Throne)
+      // ==========================================
+      const petalMat = new THREE.MeshStandardMaterial({
+        color: color || '#FD79A8',
+        emissive: color || '#FD79A8',
+        emissiveIntensity: 0.15,
+        roughness: 0.22,
+        metalness: 0.2
+      });
+      const goldMat = new THREE.MeshStandardMaterial({ color: '#F1C40F', metalness: 0.9, roughness: 0.14 });
+      const jadeMat = new THREE.MeshStandardMaterial({ color: '#00B894', roughness: 0.3, metalness: 0.2 });
+
+      // Đế lá sen xanh ngọc
+      const pad = new THREE.Mesh(new THREE.CylinderGeometry(0.54, 0.56, 0.06, 24), jadeMat);
+      pad.position.y = 0.04;
+      pad.castShadow = true;
+      tokenGroup.add(pad);
+
+      // 2 tầng cánh sen nở rộ
+      const petalGeo = new THREE.ConeGeometry(0.15, 0.42, 8);
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * Math.PI * 2;
+        const outer = new THREE.Mesh(petalGeo, petalMat);
+        outer.position.set(Math.cos(a) * 0.34, 0.24, Math.sin(a) * 0.34);
+        outer.rotation.z = -Math.cos(a) * 0.72;
+        outer.rotation.x = Math.sin(a) * 0.72;
+        outer.castShadow = true;
+        tokenGroup.add(outer);
+
+        const inner = new THREE.Mesh(petalGeo, goldMat);
+        inner.scale.set(0.75, 0.85, 0.75);
+        inner.position.set(Math.cos(a + 0.39) * 0.2, 0.32, Math.sin(a + 0.39) * 0.2);
+        inner.rotation.z = -Math.cos(a + 0.39) * 0.42;
+        inner.rotation.x = Math.sin(a + 0.39) * 0.42;
+        tokenGroup.add(inner);
+      }
+
+      // Nhụy sen ngọc bích / vàng phát sáng
+      const core = new THREE.Mesh(
+        new THREE.OctahedronGeometry(0.17, 1),
+        new THREE.MeshStandardMaterial({ color: '#FFEAA7', emissive: '#FDCB6E', emissiveIntensity: 0.85, roughness: 0.1 })
+      );
+      core.position.y = 0.48;
+      tokenGroup.add(core);
+
+    } else if (resolvedType === 'dragon') {
+      // ==========================================
+      // 🐉 7. RỒNG VÀNG THĂNG LONG (Imperial Golden Dragon)
+      // ==========================================
+      const dragonMat = new THREE.MeshStandardMaterial({
+        color: color || '#F1C40F',
+        emissive: '#E17055',
+        emissiveIntensity: 0.16,
+        metalness: 0.86,
+        roughness: 0.18
+      });
+      const rubyMat = new THREE.MeshStandardMaterial({ color: '#FF3838', emissive: '#FF3838', emissiveIntensity: 0.9 });
+
+      // Đế mây ngọc
+      const cloudBase = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.46, 0.5, 0.09, 20),
+        new THREE.MeshStandardMaterial({ color: '#2D3436', metalness: 0.5, roughness: 0.3 })
+      );
+      cloudBase.position.y = 0.05;
+      tokenGroup.add(cloudBase);
+
+      // Thân rồng uốn lượn hình chữ S vươn cao
+      for (let s = 0; s < 7; s++) {
+        const t = s / 6;
+        const seg = new THREE.Mesh(new THREE.SphereGeometry(0.15 - t * 0.03, 12, 12), dragonMat);
+        seg.position.set(Math.sin(t * Math.PI * 1.4) * 0.18, 0.18 + t * 0.65, Math.cos(t * Math.PI * 1.4) * 0.16 - 0.05);
+        seg.castShadow = true;
+        tokenGroup.add(seg);
+      }
+
+      // Đầu rồng uy nghi + 2 sừng + ngọc rồng
+      const head = new THREE.Mesh(new RoundedBoxGeometry(0.28, 0.22, 0.24, 3, 0.06), dragonMat);
+      head.position.set(0.06, 0.92, 0.12);
+      head.castShadow = true;
+
+      const hornGeo = new THREE.ConeGeometry(0.035, 0.2, 8);
+      const hornL = new THREE.Mesh(hornGeo, dragonMat);
+      hornL.position.set(0.02, 1.08, 0.05);
+      hornL.rotation.x = -0.4;
+      const hornR = hornL.clone();
+      hornR.position.z = 0.19;
+      hornR.rotation.x = 0.4;
+
+      const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.032, 8, 8), rubyMat);
+      eyeL.position.set(0.18, 0.96, 0.04);
+      const eyeR = eyeL.clone();
+      eyeR.position.z = 0.2;
+
+      const pearl = new THREE.Mesh(
+        new THREE.SphereGeometry(0.08, 12, 12),
+        new THREE.MeshStandardMaterial({ color: '#00CEC9', emissive: '#81ECEC', emissiveIntensity: 1.0 })
+      );
+      pearl.position.set(0.32, 0.86, 0.12);
+
+      tokenGroup.add(head, hornL, hornR, eyeL, eyeR, pearl);
+
+    } else if (resolvedType === 'yacht') {
+      // ==========================================
+      // ⛵ 8. DU THUYỀN HẠ LONG (Ha Long Luxury Yacht)
+      // ==========================================
+      const hullMat = new THREE.MeshStandardMaterial({ color: '#FFFFFF', roughness: 0.15, metalness: 0.12 });
+      const accentMat = new THREE.MeshStandardMaterial({ color: color || '#0984E3', roughness: 0.2, metalness: 0.3 });
+      const glassMat = new THREE.MeshStandardMaterial({ color: '#1E272E', roughness: 0.08, metalness: 0.7 });
+
+      // Thân tàu du thuyền vuốt nhọn mũi
+      const hull = new THREE.Mesh(new RoundedBoxGeometry(0.95, 0.24, 0.44, 3, 0.07), hullMat);
+      hull.position.y = 0.16;
+      hull.castShadow = true;
+
+      const bow = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.34, 4), hullMat);
+      bow.rotation.z = -Math.PI / 2;
+      bow.rotation.x = Math.PI / 4;
+      bow.scale.set(0.65, 1, 1);
+      bow.position.set(0.56, 0.18, 0);
+
+      const stripe = new THREE.Mesh(new RoundedBoxGeometry(0.92, 0.06, 0.46, 2, 0.02), accentMat);
+      stripe.position.y = 0.22;
+
+      // Khoang lái kính đen sang trọng & tầng boong trên
+      const cabin = new THREE.Mesh(new RoundedBoxGeometry(0.5, 0.22, 0.34, 3, 0.05), glassMat);
+      cabin.position.set(-0.06, 0.36, 0);
+      cabin.castShadow = true;
+
+      const sunDeck = new THREE.Mesh(new RoundedBoxGeometry(0.36, 0.08, 0.32, 2, 0.02), accentMat);
+      sunDeck.position.set(-0.1, 0.5, 0);
+
+      const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.025, 0.28, 8), hullMat);
+      mast.position.set(-0.14, 0.66, 0);
+
+      tokenGroup.add(hull, bow, stripe, cabin, sunDeck, mast);
+
+    } else if (resolvedType === 'robot') {
+      // ==========================================
+      // 🦄 9. KỲ LÂN AI (Cyber Unicorn Mech)
+      // ==========================================
+      const armorMat = new THREE.MeshStandardMaterial({ color: color || '#6C5CE7', roughness: 0.18, metalness: 0.55 });
+      const whiteMat = new THREE.MeshStandardMaterial({ color: '#F5F6FA', roughness: 0.2, metalness: 0.25 });
+      const neonMat = new THREE.MeshStandardMaterial({ color: '#00CEC9', emissive: '#00CEC9', emissiveIntensity: 1.1 });
+
+      const torso = new THREE.Mesh(new RoundedBoxGeometry(0.46, 0.44, 0.38, 4, 0.12), armorMat);
+      torso.position.y = 0.34;
+      torso.castShadow = true;
+
+      const head = new THREE.Mesh(new RoundedBoxGeometry(0.4, 0.34, 0.36, 4, 0.1), whiteMat);
+      head.position.set(0.06, 0.72, 0);
+      head.castShadow = true;
+
+      const visor = new THREE.Mesh(new RoundedBoxGeometry(0.12, 0.12, 0.32, 2, 0.04), neonMat);
+      visor.position.set(0.22, 0.73, 0);
+
+      // Sừng kỳ lân vàng phát sáng
+      const horn = new THREE.Mesh(
+        new THREE.ConeGeometry(0.05, 0.28, 12),
+        new THREE.MeshStandardMaterial({ color: '#FDCB6E', emissive: '#FDCB6E', emissiveIntensity: 0.65, metalness: 0.8 })
+      );
+      horn.position.set(0.18, 0.98, 0);
+      horn.rotation.z = -0.3;
+
+      earsMesh = new THREE.Group();
+      const earGeo = new THREE.ConeGeometry(0.055, 0.16, 6);
+      const earL = new THREE.Mesh(earGeo, armorMat);
+      earL.position.set(0, 0.92, 0.14);
+      const earR = earL.clone();
+      earR.position.z = -0.14;
+      earsMesh.add(earL, earR);
+
+      // 2 Chân robot
+      const footGeo = new RoundedBoxGeometry(0.18, 0.14, 0.14, 2, 0.04);
+      const footL = new THREE.Mesh(footGeo, whiteMat);
+      footL.position.set(0, 0.08, 0.12);
+      const footR = footL.clone();
+      footR.position.z = -0.12;
+
+      tokenGroup.add(torso, head, visor, horn, earsMesh, footL, footR);
+
+    } else if (resolvedType === 'crown') {
+      // ==========================================
+      // 👑 10. VƯƠNG MIỆN TỶ PHÚ (Billionaire Royal Crown)
+      // ==========================================
+      const goldMat = new THREE.MeshStandardMaterial({
+        color: '#F1C40F',
+        emissive: '#F39C12',
+        emissiveIntensity: 0.22,
+        metalness: 0.94,
+        roughness: 0.12
+      });
+      const velvetMat = new THREE.MeshStandardMaterial({ color: color || '#D63031', roughness: 0.7 });
+      const gemMat = new THREE.MeshStandardMaterial({ color: '#00CEC9', emissive: '#81ECEC', emissiveIntensity: 0.9 });
+
+      // Đệm nhung bên trong
+      const cushion = new THREE.Mesh(new THREE.SphereGeometry(0.32, 16, 12), velvetMat);
+      cushion.scale.set(1, 0.75, 1);
+      cushion.position.y = 0.28;
+
+      // Vành vương miện vàng
+      const band = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.36, 0.22, 24), goldMat);
+      band.position.y = 0.14;
+      band.castShadow = true;
+
+      // 8 Đỉnh chóp vương miện đính ngọc
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * Math.PI * 2;
+        const spike = new THREE.Mesh(new THREE.ConeGeometry(0.085, 0.34, 8), goldMat);
+        spike.position.set(Math.cos(a) * 0.37, 0.4, Math.sin(a) * 0.37);
+        spike.castShadow = true;
+        tokenGroup.add(spike);
+
+        const tip = new THREE.Mesh(new THREE.SphereGeometry(0.055, 8, 8), i % 2 === 0 ? gemMat : goldMat);
+        tip.position.set(Math.cos(a) * 0.37, 0.58, Math.sin(a) * 0.37);
+        tokenGroup.add(tip);
+      }
+
+      // Viên kim cương trung tâm trên đỉnh
+      const topOrb = new THREE.Mesh(new THREE.OctahedronGeometry(0.14, 0), gemMat);
+      topOrb.position.y = 0.68;
+
+      tokenGroup.add(cushion, band, topOrb);
 
     } else {
       // ==========================================
@@ -678,7 +997,7 @@ export class TokenManager {
     });
     const shadowDisc = new THREE.Mesh(shadowGeo, shadowMat);
     shadowDisc.rotation.x = -Math.PI / 2;
-    shadowDisc.position.y = 0.02;
+    shadowDisc.position.y = 0.006;
 
     const wrapper = new THREE.Group();
     const pos = this.getTilePosition(0, slot);
@@ -689,8 +1008,9 @@ export class TokenManager {
     this.group.add(wrapper);
     this.tokens.set(userId, {
       userId,
-      tokenType,
+      tokenType: resolvedType,
       color,
+      trailEffect,
       currentTile: 0,
       mesh: wrapper,
       innerModel: tokenGroup,
@@ -717,14 +1037,22 @@ export class TokenManager {
     const token = this.tokens.get(userId);
     if (!token) return;
 
+    this.cancelTokenAnimation(token);
+
+    const startTile = ((Math.trunc(fromTile) % 40) + 40) % 40;
+    const endTile = ((Math.trunc(toTile) % 40) + 40) % 40;
+
     const path: number[] = [];
-    let cur = fromTile;
-    while (cur !== toTile) {
+    let cur = startTile;
+    let guard = 0;
+    while (cur !== endTile && guard < 40) {
       cur = (cur + 1) % 40;
       path.push(cur);
+      guard++;
     }
 
     if (path.length === 0) {
+      token.currentTile = endTile;
       if (onAllDone) onAllDone();
       return;
     }
@@ -732,7 +1060,8 @@ export class TokenManager {
     let stepIndex = 0;
     const animateNextStep = () => {
       if (stepIndex >= path.length) {
-        token.currentTile = toTile;
+        token.activeRafId = undefined;
+        token.currentTile = endTile;
         token.isMoving = false;
         if (onAllDone) onAllDone();
         return;
@@ -753,13 +1082,6 @@ export class TokenManager {
         const hopHeight = Math.sin(t * Math.PI) * 0.95;
         token.mesh.position.lerpVectors(startPos, endPos, t);
         token.mesh.position.y = startPos.y + hopHeight;
-
-        // Quay bánh xe ô tô chuẩn xác theo tiến trình bước nhảy (t), mượt mà độc lập tần số quét 60Hz - 144Hz
-        if (token.wheels && token.wheels.length > 0) {
-          token.wheels.forEach(w => {
-            w.rotation.x = t * Math.PI * 4;
-          });
-        }
 
         // Ve vẩy tai và vẫy đuôi cún
         if (token.ears) {
@@ -794,17 +1116,21 @@ export class TokenManager {
         }
 
         if (t < 1) {
-          requestAnimationFrame(hopStep);
+          token.activeRafId = requestAnimationFrame(hopStep);
         } else {
           token.mesh.position.copy(endPos);
           if (token.innerModel) token.innerModel.scale.set(1, 1, 1);
           token.shadowDisc.scale.set(1, 1, 1);
+          (token.shadowDisc.material as THREE.MeshBasicMaterial).opacity = 0.85;
+          if (this.vfxManager) {
+            this.vfxManager.spawnTrailStep(endPos, token.trailEffect, token.color);
+          }
           if (onStepDone) onStepDone(targetTile);
           animateNextStep();
         }
       };
 
-      requestAnimationFrame(hopStep);
+      token.activeRafId = requestAnimationFrame(hopStep);
     };
 
     token.isMoving = true;
@@ -823,9 +1149,11 @@ export class TokenManager {
       return;
     }
 
+    this.cancelTokenAnimation(token);
+    const endTile = ((Math.trunc(toTile) % 40) + 40) % 40;
     token.isMoving = true;
     const startPos = token.mesh.position.clone();
-    const endPos = this.getTilePosition(toTile, slot);
+    const endPos = this.getTilePosition(endTile, slot);
     const duration = 1200;
     const startTime = performance.now();
 
@@ -854,19 +1182,20 @@ export class TokenManager {
       (token.shadowDisc.material as THREE.MeshBasicMaterial).opacity = THREE.MathUtils.lerp(0.85, 0.1, arcHeight / 4.2);
 
       if (t < 1) {
-        requestAnimationFrame(flightStep);
+        token.activeRafId = requestAnimationFrame(flightStep);
       } else {
+        token.activeRafId = undefined;
         token.mesh.position.copy(endPos);
         token.mesh.rotation.x = 0;
         token.shadowDisc.scale.set(1, 1, 1);
         (token.shadowDisc.material as THREE.MeshBasicMaterial).opacity = 0.85;
-        token.currentTile = toTile;
+        token.currentTile = endTile;
         token.isMoving = false;
         if (onAllDone) onAllDone();
       }
     };
 
-    requestAnimationFrame(flightStep);
+    token.activeRafId = requestAnimationFrame(flightStep);
   }
 
   public update(delta: number) {
@@ -954,9 +1283,11 @@ export class TokenManager {
   public setTokenTileImmediate(userId: string, tileIndex: number, slot: number) {
     const token = this.tokens.get(userId);
     if (!token) return;
-    const pos = this.getTilePosition(tileIndex, slot);
+    this.cancelTokenAnimation(token);
+    const normalizedTile = ((Math.trunc(tileIndex) % 40) + 40) % 40;
+    const pos = this.getTilePosition(normalizedTile, slot);
     token.mesh.position.copy(pos);
-    token.currentTile = tileIndex;
+    token.currentTile = normalizedTile;
   }
 
   public isAnyTokenMoving(): boolean {

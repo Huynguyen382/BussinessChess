@@ -37,56 +37,56 @@ export class LandmarkMaterials {
   // BẢNG VẬT LIỆU PBR CAO CẤP CHUẨN ĐỒ HỌA THẾ HỆ MỚI
   // ==========================================
 
-  /** Vàng kim loại 24K ánh hoàng gia (Gold 24K Metallic PBR) */
+  /** Vàng sa-tanh ấm (Brushed Satin Gold) */
   public static getGoldMetalMat(): THREE.MeshStandardMaterial {
     return this.getMat('pbr_gold_metal_24k', () => new THREE.MeshStandardMaterial({
-      color: '#FDCB6E',
+      color: '#F9CA24',
       emissive: '#E0A922',
-      emissiveIntensity: 0.25,
-      metalness: 0.88,
-      roughness: 0.16
+      emissiveIntensity: 0.04,
+      metalness: 0.65,
+      roughness: 0.42
     }));
   }
 
-  /** Cửa sổ phát sáng ấm cúng ban đêm (Warm Cozy Night Glow) */
+  /** Cửa sổ phát sáng ấm cúng dịu mắt (Warm Cozy Night Glow) */
   public static getWarmWindowMat(): THREE.MeshStandardMaterial {
     return this.getMat('pbr_warm_window_glow', () => new THREE.MeshStandardMaterial({
       color: '#FFEAA7',
       emissive: '#FFEAA7',
-      emissiveIntensity: 0.85,
-      roughness: 0.22
+      emissiveIntensity: 0.22,
+      roughness: 0.5
     }));
   }
 
-  /** Kính Sapphire phản quang cao cấp phong cách Business Tour */
+  /** Kính Sapphire kiến trúc xanh sâu lắng phong cách Business Tour */
   public static getSapphireGlassMat(): THREE.MeshStandardMaterial {
     return this.getMat('pbr_sapphire_reflective_glass', () => new THREE.MeshStandardMaterial({
       color: '#0984E3',
       emissive: '#00CEC9',
-      emissiveIntensity: 0.38,
-      roughness: 0.08,
-      metalness: 0.85
+      emissiveIntensity: 0.06,
+      roughness: 0.32,
+      metalness: 0.15
     }));
   }
 
-  /** Mặt nước hồ bơi ngọc bích phát quang trong suốt */
+  /** Mặt nước hồ bơi ngọc bích tự nhiên êm dịu */
   public static getPoolWaterMat(): THREE.MeshStandardMaterial {
     return this.getMat('pbr_pool_water_jade', () => new THREE.MeshStandardMaterial({
       color: '#00CEC9',
       emissive: '#0984E3',
-      emissiveIntensity: 0.46,
-      roughness: 0.06,
-      metalness: 0.18
+      emissiveIntensity: 0.08,
+      roughness: 0.22,
+      metalness: 0.08
     }));
   }
 
-  /** Thảm đỏ nhung hoàng gia đón khách VIP */
+  /** Thảm nhung đỏ Bordeaux quý phái đón khách VIP */
   public static getRedCarpetMat(): THREE.MeshStandardMaterial {
     return this.getMat('pbr_red_carpet_velvet', () => new THREE.MeshStandardMaterial({
       color: '#D63031',
       emissive: '#C0392B',
-      emissiveIntensity: 0.22,
-      roughness: 0.38
+      emissiveIntensity: 0.0,
+      roughness: 0.85
     }));
   }
 

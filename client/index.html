@@ -20,7 +20,12 @@
         <div id="lobby-top-bar" class="lobby-top-bar">
           <!-- Guest state -->
           <div id="auth-guest-view" class="auth-bar-row">
-            <span class="badge-guest">Chơi Khách</span>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span class="badge-guest">Chơi Khách</span>
+              <button id="btn-open-settings" class="btn-chunky btn-white btn-xs" title="Cài đặt trò chơi">
+                ⚙️ Cài Đặt
+              </button>
+            </div>
             <button id="btn-open-auth" class="btn-chunky btn-primary btn-sm">
               🔑 Đăng Nhập / Đăng Ký
             </button>
@@ -35,6 +40,9 @@
               </div>
             </div>
             <div class="auth-actions-group">
+              <button id="btn-open-settings-user" class="btn-chunky btn-white btn-xs" title="Cài đặt trò chơi">
+                ⚙️ Cài Đặt
+              </button>
               <button id="btn-open-profile" class="btn-chunky btn-white btn-xs" title="Xem hồ sơ & thành tựu">
                 👤 Hồ Sơ
               </button>
@@ -171,17 +179,39 @@
         </div>
 
         <!-- Player Slots List -->
-        <div id="waiting-slots" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px;">
+        <div id="waiting-slots" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px;">
           <!-- Injected slots -->
         </div>
 
-        <div style="display: flex; gap: 10px;">
-          <button id="btn-add-bot" class="btn-chunky btn-white" style="flex: 1;">
-            🤖 Thêm Bot
-          </button>
-          <button id="btn-start-game" class="btn-chunky btn-primary" style="flex: 1.4;">
-            🚀 Bắt Đầu Trận
-          </button>
+        <!-- Quick Token Selector in Waiting Room -->
+        <div id="waiting-token-box" class="waiting-token-box" style="margin-bottom: 16px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <div style="font-size: 0.78rem; font-weight: 800; color: #2D3436; display: flex; align-items: center; gap: 6px;">
+              <span>🎭</span>
+              <span>MODEL NHÂN VẬT 3D CỦA BẠN:</span>
+            </div>
+            <span id="waiting-selected-token-name" style="font-size: 0.78rem; font-weight: 800; color: #0984E3;">🚗 Siêu Xe</span>
+          </div>
+          <div id="waiting-token-grid" class="waiting-token-grid">
+            <!-- 10 tokens injected -->
+          </div>
+        </div>
+
+        <!-- Action Buttons in Waiting Room -->
+        <div id="waiting-actions-container" style="display: flex; flex-direction: column; gap: 8px;">
+          <div style="display: flex; gap: 10px;">
+            <button id="btn-toggle-ready" class="btn-chunky btn-accent" style="display: none; flex: 1;">
+              <span>✅</span>
+              <span id="btn-toggle-ready-text">SẴN SÀNG</span>
+            </button>
+            <button id="btn-add-bot" class="btn-chunky btn-white" style="flex: 1;">
+              🤖 Thêm Bot
+            </button>
+            <button id="btn-start-game" class="btn-chunky btn-primary" style="flex: 1.4;">
+              🚀 Bắt Đầu Trận
+            </button>
+          </div>
+          <div id="waiting-start-hint" style="font-size: 0.78rem; color: #D63031; font-weight: 700; text-align: center; display: none;"></div>
         </div>
       </div>
     </div>
@@ -200,6 +230,11 @@
         <div class="top-bar">
           <div id="hud-players" class="player-badges interactive">
             <!-- Injected Player Badges -->
+          </div>
+
+          <div id="match-timer-pill" class="match-timer-pill interactive" title="Thời gian còn lại của trận đấu">
+            <span>⏱️</span>
+            <span id="match-timer-text">20:00</span>
           </div>
 
           <div class="hud-toolbar-dock interactive">
@@ -236,6 +271,15 @@
               <span class="dock-icon">📜</span>
               <span class="dock-label">Nhật Ký</span>
             </button>
+            <div class="dock-divider"></div>
+            <button id="btn-open-settings-hud" class="dock-btn" title="Cài đặt trò chơi">
+              <span class="dock-icon">⚙️</span>
+              <span class="dock-label">Cài Đặt</span>
+            </button>
+            <button id="btn-leave-match" class="dock-btn dock-btn-danger" title="Thoát trận đấu (Đầu hàng)">
+              <span class="dock-icon">🚪</span>
+              <span class="dock-label">Thoát</span>
+            </button>
           </div>
         </div>
       </div>
@@ -255,6 +299,10 @@
           <button id="btn-roll-dice" class="btn-chunky btn-accent action-pill" style="display: none; gap: 10px;">
             <span>🎲</span>
             <span>LẮC XÍ NGẦU</span>
+          </button>
+          <button id="btn-open-trade" class="btn-chunky btn-white action-pill" style="display: none;">
+            <span>🤝</span>
+            <span>GIAO DỊCH</span>
           </button>
           <button id="btn-end-turn" class="btn-chunky btn-white action-pill" style="display: none;">
             <span>⏩</span>
@@ -334,6 +382,21 @@
         <button id="btn-play-again" class="btn-chunky btn-primary" style="width: 100%;">
           Về Sảnh Chờ
         </button>
+      </div>
+    </div>
+
+    <!-- 7B. LEAVE MATCH CONFIRMATION MODAL -->
+    <div id="leave-match-modal" class="interactive modal-overlay" style="display: none;">
+      <div class="glass-panel modal-content" style="max-width: 400px; border: 3px solid #D63031;">
+        <div style="font-size: 3rem; margin-bottom: 6px;">🚪</div>
+        <h2 style="color: #2D3436; font-size: 1.35rem; margin-bottom: 8px;">Xác Nhận Thoát Trận?</h2>
+        <p style="color: #636E72; font-size: 0.92rem; line-height: 1.5; margin-bottom: 20px;">
+          Nếu bạn thoát giữa trận đấu đang diễn ra, hệ thống sẽ tính là <b>Đầu Hàng (Phá Sản)</b> và trả toàn bộ bất động sản về ngân hàng.
+        </p>
+        <div style="display: flex; gap: 12px;">
+          <button id="btn-cancel-leave" class="btn-chunky btn-white" style="flex: 1;">Ở Lại</button>
+          <button id="btn-confirm-leave" class="btn-chunky btn-danger" style="flex: 1.2;">Thoát & Đầu Hàng</button>
+        </div>
       </div>
     </div>
 
@@ -536,6 +599,122 @@
       </div>
     </div>
 
+    <!-- AUCTION MODAL (Đấu Giá Công Khai) -->
+    <div id="auction-modal" class="interactive modal-overlay" style="display: none;">
+      <div class="glass-panel modal-content auction-modal-box">
+        <div class="auction-modal-header">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 1.4rem;">🔨</span>
+            <h2 style="margin: 0; font-size: 1.25rem; color: #2D3436;">Đấu Giá Công Khai</h2>
+          </div>
+          <span id="auction-timer-badge" class="auction-timer-badge">12s</span>
+        </div>
+
+        <div id="auction-tile-card" class="auction-tile-card">
+          <div id="auction-tile-color" class="auction-tile-color"></div>
+          <div class="auction-tile-info">
+            <div id="auction-tile-name" class="auction-tile-name">Bất Động Sản</div>
+            <div id="auction-tile-meta" class="auction-tile-meta">Giá niêm yết: 0M</div>
+          </div>
+        </div>
+
+        <div class="auction-status-grid">
+          <div class="auction-stat-box">
+            <span class="auction-stat-label">GIÁ CAO NHẤT</span>
+            <strong id="auction-current-bid" class="auction-stat-value">0M</strong>
+          </div>
+          <div class="auction-stat-box">
+            <span class="auction-stat-label">NGƯỜI DẪN ĐẦU</span>
+            <strong id="auction-highest-bidder" class="auction-stat-value">Chưa có</strong>
+          </div>
+        </div>
+
+        <div id="auction-status-note" class="auction-status-note"></div>
+
+        <div class="auction-bid-actions">
+          <button id="btn-auction-bid-min" class="btn-chunky btn-primary" type="button">+10M</button>
+          <button id="btn-auction-bid-50" class="btn-chunky btn-primary" type="button">+50M</button>
+          <button id="btn-auction-bid-100" class="btn-chunky btn-accent" type="button">+100M</button>
+        </div>
+        <button id="btn-auction-pass" class="btn-chunky btn-white" type="button" style="width: 100%; margin-top: 8px;">
+          ✕ Bỏ Qua Đấu Giá
+        </button>
+      </div>
+    </div>
+
+    <!-- TRADE PROPOSE MODAL (Đề Nghị Giao Dịch P2P) -->
+    <div id="trade-propose-modal" class="interactive modal-overlay" style="display: none;">
+      <div class="glass-panel modal-content trade-modal-box">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+          <h2 style="margin: 0; font-size: 1.25rem; color: #2D3436;">🤝 Giao Dịch P2P</h2>
+          <button id="btn-close-trade-propose" class="btn-chunky btn-white btn-xs" type="button">✕</button>
+        </div>
+
+        <div class="trade-partner-row">
+          <label for="trade-partner-select" class="field-label" style="margin: 0;">ĐỐI TÁC GIAO DỊCH</label>
+          <select id="trade-partner-select" class="field-input" style="margin-top: 4px;"></select>
+        </div>
+
+        <div class="trade-columns">
+          <div class="trade-col">
+            <h4 class="trade-col-title">📤 Bạn Đề Nghị</h4>
+            <div class="trade-field-group">
+              <label class="trade-sublabel">Tiền mặt (M)</label>
+              <input id="trade-offered-cash" class="field-input" type="number" min="0" step="10" value="0" />
+            </div>
+            <div id="trade-offered-cards" class="trade-cards-inputs"></div>
+            <div class="trade-sublabel" style="margin-top: 8px;">Bất động sản (chưa xây nhà)</div>
+            <div id="trade-offered-props" class="trade-props-list"></div>
+          </div>
+
+          <div class="trade-col">
+            <h4 class="trade-col-title">📥 Bạn Yêu Cầu</h4>
+            <div class="trade-field-group">
+              <label class="trade-sublabel">Tiền mặt (M)</label>
+              <input id="trade-requested-cash" class="field-input" type="number" min="0" step="10" value="0" />
+            </div>
+            <div id="trade-requested-cards" class="trade-cards-inputs"></div>
+            <div class="trade-sublabel" style="margin-top: 8px;">Bất động sản (chưa xây nhà)</div>
+            <div id="trade-requested-props" class="trade-props-list"></div>
+          </div>
+        </div>
+
+        <div id="trade-propose-error" class="auth-error-msg" style="display: none; margin-top: 8px;"></div>
+
+        <div style="display: flex; gap: 10px; margin-top: 14px;">
+          <button id="btn-cancel-trade-propose" class="btn-chunky btn-white" type="button" style="flex: 1;">Hủy</button>
+          <button id="btn-submit-trade" class="btn-chunky btn-primary" type="button" style="flex: 1.5;">Gửi Đề Nghị 🤝</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- TRADE OFFER INCOMING MODAL (Nhận Lời Mời Giao Dịch) -->
+    <div id="trade-offer-modal" class="interactive modal-overlay" style="display: none;">
+      <div class="glass-panel modal-content trade-offer-box">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
+          <span style="font-size: 1.4rem;">🤝</span>
+          <h2 style="margin: 0; font-size: 1.2rem; color: #2D3436;">Lời Mời Giao Dịch</h2>
+        </div>
+        <p id="trade-offer-subtitle" style="margin: 0 0 12px 0; font-size: 0.85rem; color: #636E72;"></p>
+
+        <div class="trade-columns">
+          <div class="trade-col">
+            <h4 class="trade-col-title">🎁 Bạn Nhận Được</h4>
+            <div id="trade-offer-receive" class="trade-summary-box"></div>
+          </div>
+          <div class="trade-col">
+            <h4 class="trade-col-title">💸 Bạn Đưa Ra</h4>
+            <div id="trade-offer-give" class="trade-summary-box"></div>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 10px; margin-top: 14px;">
+          <button id="btn-reject-trade" class="btn-chunky btn-white" type="button" style="flex: 1;">✕ Từ Chối</button>
+          <button id="btn-accept-trade" class="btn-chunky btn-primary" type="button" style="flex: 1;">✓ Chấp Nhận</button>
+        </div>
+      </div>
+    </div>
+
     <!-- 11. AUTH MODAL (Đăng Nhập / Đăng Ký) -->
     <div id="auth-modal" class="interactive modal-overlay" style="display: none;">
       <div class="glass-panel modal-content auth-modal-box">
@@ -620,6 +799,10 @@
               <span id="profile-level-badge" class="nameplate-badge nameplate-tier-gray">Lv.1 Tân Thủ</span>
             </div>
             <div id="profile-email" class="profile-hero-email">typhu@businesschess.vn</div>
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 2px 0;">
+              <span id="profile-equipped-title" class="profile-title-chip">🏷️ Tân Thủ Khởi Nghiệp</span>
+              <span id="profile-bio-text" class="profile-bio-preview">Chưa có tiểu sử</span>
+            </div>
             <div class="profile-hero-gold">
               <span>🪙</span>
               <span id="profile-gold-balance">10,000 Vàng</span>
@@ -665,6 +848,9 @@
           <button id="tab-btn-profile-frames" class="profile-tab" type="button">
             👑 Khung Tên Thông Thạo (<span id="profile-frames-count">1</span>)
           </button>
+          <button id="tab-btn-profile-custom" class="profile-tab" type="button">
+            🎭 Nhân Vật &amp; 3D
+          </button>
         </div>
 
         <!-- Pane 1: Achievements Section -->
@@ -690,6 +876,21 @@
           </div>
           <div id="profile-frames-grid" class="profile-frames-grid">
             <!-- Injected dynamically -->
+          </div>
+        </div>
+
+        <!-- Pane 3: 3D Character, Dice, Trail, Title & Bio Customization -->
+        <div id="pane-profile-custom" class="profile-tab-pane" style="display: none;">
+          <div class="profile-custom-section">
+            <div class="profile-custom-heading">📝 Tiểu Sử &amp; Avatar</div>
+            <div class="profile-bio-row">
+              <input id="input-profile-bio" class="field-input" type="text" maxlength="80" placeholder="Nhập tiểu sử ngắn (tối đa 80 ký tự)..." style="flex: 1; padding: 8px 12px; font-size: 0.85rem;" />
+              <button id="btn-save-bio" class="btn-chunky btn-primary btn-xs" type="button">Lưu Bio</button>
+            </div>
+            <div id="profile-avatar-picker" class="avatar-picker-grid" style="margin-top: 8px;"></div>
+          </div>
+          <div id="profile-custom-sections">
+            <!-- Injected dynamically from /api/profile/customizations -->
           </div>
         </div>
       </div>
@@ -768,6 +969,55 @@
         <div style="display: flex; gap: 10px;">
           <button id="btn-cancel-join-password" class="btn-chunky btn-white" type="button" style="flex: 1;">Hủy</button>
           <button id="btn-confirm-join-password" class="btn-chunky btn-primary" type="button" style="flex: 1.2;">Vào Phòng</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 15. SETTINGS MODAL (Cài Đặt) -->
+    <div id="settings-modal" class="interactive modal-overlay" style="display: none;">
+      <div class="glass-panel modal-content settings-modal-box">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 1.4rem;">⚙️</span>
+            <h2 style="font-size: 1.3rem; color: #2D3436; margin: 0;">Cài Đặt Trò Chơi</h2>
+          </div>
+          <button id="btn-close-settings" class="btn-chunky btn-white btn-xs" style="font-size: 1.1rem; width: 34px; height: 34px; border-radius: 50%; padding: 0;">✕</button>
+        </div>
+
+        <div class="settings-group-list">
+          <!-- Setting 1: Personal Dice View -->
+          <div class="settings-item-row">
+            <div class="settings-item-info">
+              <div class="settings-item-title">🎲 Xúc Xắc Cá Nhân (Luôn hiển thị Skin của tôi)</div>
+              <div class="settings-item-desc">
+                Bất kể ai tung xúc xắc, xúc xắc 3D trên màn hình của bạn luôn hiển thị mẫu skin bạn đang trang bị, không bị đổi qua lại giữa các lượt.
+              </div>
+            </div>
+            <label class="switch-toggle" for="setting-personal-dice-toggle">
+              <input type="checkbox" id="setting-personal-dice-toggle" />
+              <span class="switch-slider"></span>
+            </label>
+          </div>
+
+          <!-- Setting 2: Clean Focus Mode -->
+          <div class="settings-item-row">
+            <div class="settings-item-info">
+              <div class="settings-item-title">🎯 Chế Độ Tinh Gọn (Focus Mode)</div>
+              <div class="settings-item-desc">
+                Ẩn bớt các tiểu cảnh phụ và hiệu ứng ngoại cảnh để tập trung 100% vào bàn cờ thi đấu.
+              </div>
+            </div>
+            <label class="switch-toggle" for="setting-focus-mode-toggle">
+              <input type="checkbox" id="setting-focus-mode-toggle" />
+              <span class="switch-slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <div style="margin-top: 18px; text-align: right;">
+          <button id="btn-save-settings" class="btn-chunky btn-primary" type="button" style="padding: 8px 24px;">
+            Đã Xong ✓
+          </button>
         </div>
       </div>
     </div>

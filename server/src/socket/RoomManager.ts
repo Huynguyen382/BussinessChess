@@ -1,5 +1,5 @@
 import { Server, Socket } from 'socket.io';
-import { MonopolyEngine } from '../game/MonopolyEngine';
+import { MonopolyEngine, PlayerCustomization, TokenType } from '../game/MonopolyEngine';
 import { BotAI } from '../game/BotAI';
 import { BOARD_TILES } from '../game/BoardConfig';
 import { AchievementEngine } from '../achievements/AchievementEngine';
@@ -81,15 +81,26 @@ export class RoomManager {
     this.rooms.set(roomCode, room);
     this.userToRoom.set(socket.id, roomCode);
     let userFrame = payload.frame || 'frame_default';
+    let customization: PlayerCustomization | undefined;
     if (payload.userId) {
       this.socketToUserId.set(socket.id, payload.userId);
       const user = dbService.getUserById(payload.userId);
-      if (user?.equipped_frame) userFrame = user.equipped_frame;
+      if (user) {
+        if (user.equipped_frame) userFrame = user.equipped_frame;
+        customization = {
+          token: (user.equipped_token as TokenType) || 'car',
+          diceSkin: user.equipped_dice || 'dice_ivory',
+          trailEffect: user.equipped_trail || 'trail_default',
+          title: user.equipped_title || 'title_rookie',
+          bio: user.bio || '',
+          avatar: user.avatar_url || undefined
+        };
+      }
     }
     socket.join(roomCode);
 
     // Host joins as first player
-    room.engine?.addPlayer(socket.id, socket.id, payload.username, true, initialCash, userFrame);
+    room.engine?.addPlayer(socket.id, socket.id, payload.username, true, initialCash, userFrame, customization);
 
     return room;
   }
@@ -117,14 +128,26 @@ export class RoomManager {
 
     this.userToRoom.set(socket.id, room.roomCode);
     let userFrame = payload.frame || 'frame_default';
+    let customization: PlayerCustomization | undefined;
     if (payload.userId) {
       this.socketToUserId.set(socket.id, payload.userId);
       const user = dbService.getUserById(payload.userId);
-      if (user?.equipped_frame) userFrame = user.equipped_frame;
+      if (user) {
+        if (user.equipped_frame) userFrame = user.equipped_frame;
+        customization = {
+          token: (user.equipped_token as TokenType) || 'car',
+          diceSkin: user.equipped_dice || 'dice_ivory',
+          trailEffect: user.equipped_trail || 'trail_default',
+          title: user.equipped_title || 'title_rookie',
+          bio: user.bio || '',
+          avatar: user.avatar_url || undefined
+        };
+      }
     }
     socket.join(room.roomCode);
 
-    room.engine.addPlayer(socket.id, socket.id, payload.username, false, room.initialCash, userFrame);
+    const player = room.engine.addPlayer(socket.id, socket.id, payload.username, false, room.initialCash, userFrame, customization);
+    player.isReady = false;
 
     return { success: true, room };
   }
@@ -145,12 +168,68 @@ export class RoomManager {
     const botId = `bot_${Math.random().toString(36).substring(2, 7)}`;
     const botFrames = ['frame_gray_starter', 'frame_blue_dice', 'frame_gold_monopoly', 'frame_orange_landmark', 'frame_red_dragon'];
     const botFrame = botFrames[room.engine.players.length % botFrames.length];
+    const botTokens: TokenType[] = ['dragon', 'lotus', 'yacht', 'crown', 'cyclo', 'robot'];
+    const botDiceSkins = ['dice_gold', 'dice_emerald', 'dice_obsidian', 'dice_ruby'];
+    const botTrails = ['trail_gold', 'trail_sakura', 'trail_neon', 'trail_default'];
+    const botTitles = ['title_tycoon', 'title_shark', 'title_traveler', 'title_emperor'];
+    const idx = room.engine.players.length;
 
-    const player = room.engine.addPlayer(botId, botId, botName, false, room.initialCash, botFrame);
+    const player = room.engine.addPlayer(botId, botId, botName, false, room.initialCash, botFrame, {
+      token: botTokens[idx % botTokens.length],
+      diceSkin: botDiceSkins[idx % botDiceSkins.length],
+      trailEffect: botTrails[idx % botTrails.length],
+      title: botTitles[idx % botTitles.length]
+    });
     player.isBot = true;
+    player.isReady = true;
 
     this.broadcastRoomUpdate(room);
     return { success: true };
+  }
+
+  public handleToggleReady(
+    socket: Socket,
+    ready?: boolean
+  ): { success: boolean; isReady?: boolean; error?: string } {
+    const roomCode = this.userToRoom.get(socket.id);
+    if (!roomCode) return { success: false, error: 'Không ở trong phòng' };
+
+    const room = this.rooms.get(roomCode);
+    if (!room || !room.engine || room.status !== 'WAITING') {
+      return { success: false, error: 'Phòng không ở trạng thái chờ' };
+    }
+
+    const player = room.engine.players.find(p => p.id === socket.id || p.socketId === socket.id);
+    if (!player) return { success: false, error: 'Không tìm thấy người chơi' };
+
+    player.isReady = typeof ready === 'boolean' ? ready : !player.isReady;
+    this.broadcastRoomUpdate(room);
+    return { success: true, isReady: player.isReady };
+  }
+
+  public handleSelectToken(
+    socket: Socket,
+    tokenOrPayload: any
+  ): { success: boolean; token?: TokenType; error?: string } {
+    const roomCode = this.userToRoom.get(socket.id);
+    if (!roomCode) return { success: false, error: 'Không ở trong phòng' };
+
+    const room = this.rooms.get(roomCode);
+    if (!room || !room.engine || room.status !== 'WAITING') {
+      return { success: false, error: 'Phòng không ở trạng thái chờ' };
+    }
+
+    const token = typeof tokenOrPayload === 'string' ? tokenOrPayload : tokenOrPayload?.token;
+    if (!token || !MonopolyEngine.TOKEN_TYPES.includes(token as TokenType)) {
+      return { success: false, error: 'Model nhân vật không hợp lệ' };
+    }
+
+    const player = room.engine.players.find(p => p.id === socket.id || p.socketId === socket.id);
+    if (!player) return { success: false, error: 'Không tìm thấy người chơi' };
+
+    player.token = token as TokenType;
+    this.broadcastRoomUpdate(room);
+    return { success: true, token: player.token };
   }
 
   public startGame(socket: Socket): { success: boolean; error?: string } {
@@ -162,6 +241,11 @@ export class RoomManager {
 
     if (room.hostId !== socket.id) return { success: false, error: 'Chỉ chủ phòng mới được bắt đầu' };
     if (room.engine.players.length < 2) return { success: false, error: 'Cần ít nhất 2 người chơi để bắt đầu' };
+
+    const unreadyPlayers = room.engine.players.filter(p => !p.isReady);
+    if (unreadyPlayers.length > 0) {
+      return { success: false, error: 'Chưa thể bắt đầu: Vẫn còn người chơi chưa sẵn sàng!' };
+    }
 
     room.status = 'PLAYING';
     const { firstTurnUserId } = room.engine.startGame();
@@ -321,9 +405,64 @@ export class RoomManager {
         snapshot: room.engine.getSnapshot()
       });
       this.resetTurnTimer(room);
+      this.checkBankruptcyOrGameOver(room);
       this.checkTriggerBot(room);
     } else {
       socket.emit('error:message', { message: result.error });
+    }
+  }
+
+  public handleBuyoutProperty(socket: Socket, tileId: number) {
+    const roomCode = this.userToRoom.get(socket.id);
+    if (!roomCode) return;
+    const room = this.rooms.get(roomCode);
+    if (!room || !room.engine || room.status !== 'PLAYING') return;
+
+    const result = room.engine.buyoutProperty(socket.id, tileId);
+    if (result.success) {
+      this.io.to(room.roomCode).emit('game:property_updated', {
+        tileId: result.tileId,
+        ownerId: socket.id,
+        level: result.level,
+        remainingCash: result.remainingCash,
+        isBuyout: true,
+        snapshot: room.engine.getSnapshot()
+      });
+      this.resetTurnTimer(room);
+      this.checkBankruptcyOrGameOver(room);
+      this.checkTriggerBot(room);
+    } else {
+      socket.emit('error:message', { message: result.error });
+    }
+  }
+
+  public handleSkipBuyout(socket: Socket) {
+    const roomCode = this.userToRoom.get(socket.id);
+    if (!roomCode) return;
+    const room = this.rooms.get(roomCode);
+    if (!room || !room.engine || room.status !== 'PLAYING') return;
+
+    const res = room.engine.skipBuyout(socket.id);
+    if (res.success) {
+      this.io.to(room.roomCode).emit('game:state_sync', { snapshot: room.engine.getSnapshot() });
+      this.resetTurnTimer(room);
+      this.checkTriggerBot(room);
+    }
+  }
+
+  public handleSelectFestival(socket: Socket, tileId: number) {
+    const roomCode = this.userToRoom.get(socket.id);
+    if (!roomCode) return;
+    const room = this.rooms.get(roomCode);
+    if (!room || !room.engine || room.status !== 'PLAYING') return;
+
+    const res = room.engine.selectFestivalTile(socket.id, tileId);
+    if (res.success) {
+      this.io.to(room.roomCode).emit('game:state_sync', { snapshot: room.engine.getSnapshot() });
+      this.resetTurnTimer(room);
+      this.checkTriggerBot(room);
+    } else {
+      socket.emit('error:message', { message: res.error });
     }
   }
 
@@ -337,7 +476,114 @@ export class RoomManager {
     if (res.success) {
       this.io.to(room.roomCode).emit('game:state_sync', { snapshot: room.engine.getSnapshot() });
       this.resetTurnTimer(room);
-      this.checkTriggerBot(room);
+      if (res.phase === 'AUCTION') {
+        this.triggerAuctionBots(room);
+      } else {
+        this.checkTriggerBot(room);
+      }
+    }
+  }
+
+  public handleAuctionBid(socket: Socket, amount: number) {
+    const roomCode = this.userToRoom.get(socket.id);
+    if (!roomCode) return;
+    const room = this.rooms.get(roomCode);
+    if (!room || !room.engine || room.status !== 'PLAYING') return;
+
+    const res = room.engine.placeAuctionBid(socket.id, amount);
+    if (res.success) {
+      if (res.resolved) {
+        this.io.to(room.roomCode).emit('game:auction_resolved', { snapshot: room.engine.getSnapshot() });
+        this.io.to(room.roomCode).emit('game:state_sync', { snapshot: room.engine.getSnapshot() });
+        this.resetTurnTimer(room);
+        this.checkBankruptcyOrGameOver(room);
+        this.checkTriggerBot(room);
+      } else {
+        this.io.to(room.roomCode).emit('game:state_sync', { snapshot: room.engine.getSnapshot() });
+        this.triggerAuctionBots(room);
+      }
+    } else {
+      socket.emit('error:message', { message: res.error });
+    }
+  }
+
+  public handleAuctionPass(socket: Socket) {
+    const roomCode = this.userToRoom.get(socket.id);
+    if (!roomCode) return;
+    const room = this.rooms.get(roomCode);
+    if (!room || !room.engine || room.status !== 'PLAYING') return;
+
+    const res = room.engine.passAuction(socket.id);
+    if (res.success) {
+      if (res.resolved) {
+        this.io.to(room.roomCode).emit('game:auction_resolved', { snapshot: room.engine.getSnapshot() });
+        this.io.to(room.roomCode).emit('game:state_sync', { snapshot: room.engine.getSnapshot() });
+        this.resetTurnTimer(room);
+        this.checkBankruptcyOrGameOver(room);
+        this.checkTriggerBot(room);
+      } else {
+        this.io.to(room.roomCode).emit('game:state_sync', { snapshot: room.engine.getSnapshot() });
+      }
+    } else {
+      socket.emit('error:message', { message: res.error });
+    }
+  }
+
+  public handleProposeTrade(socket: Socket, data: { receiverId: string; offered: any; requested: any }) {
+    const roomCode = this.userToRoom.get(socket.id);
+    if (!roomCode) return;
+    const room = this.rooms.get(roomCode);
+    if (!room || !room.engine || room.status !== 'PLAYING') return;
+
+    const res = room.engine.proposeTrade(socket.id, data.receiverId, data.offered, data.requested);
+    if (res.success) {
+      this.io.to(room.roomCode).emit('game:state_sync', { snapshot: room.engine.getSnapshot() });
+      this.triggerTradeBots(room);
+    } else {
+      socket.emit('error:message', { message: res.error });
+    }
+  }
+
+  public handleAcceptTrade(socket: Socket, tradeId: string) {
+    const roomCode = this.userToRoom.get(socket.id);
+    if (!roomCode) return;
+    const room = this.rooms.get(roomCode);
+    if (!room || !room.engine || room.status !== 'PLAYING') return;
+
+    const res = room.engine.acceptTrade(tradeId, socket.id);
+    if (res.success) {
+      this.io.to(room.roomCode).emit('game:state_sync', { snapshot: room.engine.getSnapshot() });
+      this.checkBankruptcyOrGameOver(room);
+    } else {
+      socket.emit('error:message', { message: res.error });
+    }
+  }
+
+  public handleRejectTrade(socket: Socket, tradeId: string) {
+    const roomCode = this.userToRoom.get(socket.id);
+    if (!roomCode) return;
+    const room = this.rooms.get(roomCode);
+    if (!room || !room.engine || room.status !== 'PLAYING') return;
+
+    const res = room.engine.rejectTrade(tradeId, socket.id);
+    if (res.success) {
+      this.io.to(room.roomCode).emit('game:state_sync', { snapshot: room.engine.getSnapshot() });
+    } else {
+      socket.emit('error:message', { message: res.error });
+    }
+  }
+
+  public handleCancelTrade(socket: Socket, tradeId: string) {
+    const roomCode = this.userToRoom.get(socket.id);
+    if (!roomCode) return;
+    const room = this.rooms.get(roomCode);
+    if (!room || !room.engine || room.status !== 'PLAYING') return;
+
+    const res = room.engine.cancelTrade(tradeId, socket.id);
+    if (res.success) {
+      this.io.to(room.roomCode).emit('game:state_sync', { snapshot: room.engine.getSnapshot() });
+    } else {
+      socket.emit('error:message', { message: res.error });
     }
   }
 
@@ -378,6 +624,7 @@ export class RoomManager {
         snapshot: room.engine.getSnapshot()
       });
       this.io.to(room.roomCode).emit('game:state_sync', { snapshot: room.engine.getSnapshot() });
+      this.checkBankruptcyOrGameOver(room);
     } else {
       socket.emit('error:message', { message: result.error });
     }
@@ -472,10 +719,31 @@ export class RoomManager {
     room.timerInterval = setInterval(() => {
       if (!room.engine || room.status !== 'PLAYING') return;
 
+      // Check Match Timer (20 minutes default)
+      const matchRemaining = room.engine.getMatchTimeRemaining();
+      if (matchRemaining <= 0 && !room.engine.isGameOver) {
+        room.engine.resolveMatchTimeout();
+        this.checkBankruptcyOrGameOver(room);
+        return;
+      }
+
+      // Check Auction Timer
+      if (room.engine.turnState.phase === 'AUCTION' && room.engine.auctionState) {
+        if (Date.now() >= room.engine.auctionState.endTime) {
+          room.engine.resolveAuction();
+          this.io.to(room.roomCode).emit('game:auction_resolved', { snapshot: room.engine.getSnapshot() });
+          this.io.to(room.roomCode).emit('game:state_sync', { snapshot: room.engine.getSnapshot() });
+          this.resetTurnTimer(room);
+          this.checkBankruptcyOrGameOver(room);
+          this.checkTriggerBot(room);
+        }
+        return;
+      }
+
       const elapsed = Math.floor((Date.now() - room.engine.turnState.turnStartTime) / 1000);
       const remaining = Math.max(0, room.turnTimeout - elapsed);
 
-      this.io.to(room.roomCode).emit('game:timer_tick', { remaining });
+      this.io.to(room.roomCode).emit('game:timer_tick', { remaining, matchTimeRemaining: matchRemaining });
 
       if (remaining <= 0) {
         // Hết thời gian lượt: Tự động xử lý
@@ -484,6 +752,29 @@ export class RoomManager {
           if (room.engine.turnState.phase === 'ROLL_DICE') {
             try {
               const res = room.engine.rollDice(curPlayer.id);
+              AchievementEngine.onDiceRolled(
+                room.roomCode,
+                curPlayer,
+                res.dice,
+                res.isDouble,
+                room.engine.turnState.consecutiveDoubles
+              );
+              if (res.passedGo) {
+                AchievementEngine.onPassedGo(room.roomCode, curPlayer, room.engine);
+              }
+              if (res.actionResult && res.actionResult.type === 'PAY_RENT') {
+                const prop = room.engine.properties.get(res.actionResult.tileId);
+                const owner = room.engine.players.find(p => p.id === prop?.ownerId);
+                if (owner) {
+                  AchievementEngine.onRentPaid(
+                    room.roomCode,
+                    curPlayer,
+                    owner,
+                    res.actionResult.amount,
+                    room.engine
+                  );
+                }
+              }
               this.io.to(room.roomCode).emit('game:dice_result', {
                 userId: curPlayer.id,
                 dice1: res.dice[0],
@@ -506,6 +797,19 @@ export class RoomManager {
                 if (res.passedGo) {
                   AchievementEngine.onPassedGo(room.roomCode, curPlayer, room.engine);
                 }
+                if (res.actionResult && res.actionResult.type === 'PAY_RENT') {
+                  const prop = room.engine.properties.get(res.actionResult.tileId);
+                  const owner = room.engine.players.find(p => p.id === prop?.ownerId);
+                  if (owner) {
+                    AchievementEngine.onRentPaid(
+                      room.roomCode,
+                      curPlayer,
+                      owner,
+                      res.actionResult.amount,
+                      room.engine
+                    );
+                  }
+                }
                 this.io.to(room.roomCode).emit('game:airport_flight_result', {
                   userId: curPlayer.id,
                   prevPosition: res.prevPosition,
@@ -520,12 +824,45 @@ export class RoomManager {
               }
             } catch (e) {}
           } else {
+            // Nếu hết giờ ở BUY_PROPERTY, tự động bỏ qua trước
+            if (room.engine.turnState.phase === 'BUY_PROPERTY') {
+              const skipRes = room.engine.skipBuyProperty(curPlayer.id);
+              if (skipRes.success && skipRes.phase === 'ROLL_DICE') {
+                this.io.to(room.roomCode).emit('game:state_sync', { snapshot: room.engine.getSnapshot() });
+                this.resetTurnTimer(room);
+                this.checkTriggerBot(room);
+                return;
+              }
+            } else if (room.engine.turnState.phase === 'BUYOUT_PROPERTY') {
+              const skipRes = room.engine.skipBuyout(curPlayer.id);
+              if (skipRes.success && skipRes.phase === 'ROLL_DICE') {
+                this.io.to(room.roomCode).emit('game:state_sync', { snapshot: room.engine.getSnapshot() });
+                this.resetTurnTimer(room);
+                this.checkTriggerBot(room);
+                return;
+              }
+            } else if (room.engine.turnState.phase === 'FESTIVAL_SELECT') {
+              const bestTileId = BotAI.chooseBestFestivalTile(room.engine, curPlayer);
+              if (bestTileId !== null) {
+                const festRes = room.engine.selectFestivalTile(curPlayer.id, bestTileId);
+                if (festRes.success && festRes.phase === 'ROLL_DICE') {
+                  this.io.to(room.roomCode).emit('game:state_sync', { snapshot: room.engine.getSnapshot() });
+                  this.resetTurnTimer(room);
+                  this.checkTriggerBot(room);
+                  return;
+                }
+              }
+            }
             // Tự động kết thúc lượt
             try {
               const res = room.engine.endTurn(curPlayer.id);
               if (res.isGameOver) {
                 room.status = 'FINISHED';
                 if (room.timerInterval) clearInterval(room.timerInterval);
+                const winner = room.engine.players.find(p => p.id === room.engine!.winnerId);
+                if (winner) {
+                  AchievementEngine.onGameOver(room.roomCode, winner, room.engine);
+                }
                 this.io.to(room.roomCode).emit('game:over', {
                   winnerId: room.engine.winnerId,
                   snapshot: room.engine.getSnapshot()
@@ -598,6 +935,8 @@ export class RoomManager {
               actionResult: res.actionResult,
               snapshot: room.engine!.getSnapshot()
             });
+            this.resetTurnTimer(room);
+            this.checkBankruptcyOrGameOver(room);
             this.checkTriggerBot(room);
           } catch (e) {}
         } else if (action === 'AIRPORT_DESTINATION') {
@@ -651,12 +990,48 @@ export class RoomManager {
               snapshot: room.engine!.getSnapshot()
             });
           }
+          this.resetTurnTimer(room);
+          this.checkBankruptcyOrGameOver(room);
           this.checkTriggerBot(room);
         } else if (action === 'SKIP_BUY') {
           const res = room.engine!.skipBuyProperty(curPlayer.id);
           if (res.success) {
             this.io.to(room.roomCode).emit('game:state_sync', { snapshot: room.engine!.getSnapshot() });
           }
+          this.resetTurnTimer(room);
+          if (res.phase === 'AUCTION') {
+            this.triggerAuctionBots(room);
+          } else {
+            this.checkTriggerBot(room);
+          }
+        } else if (action === 'BUYOUT_PROPERTY') {
+          const res = room.engine!.buyoutProperty(curPlayer.id, payload.tileId);
+          if (res.success) {
+            this.io.to(room.roomCode).emit('game:property_updated', {
+              tileId: res.tileId,
+              ownerId: curPlayer.id,
+              level: res.level,
+              remainingCash: res.remainingCash,
+              isBuyout: true,
+              snapshot: room.engine!.getSnapshot()
+            });
+          }
+          this.resetTurnTimer(room);
+          this.checkBankruptcyOrGameOver(room);
+          this.checkTriggerBot(room);
+        } else if (action === 'SKIP_BUYOUT') {
+          const res = room.engine!.skipBuyout(curPlayer.id);
+          if (res.success) {
+            this.io.to(room.roomCode).emit('game:state_sync', { snapshot: room.engine!.getSnapshot() });
+          }
+          this.resetTurnTimer(room);
+          this.checkTriggerBot(room);
+        } else if (action === 'SELECT_FESTIVAL') {
+          const res = room.engine!.selectFestivalTile(curPlayer.id, payload.tileId);
+          if (res.success) {
+            this.io.to(room.roomCode).emit('game:state_sync', { snapshot: room.engine!.getSnapshot() });
+          }
+          this.resetTurnTimer(room);
           this.checkTriggerBot(room);
         } else if (action === 'END_TURN') {
           try {
@@ -685,6 +1060,58 @@ export class RoomManager {
         }
       });
     }
+  }
+
+  private triggerAuctionBots(room: RoomInfo) {
+    if (!room.engine || room.status !== 'PLAYING' || room.engine.turnState.phase !== 'AUCTION') return;
+    BotAI.handleAuctionBots(room.engine, (botId, actionType, payload) => {
+      if (!room.engine || room.status !== 'PLAYING' || room.engine.turnState.phase !== 'AUCTION') return;
+      if (actionType === 'AUCTION_BID') {
+        const res = room.engine.placeAuctionBid(botId, payload.amount);
+        if (res.success) {
+          if (res.resolved) {
+            this.io.to(room.roomCode).emit('game:auction_resolved', { snapshot: room.engine.getSnapshot() });
+            this.io.to(room.roomCode).emit('game:state_sync', { snapshot: room.engine.getSnapshot() });
+            this.resetTurnTimer(room);
+            this.checkBankruptcyOrGameOver(room);
+            this.checkTriggerBot(room);
+          } else {
+            this.io.to(room.roomCode).emit('game:state_sync', { snapshot: room.engine.getSnapshot() });
+            this.triggerAuctionBots(room);
+          }
+        }
+      } else if (actionType === 'AUCTION_PASS') {
+        const res = room.engine.passAuction(botId);
+        if (res.success) {
+          if (res.resolved) {
+            this.io.to(room.roomCode).emit('game:auction_resolved', { snapshot: room.engine.getSnapshot() });
+            this.io.to(room.roomCode).emit('game:state_sync', { snapshot: room.engine.getSnapshot() });
+            this.resetTurnTimer(room);
+            this.checkBankruptcyOrGameOver(room);
+            this.checkTriggerBot(room);
+          } else {
+            this.io.to(room.roomCode).emit('game:state_sync', { snapshot: room.engine.getSnapshot() });
+          }
+        }
+      }
+    });
+  }
+
+  private triggerTradeBots(room: RoomInfo) {
+    if (!room.engine || room.status !== 'PLAYING') return;
+    BotAI.handleTradeBots(room.engine, (botId, actionType, tradeId) => {
+      if (!room.engine || room.status !== 'PLAYING') return;
+      const res =
+        actionType === 'ACCEPT_TRADE'
+          ? room.engine.acceptTrade(tradeId, botId)
+          : room.engine.rejectTrade(tradeId, botId);
+      if (res.success) {
+        this.io.to(room.roomCode).emit('game:state_sync', { snapshot: room.engine.getSnapshot() });
+        if (actionType === 'ACCEPT_TRADE') {
+          this.checkBankruptcyOrGameOver(room);
+        }
+      }
+    });
   }
 
   private checkBankruptcyOrGameOver(room: RoomInfo) {
@@ -752,8 +1179,10 @@ export class RoomManager {
           this.rooms.delete(roomCode);
         } else {
           if (room.hostId === socket.id) {
-            room.hostId = room.engine.players[0].socketId;
-            room.engine.players[0].isHost = true;
+            const nextHost = room.engine.players.find(p => !p.isBot) || room.engine.players[0];
+            room.hostId = nextHost.socketId;
+            nextHost.isHost = true;
+            nextHost.isReady = true;
           }
           this.broadcastRoomUpdate(room);
         }
@@ -762,10 +1191,121 @@ export class RoomManager {
         player.isBot = true;
         room.engine.addLog(`${player.username} mất kết nối, hệ thống tự động giao Bot điều khiển.`, 'ALERT', player.id, player.username);
         this.io.to(room.roomCode).emit('game:state_sync', { snapshot: room.engine.getSnapshot() });
-        this.checkTriggerBot(room);
+        if (room.engine.turnState.currentUserId === player.id) {
+          this.checkTriggerBot(room);
+        }
       }
     }
     this.userToRoom.delete(socket.id);
+  }
+
+  public handleLeaveMatch(
+    socket: Socket,
+    callback?: (res: { success: boolean; roomCode?: string; error?: string }) => void
+  ) {
+    const roomCode = this.userToRoom.get(socket.id);
+    if (!roomCode) {
+      socket.emit('room:left', { roomCode: null });
+      callback?.({ success: true });
+      return;
+    }
+
+    const room = this.rooms.get(roomCode);
+    this.userToRoom.delete(socket.id);
+    socket.leave(roomCode);
+
+    if (!room || !room.engine) {
+      socket.emit('room:left', { roomCode });
+      callback?.({ success: true, roomCode });
+      return;
+    }
+
+    const player = room.engine.players.find(p => p.socketId === socket.id || p.id === socket.id);
+
+    if (room.status === 'WAITING') {
+      room.engine.players = room.engine.players.filter(p => p.socketId !== socket.id && p.id !== socket.id);
+      const hasConnectedHuman = room.engine.players.some(
+        p => !p.isBot && this.userToRoom.get(p.socketId) === roomCode
+      );
+      if (room.engine.players.length === 0 || !hasConnectedHuman) {
+        if (room.timerInterval) clearInterval(room.timerInterval);
+        this.rooms.delete(roomCode);
+      } else {
+        if (room.hostId === socket.id) {
+          const nextHost = room.engine.players.find(p => !p.isBot) || room.engine.players[0];
+          room.hostId = nextHost.socketId;
+          nextHost.isHost = true;
+          nextHost.isReady = true;
+        }
+        this.broadcastRoomUpdate(room);
+      }
+      socket.emit('room:left', { roomCode });
+      callback?.({ success: true, roomCode });
+      return;
+    }
+
+    // PLAYING or FINISHED
+    if (room.status === 'PLAYING' && player && !player.isBankrupt && !room.engine.isGameOver) {
+      const wasCurrentTurn = room.engine.turnState.currentUserId === player.id;
+      if (wasCurrentTurn) {
+        room.engine.turnState.pendingBuyout = null;
+      }
+      room.engine.addLog(
+        `🏳️ ${player.username} đã đầu hàng và rời khỏi trận đấu!`,
+        'ALERT',
+        player.id,
+        player.username
+      );
+      room.engine.handleBankruptcy(player);
+
+      const hasConnectedHuman = room.engine.players.some(
+        p => !p.isBot && this.userToRoom.get(p.socketId) === roomCode
+      );
+
+      if (!hasConnectedHuman) {
+        room.status = 'FINISHED';
+        room.engine.isGameOver = true;
+        if (room.timerInterval) clearInterval(room.timerInterval);
+        this.rooms.delete(roomCode);
+        socket.emit('room:left', { roomCode });
+        callback?.({ success: true, roomCode });
+        return;
+      }
+
+      if (room.engine.isGameOver || room.engine.checkGameOver()) {
+        this.checkBankruptcyOrGameOver(room);
+      } else if (wasCurrentTurn) {
+        try {
+          const res = room.engine.endTurn(player.id);
+          if (res.isGameOver) {
+            this.checkBankruptcyOrGameOver(room);
+          } else {
+            this.io.to(room.roomCode).emit('game:turn_change', {
+              nextUserId: res.nextUserId,
+              timeRemaining: room.turnTimeout,
+              snapshot: room.engine.getSnapshot()
+            });
+            this.resetTurnTimer(room);
+            this.checkTriggerBot(room);
+          }
+        } catch (e) {}
+      } else {
+        this.io.to(room.roomCode).emit('game:state_sync', { snapshot: room.engine.getSnapshot() });
+      }
+    } else {
+      const hasConnectedHuman = room.engine.players.some(
+        p => !p.isBot && this.userToRoom.get(p.socketId) === roomCode
+      );
+      if (!hasConnectedHuman) {
+        room.status = 'FINISHED';
+        room.engine.isGameOver = true;
+        if (room.timerInterval) clearInterval(room.timerInterval);
+        this.rooms.delete(roomCode);
+      }
+    }
+
+    socket.emit('room:left', { roomCode });
+    callback?.({ success: true, roomCode });
   }
 
   public broadcastRoomUpdate(room: RoomInfo) {

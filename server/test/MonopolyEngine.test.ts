@@ -80,6 +80,7 @@ async function runAllTests() {
 
       if (game.turnState.phase === 'BUY_PROPERTY') {
         game.skipBuyProperty(p1.id);
+        if (game.turnState.phase === 'AUCTION') game.resolveAuction();
       }
 
       assert.equal(game.turnState.phase, 'ROLL_DICE');
@@ -101,13 +102,19 @@ async function runAllTests() {
 
       // Roll 1
       game.rollDice(p1.id);
-      if (game.turnState.phase === 'BUY_PROPERTY') game.skipBuyProperty(p1.id);
+      if (game.turnState.phase === 'BUY_PROPERTY') {
+        game.skipBuyProperty(p1.id);
+        if (game.turnState.phase === 'AUCTION') game.resolveAuction();
+      }
       assert.equal(game.turnState.consecutiveDoubles, 1);
       assert.equal(p1.inJail, false);
 
       // Roll 2
       game.rollDice(p1.id);
-      if (game.turnState.phase === 'BUY_PROPERTY') game.skipBuyProperty(p1.id);
+      if (game.turnState.phase === 'BUY_PROPERTY') {
+        game.skipBuyProperty(p1.id);
+        if (game.turnState.phase === 'AUCTION') game.resolveAuction();
+      }
       assert.equal(game.turnState.consecutiveDoubles, 2);
       assert.equal(p1.inJail, false);
 
@@ -567,6 +574,7 @@ async function runAllTests() {
     const p3 = game.players[2];
 
     p2.isBankrupt = true;
+    game.turnState.phase = 'END_TURN';
 
     const turnResult = game.endTurn(p1.id);
     assert.equal(turnResult.nextUserId, p3.id);
@@ -829,6 +837,360 @@ async function runAllTests() {
     assert.equal(p2.jailBonds, 1);
     assert.equal(p2.getOutOfJailCards, 1);
     assert.equal(game.tradeOffers.get(tradeId)?.status, 'CANCELLED');
+  });
+
+  // ----------------------------------------------------
+  // SUITE 9: Phase, Ownership & Card Regression Guards
+  // ----------------------------------------------------
+  console.log('\n--- Suite 9: Phase, Ownership & Card Regression Guards ---');
+
+  await test('buyProperty() rejects buying non-standing tile, non-buyable tile, or wrong phase', () => {
+    const game = createGameWithPlayers(2);
+    const p1 = game.players[0];
+
+    // Wrong phase (ROLL_DICE)
+    const wrongPhase = game.buyProperty(p1.id, 1);
+    assert.equal(wrongPhase.success, false);
+
+    // Wrong tile (standing at 0, trying to buy tile 1)
+    game.turnState.phase = 'BUY_PROPERTY';
+    p1.position = 0;
+    const wrongPos = game.buyProperty(p1.id, 1);
+    assert.equal(wrongPos.success, false);
+
+    // Non-buyable tile (GO = 0)
+    const nonBuyable = game.buyProperty(p1.id, 0);
+    assert.equal(nonBuyable.success, false);
+  });
+
+  await test('buyProperty() rejects upgrading without full district monopoly or when district has mortgage', () => {
+    const game = createGameWithPlayers(2);
+    const p1 = game.players[0];
+
+    // District 1 has tiles 1 (Can Tho) and 3 (Ca Mau). Own only tile 1.
+    game.properties.set(1, { tileId: 1, ownerId: p1.id, level: 0, isMortgaged: false });
+    game.turnState.phase = 'END_TURN';
+
+    const noMonopoly = game.buyProperty(p1.id, 1);
+    assert.equal(noMonopoly.success, false);
+
+    // Own tile 3 too, but mortgage tile 3 -> still cannot upgrade tile 1
+    game.properties.set(3, { tileId: 3, ownerId: p1.id, level: 0, isMortgaged: true });
+    const withMortgaged = game.buyProperty(p1.id, 1);
+    assert.equal(withMortgaged.success, false);
+
+    // Unmortgage tile 3 -> now upgrade succeeds and stays in END_TURN
+    game.properties.get(3)!.isMortgaged = false;
+    const ok = game.buyProperty(p1.id, 1);
+    assert.equal(ok.success, true);
+    assert.equal(ok.level, 1);
+    assert.equal(game.turnState.phase, 'END_TURN');
+  });
+
+  await test('endTurn() throws when phase is not END_TURN', () => {
+    const game = createGameWithPlayers(2);
+    const p1 = game.players[0];
+
+    assert.throws(() => game.endTurn(p1.id), /Chưa thể kết thúc lượt/);
+  });
+
+  await test('Jail actions enforce current turn and ROLL_DICE phase; human keeps jail card on roll', () => {
+    const game = createGameWithPlayers(2);
+    const p1 = game.players[0];
+    const p2 = game.players[1];
+    p2.inJail = true;
+    p2.position = 10;
+    p2.getOutOfJailCards = 1;
+
+    // P2 cannot use jail card during P1 turn
+    const outOfTurn = game.useGetOutOfJailCard(p2.id);
+    assert.equal(outOfTurn.success, false);
+
+    // P1 in jail with card keeps it when rolling non-double
+    p1.inJail = true;
+    p1.position = 10;
+    p1.getOutOfJailCards = 1;
+    const origRandom = Math.random;
+    try {
+      let c = 0;
+      Math.random = () => (++c % 2 === 1 ? 0.1 : 0.5);
+      game.rollDice(p1.id);
+      assert.equal(p1.getOutOfJailCards, 1);
+      assert.equal(p1.inJail, true);
+    } finally {
+      Math.random = origRandom;
+    }
+  });
+
+  await test('MOVE_STEPS card landing on TAX tile (tile 4) deducts tax and updates jackpot', () => {
+    const game = createGameWithPlayers(2);
+    const p1 = game.players[0];
+    p1.position = 7; // Chance
+    const startBal = p1.balance;
+    const startJackpot = game.freeParkingJackpot;
+
+    const back3Card: GameCard = {
+      id: 'test_back3',
+      type: 'CHANCE',
+      title: 'Lùi 3 bước',
+      description: 'Lùi về Thuế Thu Nhập',
+      action: 'MOVE_STEPS',
+      steps: -3
+    };
+    game.applyCard(p1, back3Card);
+
+    assert.equal(p1.position, 4);
+    assert.equal(p1.balance, startBal - 200);
+    assert.equal(game.freeParkingJackpot, startJackpot + 200);
+  });
+
+  await test('acceptTrade() validates rentWaivers and district buildings at acceptance time', () => {
+    const game = createGameWithPlayers(2);
+    const p1 = game.players[0];
+    const p2 = game.players[1];
+
+    p1.rentWaivers = 1;
+    const res = game.proposeTrade(
+      p1.id,
+      p2.id,
+      { tileIds: [], cash: 0, rentWaivers: 1 },
+      { tileIds: [], cash: 50 }
+    );
+    assert.equal(res.success, true);
+
+    // P1 consumes their rentWaiver before P2 accepts
+    p1.rentWaivers = 0;
+    const acc = game.acceptTrade(res.trade!.id, p2.id);
+    assert.equal(acc.success, false);
+    assert.equal(p1.rentWaivers, 0);
+  });
+
+  await test('mortgageProperty() rejects if another tile in the same district has buildings', () => {
+    const game = createGameWithPlayers(2);
+    const p1 = game.players[0];
+    game.properties.set(1, { tileId: 1, ownerId: p1.id, level: 1, isMortgaged: false });
+    game.properties.set(3, { tileId: 3, ownerId: p1.id, level: 0, isMortgaged: false });
+
+    const res = game.mortgageProperty(p1.id, 3);
+    assert.equal(res.success, false);
+  });
+
+  // ----------------------------------------------------
+  // SUITE 10: Business Tour Mechanics (Victory, Buyout, Festival, Even-Build)
+  // ----------------------------------------------------
+  console.log('\n--- Suite 10: Business Tour Mechanics ---');
+
+  await test('Instant Victory: 4 Railroads Monopoly triggers game over immediately', () => {
+    const game = createGameWithPlayers(2);
+    const p1 = game.players[0];
+
+    game.properties.set(5, { tileId: 5, ownerId: p1.id, level: 0, isMortgaged: false });
+    game.properties.set(15, { tileId: 15, ownerId: p1.id, level: 0, isMortgaged: false });
+    game.properties.set(25, { tileId: 25, ownerId: p1.id, level: 0, isMortgaged: false });
+    p1.position = 35;
+    game.turnState.phase = 'BUY_PROPERTY';
+
+    const res = game.buyProperty(p1.id, 35);
+    assert.equal(res.success, true);
+    assert.equal(game.isGameOver, true);
+    assert.equal(game.winnerId, p1.id);
+    assert.equal(game.winReason, 'RAILROAD_MONOPOLY');
+  });
+
+  await test('Instant Victory: Line Monopoly (2 districts on same board side) triggers game over', () => {
+    const game = createGameWithPlayers(2);
+    const p1 = game.players[0];
+
+    // Side 0 = District 1 (1, 3) + District 2 (6, 8, 9)
+    game.properties.set(1, { tileId: 1, ownerId: p1.id, level: 0, isMortgaged: false });
+    game.properties.set(3, { tileId: 3, ownerId: p1.id, level: 0, isMortgaged: false });
+    game.properties.set(6, { tileId: 6, ownerId: p1.id, level: 0, isMortgaged: false });
+    game.properties.set(8, { tileId: 8, ownerId: p1.id, level: 0, isMortgaged: false });
+    p1.position = 9;
+    game.turnState.phase = 'BUY_PROPERTY';
+
+    const res = game.buyProperty(p1.id, 9);
+    assert.equal(res.success, true);
+    assert.equal(game.isGameOver, true);
+    assert.equal(game.winnerId, p1.id);
+    assert.equal(game.winReason, 'LINE_MONOPOLY');
+  });
+
+  await test('Instant Victory: 3 Color Monopolies (non-adjacent sides) triggers COLOR_MONOPOLY', () => {
+    const game = createGameWithPlayers(2);
+    const p1 = game.players[0];
+
+    // District 1 (1,3), District 3 (11,13,14), District 5 (21,23,24) -> no complete line!
+    for (const id of [1, 3, 11, 13, 14, 21, 23]) {
+      game.properties.set(id, { tileId: id, ownerId: p1.id, level: 0, isMortgaged: false });
+    }
+    p1.position = 24;
+    game.turnState.phase = 'BUY_PROPERTY';
+
+    const res = game.buyProperty(p1.id, 24);
+    assert.equal(res.success, true);
+    assert.equal(game.isGameOver, true);
+    assert.equal(game.winnerId, p1.id);
+    assert.equal(game.winReason, 'COLOR_MONOPOLY');
+  });
+
+  await test('Buyout: landing on opponent property (level < 4) allows 2x buyout; level 4 is immune', () => {
+    const game = createGameWithPlayers(2);
+    const p1 = game.players[0];
+    const p2 = game.players[1];
+
+    // Tile 1 (Can Tho, price 60, houseCost 50, level 1) -> buyoutCost = (60 + 50) * 2 = 220
+    game.properties.set(1, { tileId: 1, ownerId: p2.id, level: 1, isMortgaged: false });
+    const evalRes = game.evaluateTileAction(p1, BOARD_TILES[1], 7);
+    assert.equal(evalRes.type, 'PAY_RENT');
+    assert.equal(evalRes.canBuyout, true);
+    assert.equal(evalRes.buyoutCost, 220);
+    assert.equal(game.turnState.phase, 'BUYOUT_PROPERTY');
+
+    const p1Before = p1.balance;
+    const p2Before = p2.balance;
+    const buyRes = game.buyoutProperty(p1.id, 1);
+    assert.equal(buyRes.success, true);
+    assert.equal(game.properties.get(1)?.ownerId, p1.id);
+    assert.equal(p1.balance, p1Before - 220);
+    assert.equal(p2.balance, p2Before + 220);
+    assert.equal(game.turnState.phase, 'END_TURN');
+
+    // Level 4 Hotel is immune to buyout
+    game.properties.set(3, { tileId: 3, ownerId: p2.id, level: 4, isMortgaged: false });
+    game.turnState.phase = 'ROLL_DICE';
+    const evalHotel = game.evaluateTileAction(p1, BOARD_TILES[3], 7);
+    assert.equal(evalHotel.type, 'PAY_RENT');
+    assert.equal(evalHotel.canBuyout, undefined);
+    assert.equal(game.turnState.phase, 'END_TURN');
+  });
+
+  await test('Festival: landing on FREE_PARKING with owned property enters FESTIVAL_SELECT and doubles rent', () => {
+    const game = createGameWithPlayers(2);
+    const p1 = game.players[0];
+    const p2 = game.players[1];
+
+    // P1 owns tile 1 (baseRent = 4)
+    game.properties.set(1, { tileId: 1, ownerId: p1.id, level: 0, isMortgaged: false });
+
+    const fpRes = game.evaluateTileAction(p1, BOARD_TILES[20], 7);
+    assert.equal(fpRes.type, 'FREE_PARKING');
+    assert.equal(fpRes.canSelectFestival, true);
+    assert.equal(game.turnState.phase, 'FESTIVAL_SELECT');
+
+    const selRes = game.selectFestivalTile(p1.id, 1);
+    assert.equal(selRes.success, true);
+    assert.equal(game.festivalTileId, 1);
+    assert.equal(game.turnState.phase, 'END_TURN');
+
+    // P2 lands on tile 1 -> rent is doubled (4 * 2 = 8)
+    const rent = game.calculateRent(BOARD_TILES[1], game.properties.get(1)!, 7);
+    assert.equal(rent, 8);
+
+    // Mortgaging festival tile clears festivalTileId
+    game.mortgageProperty(p1.id, 1);
+    assert.equal(game.festivalTileId, null);
+  });
+
+  await test('Even-Build and Even-Sell enforce max 1 level difference within district', () => {
+    const game = createGameWithPlayers(2);
+    const p1 = game.players[0];
+
+    // District 1: tiles 1 & 3
+    game.properties.set(1, { tileId: 1, ownerId: p1.id, level: 0, isMortgaged: false });
+    game.properties.set(3, { tileId: 3, ownerId: p1.id, level: 0, isMortgaged: false });
+    game.turnState.phase = 'END_TURN';
+
+    // Upgrade tile 1 to level 1 -> OK
+    assert.equal(game.buyProperty(p1.id, 1).success, true);
+    // Upgrade tile 1 to level 2 while tile 3 is level 0 -> REJECTED
+    assert.equal(game.buyProperty(p1.id, 1).success, false);
+    // Upgrade tile 3 to level 1 -> OK
+    assert.equal(game.buyProperty(p1.id, 3).success, true);
+    // Now upgrade tile 1 to level 2 -> OK
+    assert.equal(game.buyProperty(p1.id, 1).success, true);
+
+    // Even-Sell: cannot sell tile 3 (level 1) while tile 1 is level 2
+    assert.equal(game.sellBuilding(p1.id, 3).success, false);
+    // Selling tile 1 (level 2) succeeds
+    assert.equal(game.sellBuilding(p1.id, 1).success, true);
+  });
+
+  // ================================================================
+  // SUITE 11: Competitive Business Tour Upgrades
+  // ================================================================
+  console.log('\n--- Suite 11: Competitive Business Tour Upgrades ---');
+
+  await test('11.1 Public Auction: skipBuyProperty starts AUCTION, bidding & passing resolves to highest bidder', () => {
+    const game = createGameWithPlayers(3);
+    const p1 = game.players[0];
+    const p2 = game.players[1];
+    const p3 = game.players[2];
+
+    p1.position = 1; // Can Tho (price 60)
+    game.turnState.currentUserId = p1.id;
+    game.turnState.phase = 'BUY_PROPERTY';
+
+    const skipRes = game.skipBuyProperty(p1.id);
+    assert.equal(skipRes.success, true);
+    assert.equal(game.turnState.phase, 'AUCTION');
+    assert.ok(game.auctionState);
+    assert.equal(game.auctionState!.tileId, 1);
+    assert.equal(game.auctionState!.startingBid, 30);
+
+    // P2 bids 40
+    const bidRes = game.placeAuctionBid(p2.id, 40);
+    assert.equal(bidRes.success, true);
+    assert.equal(game.auctionState!.currentBid, 40);
+    assert.equal(game.auctionState!.highestBidderId, p2.id);
+
+    // P1 and P3 pass -> resolves to P2
+    game.passAuction(p1.id);
+    const pass3 = game.passAuction(p3.id);
+    assert.equal(pass3.success, true);
+    assert.equal(pass3.resolved, true);
+    assert.equal(game.auctionState, null);
+    assert.equal(game.properties.get(1)?.ownerId, p2.id);
+    assert.equal(p2.balance, 1500 - 40);
+    assert.equal(game.turnState.phase, 'END_TURN');
+  });
+
+  await test('11.2 Match Timeout: resolveMatchTimeout picks highest netWorth alive player with NET_WORTH winReason', () => {
+    const game = createGameWithPlayers(2);
+    const p1 = game.players[0];
+    const p2 = game.players[1];
+
+    p1.balance = 1200;
+    p2.balance = 2500;
+
+    const res = game.resolveMatchTimeout();
+    assert.equal(res.winnerId, p2.id);
+    assert.equal(res.winReason, 'NET_WORTH');
+    assert.equal(game.isGameOver, true);
+    assert.equal(game.winnerId, p2.id);
+    assert.equal(game.winReason, 'NET_WORTH');
+  });
+
+  await test('11.3 Creditor Transfer on Bankruptcy triggers Instant Victory when creditor completes monopoly', () => {
+    const game = createGameWithPlayers(3);
+    const p1 = game.players[0];
+    const p2 = game.players[1];
+
+    // P2 owns 3 railroads (5, 15, 25); P1 owns the 4th railroad (35)
+    game.properties.set(5, { tileId: 5, ownerId: p2.id, level: 0, isMortgaged: false });
+    game.properties.set(15, { tileId: 15, ownerId: p2.id, level: 0, isMortgaged: false });
+    game.properties.set(25, { tileId: 25, ownerId: p2.id, level: 0, isMortgaged: false });
+    game.properties.set(35, { tileId: 35, ownerId: p1.id, level: 0, isMortgaged: false });
+
+    // P1 goes bankrupt to P2 -> tile 35 transfers to P2 -> 4 railroads -> RAILROAD_MONOPOLY
+    p1.balance = 0;
+    game.handleBankruptcy(p1, p2);
+
+    assert.equal(p1.isBankrupt, true);
+    assert.equal(game.properties.get(35)?.ownerId, p2.id);
+    assert.equal(game.isGameOver, true);
+    assert.equal(game.winnerId, p2.id);
+    assert.equal(game.winReason, 'RAILROAD_MONOPOLY');
   });
 }
 

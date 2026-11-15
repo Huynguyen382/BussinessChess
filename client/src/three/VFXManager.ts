@@ -55,6 +55,7 @@ export class VFXManager {
   private starAlphas: Float32Array = new Float32Array(0);
   private activeStarCount: number = 0;
   private maxStars: number = 80;
+  private hasActiveStars: boolean = false;
 
   // Train Smoke System
   private smokeParticles: SmokeParticle[] = [];
@@ -207,6 +208,7 @@ export class VFXManager {
       );
     }
     this.activeStarCount = (this.activeStarCount + count) % this.maxStars;
+    this.hasActiveStars = true;
     posAttr.needsUpdate = true;
   }
 
@@ -253,12 +255,29 @@ export class VFXManager {
       );
     }
     this.activeStarCount = (this.activeStarCount + count) % this.maxStars;
+    this.hasActiveStars = true;
     posAttr.needsUpdate = true;
 
     // Vòng sóng hạ cánh màu Cyan ngọc bích / Vàng kim
     this.spawnShockwave(pos, '#00CEC9', 3.2);
     this.spawnShockwave(pos, '#FDCB6E', 2.0);
     this.triggerCameraShake(0.32);
+  }
+
+  // Vệt bước nhảy của quân cờ theo tùy biến trang cá nhân (Token Step Trail VFX)
+  public spawnTrailStep(pos: THREE.Vector3, trailId?: string, color?: string) {
+    if (trailId === 'trail_gold') {
+      this.spawnStarBurst(pos, 10, 0xFDCB6E);
+      this.spawnShockwave(pos, '#FDCB6E', 1.35);
+    } else if (trailId === 'trail_sakura') {
+      this.spawnConfetti3D(pos, 6, false);
+      this.spawnShockwave(pos, '#FD79A8', 1.25);
+    } else if (trailId === 'trail_neon') {
+      this.spawnStarBurst(pos, 10, 0x00CEC9);
+      this.spawnShockwave(pos, '#6C5CE7', 1.45);
+    } else {
+      this.spawnShockwave(pos, color || '#00B894', 1.1);
+    }
   }
 
   // Rung màn hình nhẹ (Screen Micro-shake)
@@ -313,9 +332,13 @@ export class VFXManager {
     }
   }
 
+  private isMobileViewport(): boolean {
+    return typeof window !== 'undefined' && window.innerWidth <= 768;
+  }
+
   // Nổ pháo hoa 3D rực rỡ (3D Particle Firework Bursts)
   public spawnFireworkBurst(pos: THREE.Vector3, colorHex?: number) {
-    const burstCount = 64;
+    const burstCount = this.isMobileViewport() ? 36 : 64;
     const palette = [0xFDCB6E, 0x00CEC9, 0xE84393, 0x00B894, 0x6C5CE7, 0xFF7675];
     const baseColor = colorHex !== undefined ? colorHex : palette[Math.floor(Math.random() * palette.length)];
     const threeColor = new THREE.Color(baseColor);
@@ -351,11 +374,12 @@ export class VFXManager {
 
   // Bắn giấy màu ăn mừng 3D (3D Celebratory Confetti Ribbons)
   public spawnConfetti3D(pos: THREE.Vector3, count = 48, isGoldTheme = false) {
+    const effectiveCount = this.isMobileViewport() ? Math.ceil(count * 0.5) : count;
     const goldPalette = [0xFDCB6E, 0xF1C40F, 0xE1B12C, 0xF39C12, 0xFFEAA7, 0x00CEC9, 0xE84393];
     const rainbowPalette = [0xFDCB6E, 0x00CEC9, 0xE84393, 0x00B894, 0x6C5CE7, 0xFC5C65, 0x0984E3];
     const palette = isGoldTheme ? goldPalette : rainbowPalette;
 
-    for (let i = 0; i < count; i++) {
+    for (let i = 0; i < effectiveCount; i++) {
       const geo = new THREE.PlaneGeometry(0.26, 0.14);
       const col = palette[Math.floor(Math.random() * palette.length)];
       const mat = new THREE.MeshBasicMaterial({
@@ -413,7 +437,7 @@ export class VFXManager {
 
     // 4. Màn pháo giấy 2D Canvas Confetti phủ ngập tràn màn hình cho cảm giác chiến thắng hoành tráng
     confetti({
-      particleCount: 140,
+      particleCount: this.isMobileViewport() ? 70 : 140,
       spread: 95,
       origin: { y: 0.62 },
       colors: ['#FDCB6E', '#F1C40F', '#00CEC9', '#E84393', '#00B894', '#6C5CE7']
@@ -498,10 +522,11 @@ export class VFXManager {
     }
 
     // 2. Update Star Particles
-    if (this.starParticles) {
+    if (this.starParticles && this.hasActiveStars) {
       const posAttr = this.starParticles.geometry.attributes.position as THREE.BufferAttribute;
+      let anyActive = false;
       for (let i = 0; i < this.maxStars; i++) {
-        let y = posAttr.getY(i);
+        const y = posAttr.getY(i);
         if (y > -50) {
           const vel = this.starVelocities[i];
           const newX = posAttr.getX(i) + vel.x * dt;
@@ -514,11 +539,14 @@ export class VFXManager {
           vel.x *= 0.96;
           vel.z *= 0.96;
 
-          if (y < 0.1) {
+          if (newY < 0.1) {
             posAttr.setY(i, -100); // Disappear below
+          } else {
+            anyActive = true;
           }
         }
       }
+      this.hasActiveStars = anyActive;
       posAttr.needsUpdate = true;
     }
 
@@ -577,6 +605,7 @@ export class VFXManager {
     if (this.fireworkPoints && this.fireworkParticles.length > 0) {
       const posAttr = this.fireworkPoints.geometry.attributes.position as THREE.BufferAttribute;
       const colAttr = this.fireworkPoints.geometry.attributes.color as THREE.BufferAttribute;
+      const prevCount = this.fireworkParticles.length;
 
       for (let i = this.fireworkParticles.length - 1; i >= 0; i--) {
         const fp = this.fireworkParticles[i];
@@ -600,6 +629,11 @@ export class VFXManager {
           posAttr.setXYZ(writeIdx, 0, -200, 0);
           this.fireworkParticles.splice(i, 1);
         }
+      }
+      // Hide any trailing slots left behind when fireworkParticles shrinks after splicing
+      const clearLimit = Math.min(prevCount, this.maxFireworks);
+      for (let k = this.fireworkParticles.length; k < clearLimit; k++) {
+        posAttr.setXYZ(k, 0, -200, 0);
       }
       posAttr.needsUpdate = true;
       colAttr.needsUpdate = true;

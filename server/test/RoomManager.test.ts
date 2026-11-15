@@ -235,6 +235,16 @@ async function runTests() {
     assert.equal(failNonHost.success, false);
     assert.match(failNonHost.error || '', /chủ phòng/i);
 
+    // Host cannot start when player 2 is not ready
+    const failNotReady = mgr.startGame(sHost as any);
+    assert.equal(failNotReady.success, false);
+    assert.match(failNotReady.error || '', /chưa sẵn sàng/i);
+
+    // Player 2 readies up
+    const readyRes = mgr.handleToggleReady(s2 as any);
+    assert.equal(readyRes.success, true);
+    assert.equal(readyRes.isReady, true);
+
     // Host starts successfully
     io.clear();
     const startRes = mgr.startGame(sHost as any);
@@ -248,6 +258,53 @@ async function runTests() {
     assert.ok(startBroadcast.data.boardData);
   });
 
+  await test('3.3 handleToggleReady and handleSelectToken update player state, broadcast update and preserve token', () => {
+    const io = new MockServer();
+    const mgr = new RoomManager(io as any);
+    const sHost = new MockSocket('s_host_33');
+    const s2 = new MockSocket('s_2_33');
+
+    const room = mgr.createRoom(sHost as any, { name: 'Lobby Custom Room', username: 'Host33' });
+    mgr.joinRoom(s2 as any, { roomCode: room.roomCode, username: 'Player33' });
+
+    const pHost = room.engine!.players[0];
+    const p2 = room.engine!.players[1];
+    assert.equal(pHost.isReady, true, 'Host is ready by default');
+    assert.equal(p2.isReady, false, 'Non-host is unready by default');
+
+    // Toggle ready
+    io.clear();
+    const toggle1 = mgr.handleToggleReady(s2 as any);
+    assert.equal(toggle1.success, true);
+    assert.equal(toggle1.isReady, true);
+    assert.equal(p2.isReady, true);
+    assert.ok(io.broadcastedEvents.some(e => e.event === 'room:updated'));
+
+    // Explicit ready false
+    const toggle2 = mgr.handleToggleReady(s2 as any, false);
+    assert.equal(toggle2.isReady, false);
+    assert.equal(p2.isReady, false);
+
+    // Select token: invalid token rejected
+    const invalidTokenRes = mgr.handleSelectToken(s2 as any, 'invalid_ufo' as any);
+    assert.equal(invalidTokenRes.success, false);
+    assert.match(invalidTokenRes.error || '', /không hợp lệ/i);
+
+    // Select token: valid token accepted and broadcasted
+    io.clear();
+    const validTokenRes = mgr.handleSelectToken(s2 as any, { token: 'dragon' });
+    assert.equal(validTokenRes.success, true);
+    assert.equal(validTokenRes.token, 'dragon');
+    assert.equal(p2.token, 'dragon');
+    assert.ok(io.broadcastedEvents.some(e => e.event === 'room:updated'));
+
+    // Ready up and start game -> token preserved in engine
+    mgr.handleToggleReady(s2 as any, true);
+    const startRes = mgr.startGame(sHost as any);
+    assert.equal(startRes.success, true);
+    assert.equal(room.engine!.players[1].token, 'dragon');
+  });
+
   console.log('\n--- Suite 4: Gameplay Socket Handlers ---');
 
   await test('handleRollDice emits game:dice_result to room', () => {
@@ -257,6 +314,7 @@ async function runTests() {
     const s2 = new MockSocket('p2');
     const room = mgr.createRoom(s1 as any, { name: 'Dice Room', username: 'P1' });
     mgr.joinRoom(s2 as any, { roomCode: room.roomCode, username: 'P2' });
+    mgr.handleToggleReady(s2 as any);
     mgr.startGame(s1 as any);
 
     io.clear();
@@ -278,6 +336,7 @@ async function runTests() {
     const s2 = new MockSocket('p2');
     const room = mgr.createRoom(s1 as any, { name: 'Buy Room', username: 'P1' });
     mgr.joinRoom(s2 as any, { roomCode: room.roomCode, username: 'P2' });
+    mgr.handleToggleReady(s2 as any);
     mgr.startGame(s1 as any);
 
     // Manually set player 1 on unowned property tile 1 (Hồ Hoàn Kiếm) in BUY_PROPERTY phase
@@ -313,6 +372,7 @@ async function runTests() {
     const s2 = new MockSocket('p2');
     const room = mgr.createRoom(s1 as any, { name: 'Mortgage Room', username: 'P1' });
     mgr.joinRoom(s2 as any, { roomCode: room.roomCode, username: 'P2' });
+    mgr.handleToggleReady(s2 as any);
     mgr.startGame(s1 as any);
 
     const engine = room.engine!;
@@ -337,6 +397,82 @@ async function runTests() {
     const unmortEvent = io.broadcastedEvents.find(e => e.event === 'game:property_unmortgaged');
     assert.ok(unmortEvent, 'game:property_unmortgaged emitted');
     assert.equal(unmortEvent.data.tileId, 1);
+  });
+
+  await test('handleBuyoutProperty and handleSelectFestival update room state', () => {
+    const io = new MockServer();
+    const mgr = new RoomManager(io as any);
+    const s1 = new MockSocket('p1');
+    const s2 = new MockSocket('p2');
+    const room = mgr.createRoom(s1 as any, { name: 'BT Room', username: 'P1' });
+    mgr.joinRoom(s2 as any, { roomCode: room.roomCode, username: 'P2' });
+    mgr.handleToggleReady(s2 as any);
+    mgr.startGame(s1 as any);
+
+    const engine = room.engine!;
+    const p1 = engine.players[0];
+    const p2 = engine.players[1];
+
+    engine.properties.set(1, { tileId: 1, ownerId: p2.id, level: 0, isMortgaged: false });
+    engine.turnState.currentUserId = p1.id;
+    engine.turnState.phase = 'BUYOUT_PROPERTY';
+    engine.turnState.pendingBuyout = { tileId: 1, targetOwnerId: p2.id, cost: 120 };
+
+    io.clear();
+    mgr.handleBuyoutProperty(s1 as any, 1);
+    const buyoutEvent = io.broadcastedEvents.find(e => e.event === 'game:property_updated' && e.data.isBuyout);
+    assert.ok(buyoutEvent, 'game:property_updated with isBuyout should be emitted');
+    assert.equal(engine.properties.get(1)?.ownerId, p1.id);
+
+    engine.turnState.phase = 'FESTIVAL_SELECT';
+    io.clear();
+    mgr.handleSelectFestival(s1 as any, 1);
+    assert.equal(engine.festivalTileId, 1);
+    const syncEvent = io.broadcastedEvents.find(e => e.event === 'game:state_sync');
+    assert.ok(syncEvent, 'game:state_sync emitted after festival selection');
+  });
+
+  await test('4.9 handleAuctionBid, handleAuctionPass, handleProposeTrade & handleAcceptTrade', () => {
+    const io = new MockServer();
+    const mgr = new RoomManager(io as any);
+    const s1 = new MockSocket('p1');
+    const s2 = new MockSocket('p2');
+
+    const room = mgr.createRoom(s1 as any, { name: 'Auction Trade Room', username: 'Alice' });
+    mgr.joinRoom(s2 as any, { roomCode: room.roomCode, username: 'Bob' });
+    mgr.handleToggleReady(s2 as any);
+    mgr.startGame(s1 as any);
+
+    const engine = room.engine!;
+    const p1 = engine.players[0];
+    const p2 = engine.players[1];
+
+    // Start auction on tile 1
+    p1.position = 1;
+    engine.turnState.currentUserId = p1.id;
+    engine.turnState.phase = 'BUY_PROPERTY';
+    mgr.handleSkipBuy(s1 as any);
+    assert.equal(engine.turnState.phase, 'AUCTION');
+
+    io.clear();
+    mgr.handleAuctionBid(s2 as any, 50);
+    assert.equal(engine.auctionState?.currentBid, 50);
+    mgr.handleAuctionPass(s1 as any);
+    assert.equal(engine.properties.get(1)?.ownerId, p2.id);
+    assert.ok(io.broadcastedEvents.some(e => e.event === 'game:auction_resolved'));
+
+    // Trade P2's tile 1 to P1 for 100M
+    io.clear();
+    mgr.handleProposeTrade(s2 as any, {
+      receiverId: p1.id,
+      offered: { cash: 0, tileIds: [1] },
+      requested: { cash: 100, tileIds: [] },
+    });
+    const tradeId = Array.from(engine.tradeOffers.values())[0]?.id;
+    assert.ok(tradeId);
+    mgr.handleAcceptTrade(s1 as any, tradeId);
+    assert.equal(engine.properties.get(1)?.ownerId, p1.id);
+    assert.ok(io.broadcastedEvents.some(e => e.event === 'game:state_sync'));
   });
 
   console.log('\n--- Suite 5: Disconnect & Room Recovery ---');
@@ -370,12 +506,82 @@ async function runTests() {
     const s2 = new MockSocket('p2');
     const room = mgr.createRoom(s1 as any, { name: 'AFK Room', username: 'P1' });
     mgr.joinRoom(s2 as any, { roomCode: room.roomCode, username: 'P2' });
+    mgr.handleToggleReady(s2 as any);
     mgr.startGame(s1 as any);
 
     mgr.handleDisconnect(s2 as any);
     const p2 = room.engine?.players.find(p => p.id === s2.id);
     assert.ok(p2);
     assert.equal(p2.isBot, true, 'Player should be converted to bot on disconnect');
+  });
+
+  await test('handleLeaveMatch during active turn forfeits player, clears festival/properties, and advances turn', () => {
+    const io = new MockServer();
+    const mgr = new RoomManager(io as any);
+    const s1 = new MockSocket('p1_leave');
+    const s2 = new MockSocket('p2_leave');
+    const s3 = new MockSocket('p3_leave');
+    const room = mgr.createRoom(s1 as any, { name: 'Leave Turn Room', username: 'P1' });
+    mgr.joinRoom(s2 as any, { roomCode: room.roomCode, username: 'P2' });
+    mgr.joinRoom(s3 as any, { roomCode: room.roomCode, username: 'P3' });
+    mgr.handleToggleReady(s2 as any);
+    mgr.handleToggleReady(s3 as any);
+    mgr.startGame(s1 as any);
+
+    const engine = room.engine!;
+    const p1 = engine.players[0];
+    engine.properties.set(1, { tileId: 1, ownerId: p1.id, level: 1, isMortgaged: false });
+    engine.festivalTileId = 1;
+    engine.turnState.phase = 'BUY_PROPERTY';
+
+    io.clear();
+    let ackRes: any = null;
+    mgr.handleLeaveMatch(s1 as any, (res) => { ackRes = res; });
+
+    assert.equal(ackRes?.success, true);
+    assert.equal(p1.isBankrupt, true);
+    assert.equal(engine.properties.has(1), false, 'Property liquidated back to bank');
+    assert.equal(engine.festivalTileId, null, 'Festival cleared when property liquidated');
+    assert.equal(engine.turnState.currentUserId, s2.id, 'Turn advanced to P2');
+    assert.ok(s1.emittedEvents.some(e => e.event === 'room:left'));
+    assert.ok(io.broadcastedEvents.some(e => e.event === 'game:turn_change'));
+  });
+
+  await test('handleLeaveMatch when not active turn syncs state and triggers game over if 1 player left', () => {
+    const io = new MockServer();
+    const mgr = new RoomManager(io as any);
+    const s1 = new MockSocket('p1_wait');
+    const s2 = new MockSocket('p2_wait');
+    const room = mgr.createRoom(s1 as any, { name: 'Leave 2P Room', username: 'P1' });
+    mgr.joinRoom(s2 as any, { roomCode: room.roomCode, username: 'P2' });
+    mgr.handleToggleReady(s2 as any);
+    mgr.startGame(s1 as any);
+
+    const engine = room.engine!;
+    io.clear();
+    mgr.handleLeaveMatch(s2 as any);
+
+    assert.equal(engine.players[1].isBankrupt, true);
+    assert.equal(engine.isGameOver, true);
+    assert.equal(engine.winnerId, s1.id);
+    assert.equal(room.status, 'FINISHED');
+    assert.ok(io.broadcastedEvents.some(e => e.event === 'game:over'));
+  });
+
+  await test('handleLeaveMatch cleans up room and stops timer when last human leaves a Bot game', () => {
+    const io = new MockServer();
+    const mgr = new RoomManager(io as any);
+    const s1 = new MockSocket('p1_solo_bot');
+    const room = mgr.createRoom(s1 as any, { name: 'Bot Cleanup Room', username: 'P1' });
+    mgr.addBot(s1 as any);
+    mgr.startGame(s1 as any);
+
+    assert.ok(room.timerInterval);
+    mgr.handleLeaveMatch(s1 as any);
+
+    assert.equal(room.status, 'FINISHED');
+    assert.equal(room.engine?.isGameOver, true);
+    assert.ok(s1.emittedEvents.some(e => e.event === 'room:left'));
   });
 
   console.log('\n--- Suite 6: Public Room Listing ---');
@@ -396,6 +602,7 @@ async function runTests() {
     const r3 = mgr.createRoom(s3 as any, { name: 'Playing Room', username: 'U3' });
     const s4 = new MockSocket('s4');
     mgr.joinRoom(s4 as any, { roomCode: r3.roomCode, username: 'U4' });
+    mgr.handleToggleReady(s4 as any);
     mgr.startGame(s3 as any);
 
     const publicList = mgr.getPublicRooms();

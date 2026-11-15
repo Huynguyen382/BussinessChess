@@ -28,6 +28,12 @@ interface AuthUser {
   totalMatches: number;
   totalWins: number;
   equippedFrame?: string;
+  equippedToken?: string;
+  equippedDice?: string;
+  equippedTrail?: string;
+  equippedTitle?: string;
+  bio?: string;
+  unlockedItems?: string[];
 }
 let currentUser: AuthUser | null = null;
 let cachedPublicRooms: any[] = [];
@@ -99,13 +105,57 @@ const profileMasteryXp = document.getElementById('profile-mastery-xp');
 const profileMasteryBar = document.getElementById('profile-mastery-bar');
 const tabBtnProfileAchievements = document.getElementById('tab-btn-profile-achievements');
 const tabBtnProfileFrames = document.getElementById('tab-btn-profile-frames');
+const tabBtnProfileCustom = document.getElementById('tab-btn-profile-custom');
 const paneProfileAchievements = document.getElementById('pane-profile-achievements');
 const paneProfileFrames = document.getElementById('pane-profile-frames');
+const paneProfileCustom = document.getElementById('pane-profile-custom');
 const profileAchievementsSummary = document.getElementById('profile-achievements-summary');
 const profileAchievementsList = document.getElementById('profile-achievements-list')!;
 const profileFramesGrid = document.getElementById('profile-frames-grid');
+const profileCustomSections = document.getElementById('profile-custom-sections');
+const profileEquippedTitle = document.getElementById('profile-equipped-title');
+const profileBioText = document.getElementById('profile-bio-text');
+const inputProfileBio = document.getElementById('input-profile-bio') as HTMLInputElement | null;
+const btnSaveBio = document.getElementById('btn-save-bio');
+const profileAvatarPicker = document.getElementById('profile-avatar-picker');
 const profileAchCount = document.getElementById('profile-ach-count');
 const profileFramesCount = document.getElementById('profile-frames-count');
+
+const TOKEN_ICONS: Record<string, string> = {
+  car: '🚗',
+  hat: '🎩',
+  dog: '🐕',
+  rocket: '🚀',
+  cyclo: '🚲',
+  lotus: '🪷',
+  dragon: '🐉',
+  yacht: '🛥️',
+  robot: '🤖',
+  crown: '👑'
+};
+
+const TOKEN_NAMES: Record<string, string> = {
+  car: 'Siêu Xe',
+  hat: 'Mũ Ảo Thuật',
+  dog: 'Cún Cưng',
+  rocket: 'Tên Lửa',
+  cyclo: 'Xích Lô',
+  lotus: 'Hoa Sen',
+  dragon: 'Rồng Thần',
+  yacht: 'Du Thuyền',
+  robot: 'Người Máy',
+  crown: 'Vương Miện'
+};
+
+const AVAILABLE_TOKENS = ['car', 'hat', 'dog', 'rocket', 'cyclo', 'lotus', 'dragon', 'yacht', 'robot', 'crown'];
+
+const TITLE_LABELS: Record<string, string> = {
+  title_rookie: 'Tân Thủ Khởi Nghiệp',
+  title_tycoon: 'Chiến Thần BĐS',
+  title_shark: 'Cá Mập Đầu Tư',
+  title_traveler: 'Lữ Khách Xuyên Việt',
+  title_emperor: 'Đế Chế Tỷ Phú'
+};
 
 const FRAME_TIER_CONFIG: Record<string, { tier: string; level: number; label: string; badge: string; name: string }> = {
   frame_default: { tier: 'GRAY', level: 1, label: 'Sơ Cấp', badge: 'Lv.1 Tân Thủ', name: 'Khung Cơ Bản' },
@@ -173,7 +223,82 @@ const elGameHud = document.getElementById('game-hud')!;
 const elPropertyModal = document.getElementById('property-modal')!;
 const elCardModal = document.getElementById('card-modal')!;
 const elVictoryModal = document.getElementById('victory-modal')!;
+const elLeaveMatchModal = document.getElementById('leave-match-modal')!;
+const btnLeaveMatch = document.getElementById('btn-leave-match');
+const btnCancelLeave = document.getElementById('btn-cancel-leave');
+const btnConfirmLeave = document.getElementById('btn-confirm-leave');
+
+// Match Timer, Auction & P2P Trade UI
+const elMatchTimerPill = document.getElementById('match-timer-pill');
+const elMatchTimerText = document.getElementById('match-timer-text');
+const btnOpenTrade = document.getElementById('btn-open-trade') as HTMLButtonElement | null;
+
+const elAuctionModal = document.getElementById('auction-modal')!;
+const elAuctionTimerBadge = document.getElementById('auction-timer-badge')!;
+const elAuctionTileColor = document.getElementById('auction-tile-color')!;
+const elAuctionTileName = document.getElementById('auction-tile-name')!;
+const elAuctionTileMeta = document.getElementById('auction-tile-meta')!;
+const elAuctionCurrentBid = document.getElementById('auction-current-bid')!;
+const elAuctionHighestBidder = document.getElementById('auction-highest-bidder')!;
+const elAuctionStatusNote = document.getElementById('auction-status-note')!;
+const btnAuctionBidMin = document.getElementById('btn-auction-bid-min') as HTMLButtonElement;
+const btnAuctionBid50 = document.getElementById('btn-auction-bid-50') as HTMLButtonElement;
+const btnAuctionBid100 = document.getElementById('btn-auction-bid-100') as HTMLButtonElement;
+const btnAuctionPass = document.getElementById('btn-auction-pass') as HTMLButtonElement;
+
+const elTradeProposeModal = document.getElementById('trade-propose-modal')!;
+const btnCloseTradePropose = document.getElementById('btn-close-trade-propose')!;
+const btnCancelTradePropose = document.getElementById('btn-cancel-trade-propose')!;
+const tradePartnerSelect = document.getElementById('trade-partner-select') as HTMLSelectElement;
+const tradeOfferedCashInput = document.getElementById('trade-offered-cash') as HTMLInputElement;
+const tradeRequestedCashInput = document.getElementById('trade-requested-cash') as HTMLInputElement;
+const tradeOfferedCardsEl = document.getElementById('trade-offered-cards')!;
+const tradeRequestedCardsEl = document.getElementById('trade-requested-cards')!;
+const tradeOfferedPropsEl = document.getElementById('trade-offered-props')!;
+const tradeRequestedPropsEl = document.getElementById('trade-requested-props')!;
+const tradeProposeErrorEl = document.getElementById('trade-propose-error')!;
+const btnSubmitTrade = document.getElementById('btn-submit-trade') as HTMLButtonElement;
+
+const elTradeOfferModal = document.getElementById('trade-offer-modal')!;
+const tradeOfferSubtitleEl = document.getElementById('trade-offer-subtitle')!;
+const tradeOfferReceiveEl = document.getElementById('trade-offer-receive')!;
+const tradeOfferGiveEl = document.getElementById('trade-offer-give')!;
+const btnAcceptTrade = document.getElementById('btn-accept-trade') as HTMLButtonElement;
+const btnRejectTrade = document.getElementById('btn-reject-trade') as HTMLButtonElement;
+
+let matchTimeRemainingLocal: number | null = null;
+let matchTimerInterval: number | null = null;
+let auctionCountdownInterval: number | null = null;
+let activeIncomingTradeId: string | null = null;
 const elLogDrawer = document.getElementById('log-drawer')!;
+
+// Settings & Personal Dice View State (Zero-Network Turn Switch + Personal View)
+const SETTING_PERSONAL_DICE_KEY = 'business_chess_personal_dice_view';
+let isPersonalDiceView: boolean = localStorage.getItem(SETTING_PERSONAL_DICE_KEY) === 'true';
+const playerDiceSkinCache = new Map<string, string>();
+
+const elSettingsModal = document.getElementById('settings-modal')!;
+const btnOpenSettings = document.getElementById('btn-open-settings');
+const btnOpenSettingsUser = document.getElementById('btn-open-settings-user');
+const btnOpenSettingsHud = document.getElementById('btn-open-settings-hud');
+const btnCloseSettings = document.getElementById('btn-close-settings');
+const btnSaveSettings = document.getElementById('btn-save-settings');
+const settingPersonalDiceToggle = document.getElementById('setting-personal-dice-toggle') as HTMLInputElement | null;
+const settingFocusModeToggle = document.getElementById('setting-focus-mode-toggle') as HTMLInputElement | null;
+
+function openSettingsModal() {
+  if (settingPersonalDiceToggle) {
+    settingPersonalDiceToggle.checked = isPersonalDiceView;
+  }
+  if (settingFocusModeToggle) {
+    settingFocusModeToggle.checked = isCleanFocusMode;
+  }
+  elSettingsModal.style.display = 'flex';
+}
+
+function closeSettingsModal() {
+  elSettingsModal.style.display = 'none';
+}
 
 // Navigation & Camera Controls
 const btnToggleZoom = document.getElementById('btn-toggle-zoom');
@@ -193,6 +318,10 @@ const logItems = document.getElementById('log-items')!;
 function applyFocusMode(clean: boolean) {
   isCleanFocusMode = clean;
   localStorage.setItem('bc_clean_focus_mode', clean ? 'true' : 'false');
+
+  if (settingFocusModeToggle) {
+    settingFocusModeToggle.checked = clean;
+  }
 
   if (btnToggleFocusMode) {
     btnToggleFocusMode.classList.toggle('is-active', clean);
@@ -340,7 +469,16 @@ const waitingPlayerCount = document.getElementById('waiting-player-count')!;
 const waitingSlots = document.getElementById('waiting-slots')!;
 const btnCopyCode = document.getElementById('btn-copy-code')!;
 const btnAddBot = document.getElementById('btn-add-bot')!;
-const btnStartGame = document.getElementById('btn-start-game')!;
+const btnStartGame = document.getElementById('btn-start-game') as HTMLButtonElement;
+const btnToggleReady = document.getElementById('btn-toggle-ready') as HTMLButtonElement | null;
+const btnToggleReadyText = document.getElementById('btn-toggle-ready-text');
+const waitingStartHint = document.getElementById('waiting-start-hint');
+const waitingTokenBox = document.getElementById('waiting-token-box');
+const waitingTokenGrid = document.getElementById('waiting-token-grid');
+const waitingSelectedTokenName = document.getElementById('waiting-selected-token-name');
+
+let latestWaitingPlayers: any[] = [];
+let latestWaitingMaxPlayers: number = 4;
 
 const hudPlayers = document.getElementById('hud-players')!;
 const timerFill = document.getElementById('timer-fill')!;
@@ -349,6 +487,102 @@ const turnStatusDot = document.getElementById('turn-status-dot');
 const turnStatusText = document.getElementById('turn-status-text');
 const btnRollDice = document.getElementById('btn-roll-dice')!;
 const btnEndTurn = document.getElementById('btn-end-turn')!;
+
+// Dynamic Jail Action Buttons (created in TS to avoid modifying index.html)
+const turnActionButtonsContainer = document.querySelector('.turn-action-buttons');
+const btnPayJailFine = document.createElement('button');
+btnPayJailFine.id = 'btn-pay-jail-fine';
+btnPayJailFine.className = 'btn-chunky btn-blue action-pill';
+btnPayJailFine.style.display = 'none';
+btnPayJailFine.innerHTML = '<span>💰</span><span>NỘP PHẠT RA TÙ (50M)</span>';
+
+const btnUseJailCard = document.createElement('button');
+btnUseJailCard.id = 'btn-use-jail-card';
+btnUseJailCard.className = 'btn-chunky btn-primary action-pill';
+btnUseJailCard.style.display = 'none';
+btnUseJailCard.innerHTML = '<span>🎫</span><span>DÙNG THẺ ĐẶC XÁ</span>';
+
+if (turnActionButtonsContainer) {
+  turnActionButtonsContainer.appendChild(btnPayJailFine);
+  turnActionButtonsContainer.appendChild(btnUseJailCard);
+}
+
+let currentPendingActionMode: 'BUY' | 'BUYOUT' | null = null;
+
+// Dynamic Festival Selection Modal (created in TS to avoid modifying index.html)
+const elFestivalModal = document.createElement('div');
+elFestivalModal.id = 'festival-select-modal';
+elFestivalModal.className = 'interactive modal-overlay';
+elFestivalModal.style.display = 'none';
+elFestivalModal.innerHTML = `
+  <div class="glass-panel modal-content festival-modal-box">
+    <div class="festival-modal-header">
+      <div style="font-size: 2.2rem;">🎪</div>
+      <div>
+        <h2 style="margin: 0; font-size: 1.25rem; color: #2D3436;">CHỌN Ô TỔ CHỨC LỄ HỘI (x2 THUÊ)</h2>
+        <p style="margin: 4px 0 0; font-size: 0.82rem; color: #636E72;">Chọn 1 bất động sản bạn đang sở hữu để nhân đôi tiền thuê!</p>
+      </div>
+    </div>
+    <div id="festival-tile-list" class="festival-tile-list"></div>
+  </div>
+`;
+const uiRootEl = document.getElementById('ui-root');
+if (uiRootEl) {
+  uiRootEl.appendChild(elFestivalModal);
+}
+
+function showFestivalModal() {
+  const listEl = document.getElementById('festival-tile-list');
+  if (!listEl) return;
+
+  const myId = socketClient.socket.id;
+  const ownedProps = latestPropertiesSnapshot.filter(pr => {
+    if (pr.ownerId !== myId || pr.isMortgaged) return false;
+    const tile = boardTilesData[pr.tileId];
+    return tile && tile.type === 'PROPERTY';
+  });
+
+  if (ownedProps.length === 0) {
+    elFestivalModal.style.display = 'none';
+    return;
+  }
+
+  listEl.innerHTML = ownedProps.map(pr => {
+    const tile = boardTilesData[pr.tileId];
+    const currentRent = pr.level === 0 ? (tile.baseRent || 0)
+      : pr.level === 1 ? (tile.rentHouse1 || 0)
+      : pr.level === 2 ? (tile.rentHouse2 || 0)
+      : pr.level === 3 ? (tile.rentHouse3 || 0)
+      : (tile.rentHotel || 0);
+    const levelLabel = pr.level === 0 ? 'Đất trống' : pr.level === 4 ? '🏨 Khách sạn' : `🏠 ${pr.level} Nhà`;
+    const isAlreadyFestival = latestGameStateSnapshot?.festivalTileId === pr.tileId;
+
+    return `
+      <button class="festival-tile-item ${isAlreadyFestival ? 'is-current' : ''}" data-tile-id="${pr.tileId}">
+        <div style="display:flex;align-items:center;gap:10px;text-align:left;">
+          <span class="festival-color-dot" style="background:${tile.districtColor || '#00B894'};"></span>
+          <div>
+            <div style="font-weight:800;color:#2D3436;font-size:0.95rem;">
+              ${tile.name} ${isAlreadyFestival ? '🎪 (Đang Lễ Hội)' : ''}
+            </div>
+            <div style="font-size:0.75rem;color:#636E72;">${levelLabel} • Thuê: ${currentRent}M ➔ <b style="color:#E17055;">${currentRent * 2}M</b></div>
+          </div>
+        </div>
+        <span style="font-weight:800;color:#00B894;font-size:0.82rem;">Chọn ➔</span>
+      </button>
+    `;
+  }).join('');
+
+  listEl.querySelectorAll('.festival-tile-item').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const tileId = Number((btn as HTMLElement).dataset.tileId);
+      elFestivalModal.style.display = 'none';
+      socketClient.emit('game:select_festival', { tileId });
+    });
+  });
+
+  elFestivalModal.style.display = 'flex';
+}
 
 const propColorBar = document.getElementById('prop-color-bar')!;
 const propIcon = document.getElementById('prop-icon');
@@ -523,9 +757,17 @@ function showTileInspector(tileId: number, tileData?: any) {
       inspectorOwnerName.textContent = owner.username;
       inspectorOwnerName.style.color = owner.color || '#2D3436';
 
-      const levelStr = prop.level === 0 ? 'Đất trống' : prop.level === 4 ? '🏨 Khách sạn Landmark' : `🏠 ${prop.level} Tầng Nhà`;
-      inspectorBuildingLevel.textContent = `Cấp độ: ${levelStr}`;
-      inspectorBuildingLevel.style.color = '#E17055';
+      const isFestivalTile = latestGameStateSnapshot?.festivalTileId === tileId;
+      const festivalSuffix = isFestivalTile ? ' • 🎪 LỄ HỘI x2' : '';
+
+      if (prop.isMortgaged) {
+        inspectorBuildingLevel.textContent = '🔒 Đang thế chấp (Không thu tiền thuê)';
+        inspectorBuildingLevel.style.color = '#D63031';
+      } else {
+        const levelStr = prop.level === 0 ? 'Đất trống' : prop.level === 4 ? '🏨 Khách sạn Landmark' : `🏠 ${prop.level} Tầng Nhà`;
+        inspectorBuildingLevel.textContent = `Cấp độ: ${levelStr}${festivalSuffix}`;
+        inspectorBuildingLevel.style.color = isFestivalTile ? '#D63031' : '#E17055';
+      }
     } else {
       inspectorOwnerAvatar.innerHTML = '❓';
       inspectorOwnerAvatar.style.backgroundColor = '#DFE6E9';
@@ -555,11 +797,49 @@ function showTileInspector(tileId: number, tileData?: any) {
       }
     }
 
-    // Interactive Upgrade Button in Inspector
+    // Interactive Upgrade & Property Management Buttons in Inspector
     const isMyTurn = latestTurnSnapshot && latestTurnSnapshot.currentUserId === socketClient.socket.id;
+    const currentPhase = latestTurnSnapshot?.phase;
+    const canManageInPhase = isMyTurn && (currentPhase === 'END_TURN' || currentPhase === 'ROLL_DICE');
     const isMyProp = owner && owner.id === socketClient.socket.id;
     const houseCost = tile.houseCost || 100;
-    const canUpgrade = isMyTurn && isMyProp && tile.type === 'PROPERTY' && prop && prop.level < 4 && (owner.money ?? 0) >= houseCost;
+
+    // Kiểm tra sở hữu trọn bộ màu (monopoly) & không có ô nào cùng nhóm bị thế chấp
+    const districtTiles = tile.district
+      ? boardTilesData.filter(t => t.district === tile.district)
+      : [];
+    const ownsFullDistrict = districtTiles.length > 0 && districtTiles.every(t => {
+      const p = latestPropertiesSnapshot.find(pr => pr.tileId === t.id);
+      return p && p.ownerId === socketClient.socket.id;
+    });
+    const anyDistrictMortgaged = districtTiles.some(t => {
+      const p = latestPropertiesSnapshot.find(pr => pr.tileId === t.id);
+      return p && p.isMortgaged;
+    });
+    const anyDistrictHasBuildings = districtTiles.some(t => {
+      const p = latestPropertiesSnapshot.find(pr => pr.tileId === t.id);
+      return p && p.level > 0;
+    });
+
+    const districtLevels = districtTiles.map(t => {
+      const p = latestPropertiesSnapshot.find(pr => pr.tileId === t.id);
+      return p ? p.level : 0;
+    });
+    const minDistrictLevel = districtLevels.length > 0 ? Math.min(...districtLevels) : 0;
+    const maxDistrictLevel = districtLevels.length > 0 ? Math.max(...districtLevels) : 0;
+
+    const canUpgrade =
+      isMyTurn &&
+      currentPhase === 'END_TURN' &&
+      isMyProp &&
+      tile.type === 'PROPERTY' &&
+      prop &&
+      !prop.isMortgaged &&
+      prop.level < 4 &&
+      ownsFullDistrict &&
+      !anyDistrictMortgaged &&
+      prop.level <= minDistrictLevel &&
+      (owner.balance ?? 0) >= houseCost;
 
     if (elInspectorUpgradeContainer && btnInspectorUpgrade && inspectorUpgradeLabel) {
       if (canUpgrade) {
@@ -575,10 +855,84 @@ function showTileInspector(tileId: number, tileData?: any) {
         elInspectorUpgradeContainer.style.display = 'none';
       }
     }
+
+    // Dynamic Sell Building / Mortgage / Unmortgage Actions
+    let manageContainer = document.getElementById('inspector-manage-actions');
+    if (!manageContainer && inspectorPropertyDetails) {
+      manageContainer = document.createElement('div');
+      manageContainer.id = 'inspector-manage-actions';
+      manageContainer.className = 'inspector-manage-actions';
+      inspectorPropertyDetails.appendChild(manageContainer);
+    }
+
+    if (manageContainer) {
+      manageContainer.innerHTML = '';
+      if (canManageInPhase && isMyProp && prop) {
+        const actions: HTMLElement[] = [];
+
+        // Bán 1 cấp nhà (tuân thủ Even-Build: chỉ bán ô có level cao nhất trong nhóm)
+        if (tile.type === 'PROPERTY' && prop.level > 0 && !prop.isMortgaged && prop.level >= maxDistrictLevel) {
+          const refund = Math.floor(houseCost * 0.5);
+          const btnSell = document.createElement('button');
+          btnSell.className = 'btn-chunky btn-white btn-sm inspector-manage-btn';
+          btnSell.textContent = `🏚️ Bán 1 Nhà (+${refund}M)`;
+          btnSell.onclick = () => {
+            socketClient.emit('game:sell_building', { tileId });
+          };
+          actions.push(btnSell);
+        }
+
+        // Thế chấp đất trống (không có nhà trên đất & không có nhà trong cùng quận)
+        if (!prop.isMortgaged && prop.level === 0 && !anyDistrictHasBuildings) {
+          const mortgageVal = Math.floor((tile.price || 0) * 0.5);
+          const btnMortgage = document.createElement('button');
+          btnMortgage.className = 'btn-chunky btn-accent btn-sm inspector-manage-btn';
+          btnMortgage.textContent = `🏦 Thế Chấp (+${mortgageVal}M)`;
+          btnMortgage.onclick = () => {
+            socketClient.emit('game:mortgage_property', { tileId });
+          };
+          actions.push(btnMortgage);
+        }
+
+        // Chuộc lại bất động sản đang thế chấp
+        if (prop.isMortgaged) {
+          const principal = Math.floor((tile.price || 0) * 0.5);
+          const interest = Math.ceil(principal * 0.1);
+          const unmortgageCost = principal + interest;
+          const canAffordUnmortgage = (owner.balance ?? 0) >= unmortgageCost;
+
+          const btnUnmortgage = document.createElement('button');
+          btnUnmortgage.className = 'btn-chunky btn-blue btn-sm inspector-manage-btn';
+          btnUnmortgage.disabled = !canAffordUnmortgage;
+          btnUnmortgage.textContent = canAffordUnmortgage
+            ? `💎 Chuộc Lại (-${unmortgageCost}M)`
+            : `💎 Thiếu tiền chuộc (${unmortgageCost}M)`;
+          btnUnmortgage.onclick = () => {
+            if (canAffordUnmortgage) {
+              socketClient.emit('game:unmortgage_property', { tileId });
+            }
+          };
+          actions.push(btnUnmortgage);
+        }
+
+        if (actions.length > 0) {
+          manageContainer.style.display = 'flex';
+          actions.forEach(btn => manageContainer!.appendChild(btn));
+        } else {
+          manageContainer.style.display = 'none';
+        }
+      } else {
+        manageContainer.style.display = 'none';
+      }
+    }
   } else {
     // Special tile
     if (elInspectorUpgradeContainer) {
       elInspectorUpgradeContainer.style.display = 'none';
+    }
+    const manageContainer = document.getElementById('inspector-manage-actions');
+    if (manageContainer) {
+      manageContainer.style.display = 'none';
     }
     inspectorPropertyDetails.style.display = 'none';
     inspectorSpecialDesc.style.display = 'block';
@@ -590,6 +944,13 @@ function showTileInspector(tileId: number, tileData?: any) {
     inspectorOwnerName.style.color = '#636E72';
     inspectorBuildingLevel.textContent = 'Không Thể Mua Bán';
     inspectorBuildingLevel.style.color = '#636E72';
+  }
+
+  if (window.innerWidth <= 768) {
+    elLogDrawer.style.display = 'none';
+    btnToggleLog.classList.remove('is-active');
+    if (elChatDrawer) elChatDrawer.style.display = 'none';
+    btnToggleChat?.classList.remove('is-active');
   }
 
   elTileInspector.style.display = 'block';
@@ -906,7 +1267,14 @@ function bindUIEvents() {
     socketClient.emit('room:add_bot');
   });
 
+  btnToggleReady?.addEventListener('click', () => {
+    const me = latestWaitingPlayers.find((p: any) => p.id === socketClient.socket.id);
+    const isReady = Boolean(me?.isReady);
+    socketClient.emit('room:toggle_ready', { ready: !isReady });
+  });
+
   btnStartGame.addEventListener('click', () => {
+    if (btnStartGame.disabled) return;
     socketClient.emit('room:start');
   });
 
@@ -920,6 +1288,18 @@ function bindUIEvents() {
     cancelAutoEndTurn();
     btnEndTurn.style.display = 'none';
     socketClient.emit('game:end_turn');
+  });
+
+  btnPayJailFine.addEventListener('click', () => {
+    btnPayJailFine.style.display = 'none';
+    btnUseJailCard.style.display = 'none';
+    socketClient.emit('game:pay_jail_fine');
+  });
+
+  btnUseJailCard.addEventListener('click', () => {
+    btnPayJailFine.style.display = 'none';
+    btnUseJailCard.style.display = 'none';
+    socketClient.emit('game:use_jail_card');
   });
 
   if (btnToggleZoom) {
@@ -1045,11 +1425,39 @@ function bindUIEvents() {
       elChatDrawer.style.display = 'none';
       btnToggleChat?.classList.remove('is-active');
     }
+    if (isOpening && window.innerWidth <= 768) {
+      closeTileInspector();
+    }
   });
 
   btnCloseLog.addEventListener('click', () => {
     elLogDrawer.style.display = 'none';
     btnToggleLog.classList.remove('is-active');
+  });
+
+  // Settings Modal Listeners
+  btnOpenSettings?.addEventListener('click', openSettingsModal);
+  btnOpenSettingsUser?.addEventListener('click', openSettingsModal);
+  btnOpenSettingsHud?.addEventListener('click', openSettingsModal);
+  btnCloseSettings?.addEventListener('click', closeSettingsModal);
+  btnSaveSettings?.addEventListener('click', closeSettingsModal);
+
+  settingPersonalDiceToggle?.addEventListener('change', () => {
+    isPersonalDiceView = Boolean(settingPersonalDiceToggle?.checked);
+    localStorage.setItem(SETTING_PERSONAL_DICE_KEY, isPersonalDiceView ? 'true' : 'false');
+    sounds.playTap();
+    showToast(isPersonalDiceView
+      ? '🎲 Đã bật: Luôn hiển thị Skin xúc xắc 3D của bạn!'
+      : '🎲 Đã tắt: Hiển thị Skin xúc xắc theo người chơi đang tung!');
+  });
+
+  settingFocusModeToggle?.addEventListener('change', () => {
+    const checked = Boolean(settingFocusModeToggle?.checked);
+    applyFocusMode(checked);
+    sounds.playTap();
+    showToast(checked
+      ? '🎯 Đã bật Chế độ Tinh Gọn'
+      : '🏛️ Đã chuyển về Sa Bàn Đầy Đủ');
   });
 
   // Chat & Emotes functionality
@@ -1093,7 +1501,11 @@ function bindUIEvents() {
     if (isOpening) {
       elLogDrawer.style.display = 'none';
       btnToggleLog.classList.remove('is-active');
-      if (inputChatMsg) setTimeout(() => inputChatMsg.focus(), 100);
+      if (window.innerWidth <= 768) {
+        closeTileInspector();
+      } else if (inputChatMsg) {
+        setTimeout(() => inputChatMsg.focus(), 100);
+      }
     }
   });
 
@@ -1131,28 +1543,154 @@ function bindUIEvents() {
 
   btnSkipBuy.addEventListener('click', () => {
     elPropertyModal.style.display = 'none';
-    socketClient.emit('game:skip_buy');
-    scheduleAutoEndTurn(800, 'Đã bỏ qua mua đất');
+    const mode = currentPendingActionMode;
+    currentPendingTileAction = null;
+    currentPendingActionMode = null;
+    if (mode === 'BUYOUT') {
+      socketClient.emit('game:skip_buyout');
+    } else {
+      socketClient.emit('game:skip_buy');
+    }
   });
 
   btnConfirmBuy.addEventListener('click', () => {
     elPropertyModal.style.display = 'none';
-    if (currentPendingTileAction) {
-      socketClient.emit('game:buy_property', { tileId: currentPendingTileAction.tileId });
+    const mode = currentPendingActionMode;
+    const action = currentPendingTileAction;
+    currentPendingTileAction = null;
+    currentPendingActionMode = null;
+    if (action) {
+      if (mode === 'BUYOUT') {
+        socketClient.emit('game:buyout_property', { tileId: action.tileId });
+      } else {
+        socketClient.emit('game:buy_property', { tileId: action.tileId });
+      }
     }
   });
 
   btnCloseCard.addEventListener('click', () => {
     elCardModal.style.display = 'none';
     const isMe = latestGameStateSnapshot?.turnState?.currentUserId === socketClient.socket.id;
-    if (isMe && latestGameStateSnapshot?.turnState?.phase === 'END_TURN') {
-      scheduleAutoEndTurn(800, 'Đã xem xong thẻ vận mệnh');
+    const phase = latestGameStateSnapshot?.turnState?.phase;
+    if (isMe && phase === 'BUY_PROPERTY' && elPropertyModal.style.display !== 'flex') {
+      const me = latestGameStateSnapshot?.players?.find((p: any) => p.id === socketClient.socket.id);
+      if (me) {
+        const tile = boardTilesData[me.position];
+        const prop = latestPropertiesSnapshot.find(pr => pr.tileId === me.position);
+        if (tile && (tile.type === 'PROPERTY' || tile.type === 'RAILROAD' || tile.type === 'UTILITY')) {
+          if (!prop) {
+            handleTileActionResult({
+              type: 'CAN_BUY',
+              tileId: tile.id,
+              tileName: tile.name,
+              cost: tile.price,
+              canAfford: (me.balance ?? 0) >= tile.price
+            }, true, me, boardScene.getTileWorldPosition(me.position));
+          } else if (prop.ownerId === me.id && tile.type === 'PROPERTY' && prop.level < 4 && !prop.isMortgaged) {
+            const cost = tile.houseCost || 100;
+            handleTileActionResult({
+              type: 'CAN_UPGRADE',
+              tileId: tile.id,
+              tileName: tile.name,
+              level: prop.level,
+              cost,
+              canAfford: (me.balance ?? 0) >= cost
+            }, true, me, boardScene.getTileWorldPosition(me.position));
+          }
+        }
+      }
     }
   });
 
   btnPlayAgain.addEventListener('click', () => {
     window.location.reload();
   });
+
+  btnLeaveMatch?.addEventListener('click', () => {
+    if (latestGameStateSnapshot?.isGameOver || elVictoryModal.style.display === 'flex') {
+      socketClient.emit('game:leave_match');
+      resetMatchAndReturnToLobby();
+      return;
+    }
+    elLeaveMatchModal.style.display = 'flex';
+  });
+
+  btnCancelLeave?.addEventListener('click', () => {
+    elLeaveMatchModal.style.display = 'none';
+  });
+
+  btnConfirmLeave?.addEventListener('click', () => {
+    elLeaveMatchModal.style.display = 'none';
+    socketClient.emit('game:leave_match');
+    resetMatchAndReturnToLobby();
+  });
+}
+
+function resetMatchAndReturnToLobby() {
+  cancelAutoEndTurn();
+  currentRoomCode = '';
+  isHost = false;
+  currentPendingTileAction = null;
+  currentPendingActionMode = null;
+  latestGameStateSnapshot = null;
+  latestPlayersSnapshot = [];
+  latestPropertiesSnapshot = [];
+  latestTurnSnapshot = null;
+  latestWaitingPlayers = [];
+  currentInspectedTileId = null;
+
+  elGameHud.style.display = 'none';
+  elRoomWaiting.style.display = 'none';
+  if (waitingStartHint) waitingStartHint.style.display = 'none';
+  if (btnToggleReady) btnToggleReady.style.display = 'none';
+  elPropertyModal.style.display = 'none';
+  elCardModal.style.display = 'none';
+  elFestivalModal.style.display = 'none';
+  elAuctionModal.style.display = 'none';
+  elTradeProposeModal.style.display = 'none';
+  elTradeOfferModal.style.display = 'none';
+  elVictoryModal.style.display = 'none';
+  elLeaveMatchModal.style.display = 'none';
+  elSettingsModal.style.display = 'none';
+  playerDiceSkinCache.clear();
+  if (auctionCountdownInterval !== null) {
+    clearInterval(auctionCountdownInterval);
+    auctionCountdownInterval = null;
+  }
+  if (matchTimerInterval !== null) {
+    clearInterval(matchTimerInterval);
+    matchTimerInterval = null;
+  }
+  matchTimeRemainingLocal = null;
+  activeIncomingTradeId = null;
+  if (elAirportModal) elAirportModal.style.display = 'none';
+  if (airportFloatingBar) airportFloatingBar.style.display = 'none';
+  if (airportConfirmModal) airportConfirmModal.style.display = 'none';
+  if (elBoardRosterModal) elBoardRosterModal.style.display = 'none';
+  elTileInspector.style.display = 'none';
+  elLogDrawer.style.display = 'none';
+  btnToggleLog.classList.remove('is-active');
+  if (elChatDrawer) elChatDrawer.style.display = 'none';
+  btnToggleChat?.classList.remove('is-active');
+
+  btnRollDice.style.display = 'none';
+  btnEndTurn.style.display = 'none';
+  btnPayJailFine.style.display = 'none';
+  btnUseJailCard.style.display = 'none';
+
+  if (boardScene) {
+    boardScene.tokenManager?.clearTokens();
+    boardScene.tokenManager?.setActiveTurnPlayer(null);
+    boardScene.clearTileHighlight();
+    boardScene.syncProperties([], []);
+    (boardScene as any).setFestivalTile?.(null);
+    boardScene.cameraManager?.resetOverview();
+  }
+
+  elLobbyView.style.display = 'flex';
+  elLobbyCard.style.display = 'block';
+  btnRestoreLobby.style.display = 'none';
+  fetchRoomList();
 }
 
 function bindSocketEvents() {
@@ -1204,6 +1742,10 @@ function bindSocketEvents() {
     updateWaitingLobby(data);
   });
 
+  socketClient.on('room:left', () => {
+    resetMatchAndReturnToLobby();
+  });
+
   socketClient.on('game:start', (data: any) => {
     elLobbyView.style.display = 'none';
     btnRestoreLobby.style.display = 'none';
@@ -1218,9 +1760,16 @@ function bindSocketEvents() {
     // Clear sample preview tokens
     boardScene.tokenManager.clearTokens();
 
-    // Create real player tokens
+    // Cache player dice skins for Zero-Network turn switch
+    if (Array.isArray(data.snapshot?.players)) {
+      data.snapshot.players.forEach((p: any) => {
+        if (p.id && p.diceSkin) playerDiceSkinCache.set(p.id, p.diceSkin);
+      });
+    }
+
+    // Create real player tokens (pass trailEffect if supported)
     data.snapshot.players.forEach((p: any, idx: number) => {
-      boardScene.tokenManager.createToken(p.id, p.token, p.color, idx);
+      (boardScene.tokenManager.createToken as any)(p.id, p.token, p.color, idx, p.trailEffect);
     });
 
     // Mũi tên 3D trỏ vào nhân vật lượt đầu tiên
@@ -1233,6 +1782,7 @@ function bindSocketEvents() {
     updateHudPlayers(data.snapshot);
     sounds.playTurnNotification();
     boardScene.syncProperties(data.snapshot.properties || [], data.snapshot.players || []);
+    (boardScene as any).setFestivalTile?.(data.snapshot?.festivalTileId ?? null);
     latestGameStateSnapshot = data.snapshot;
     checkMyTurn(data.snapshot);
   });
@@ -1240,6 +1790,9 @@ function bindSocketEvents() {
   socketClient.on('game:dice_result', (data: any) => {
     const isMe = data.userId === socketClient.socket.id;
     const player = data.snapshot.players.find((p: any) => p.id === data.userId);
+    if (player?.id && player?.diceSkin) {
+      playerDiceSkinCache.set(player.id, player.diceSkin);
+    }
     const slot = data.snapshot.players.findIndex((p: any) => p.id === data.userId);
     latestGameStateSnapshot = data.snapshot;
     latestPlayersSnapshot = data.snapshot.players;
@@ -1257,12 +1810,50 @@ function bindSocketEvents() {
     // Prominent Dice Roll Announcement Banner for all players & spectators
     showDiceAnnouncement(player, data.dice1, data.dice2, isDouble);
 
+    // ZERO-NETWORK TURN SWITCH + PERSONAL VIEW
+    let skinToUse = 'dice_ivory';
+    if (isPersonalDiceView) {
+      skinToUse = currentUser?.equippedDice || localStorage.getItem('bc_equipped_dice') || 'dice_ivory';
+    } else {
+      skinToUse = player?.diceSkin || playerDiceSkinCache.get(data.userId) || 'dice_ivory';
+    }
+    (boardScene.dicePhysics as any).setDiceSkin?.(skinToUse);
     boardScene.dicePhysics.roll(data.dice1, data.dice2, () => {
       // NOTE: Only follow the token when rolling completes and movement actually begins!
       const token = boardScene.tokenManager.tokens.get(data.userId);
       if (token) {
         boardScene.cameraManager.setFollowTarget(token.mesh.position);
       }
+
+      const finishLanding = (landedTileId: number) => {
+        const currentToken = boardScene.tokenManager.tokens.get(data.userId);
+        const landingPos = currentToken ? currentToken.mesh.position : boardScene.getTileWorldPosition(landedTileId);
+
+        // Highlight và tự động mở Tra Cứu Chi Tiết ô cờ vừa dừng chân
+        boardScene.highlightTile(landedTileId);
+        const currentTile = boardTilesData[landedTileId];
+        showTileInspector(landedTileId, currentTile);
+
+        if (currentTile && currentTile.type === 'RAILROAD') {
+          sounds.playTrainWhistle();
+          boardScene.vfxManager.spawnTrainSmoke(landingPos, 14);
+        } else if (currentTile && currentTile.type === 'AIRPORT') {
+          sounds.playCardChime();
+          boardScene.vfxManager.spawnStarBurst(landingPos, 20);
+        } else if (currentTile && (currentTile.type === 'GO_TO_JAIL' || (currentTile.type === 'JAIL' && player && player.inJail))) {
+          sounds.playJailSlam();
+        }
+
+        if (data.passedGo) {
+          sounds.playCashTransaction();
+          boardScene.vfxManager.spawnFloatingDollar('200M (Lương)', landingPos, true);
+          boardScene.vfxManager.spawnStarBurst(landingPos, 20);
+        }
+
+        handleTileActionResult(data.actionResult, isMe, player, landingPos);
+        const snap = latestGameStateSnapshot || data.snapshot;
+        checkMyTurn(snap);
+      };
 
       boardScene.tokenManager.moveTokenSteps(
         data.userId,
@@ -1271,39 +1862,14 @@ function bindSocketEvents() {
         slot,
         (_stepTile) => {},
         () => {
-          const token = boardScene.tokenManager.tokens.get(data.userId);
-          const landingPos = token ? token.mesh.position : boardScene.getTileWorldPosition(data.newPosition);
-
-          // Highlight và tự động mở Tra Cứu Chi Tiết ô cờ vừa dừng chân
-          boardScene.highlightTile(data.newPosition);
-          const currentTile = boardTilesData[data.newPosition];
-          showTileInspector(data.newPosition, currentTile);
-
-          if (currentTile && currentTile.type === 'RAILROAD') {
-            sounds.playTrainWhistle();
-            boardScene.vfxManager.spawnTrainSmoke(landingPos, 14);
-          } else if (currentTile && currentTile.type === 'AIRPORT') {
-            sounds.playCardChime();
-            boardScene.vfxManager.spawnStarBurst(landingPos, 20);
-          } else if (currentTile && (currentTile.type === 'GO_TO_JAIL' || (currentTile.type === 'JAIL' && player && player.inJail))) {
-            sounds.playJailSlam();
-          }
-
-          if (data.passedGo) {
-            sounds.playCashTransaction();
-            boardScene.vfxManager.spawnFloatingDollar('200M (Lương)', landingPos, true);
-            boardScene.vfxManager.spawnStarBurst(landingPos, 20);
-          }
-
-          handleTileActionResult(data.actionResult, isMe, player, landingPos);
-          const snap = latestGameStateSnapshot || data.snapshot;
-          checkMyTurn(snap);
-
-          // Nếu ô cờ không mở modal mua bán hay thẻ (ví dụ trả tiền thuê, nộp thuế, đi qua GO)
-          const isModalOpen = (elPropertyModal && elPropertyModal.style.display === 'flex') ||
-                              (elCardModal && elCardModal.style.display === 'flex');
-          if (isMe && snap?.turnState?.phase === 'END_TURN' && !isModalOpen) {
-            scheduleAutoEndTurn(1500, 'Giao dịch tại ô cờ hoàn tất');
+          const finalPos = player ? player.position : data.newPosition;
+          if (finalPos !== data.newPosition) {
+            // Thẻ Cơ Hội / Khí Vận hoặc luật đặc biệt đã dịch chuyển người chơi tới ô mới
+            boardScene.tokenManager.flyTokenDirect(data.userId, finalPos, slot, () => {
+              finishLanding(finalPos);
+            });
+          } else {
+            finishLanding(data.newPosition);
           }
         }
       );
@@ -1311,6 +1877,8 @@ function bindSocketEvents() {
 
     latestGameStateSnapshot = data.snapshot;
     latestPropertiesSnapshot = data.snapshot.properties || latestPropertiesSnapshot;
+    boardScene.syncProperties(data.snapshot.properties || [], data.snapshot.players || []);
+    (boardScene as any).setFestivalTile?.(data.snapshot?.festivalTileId ?? null);
     updateHudPlayers(data.snapshot);
     renderLogs(data.snapshot.logs);
   });
@@ -1330,45 +1898,52 @@ function bindSocketEvents() {
     const destName = boardTilesData[data.newPosition]?.name || 'ô mới';
     showToast(`🛫 ${player ? player.username : 'Người chơi'} đang bay đến [${destName}]!`);
 
+    const finishAirportLanding = (landedTileId: number) => {
+      const currentToken = boardScene.tokenManager.tokens.get(data.userId);
+      const landingPos = currentToken ? currentToken.mesh.position : boardScene.getTileWorldPosition(landedTileId);
+
+      boardScene.highlightTile(landedTileId);
+      const currentTile = boardTilesData[landedTileId];
+      showTileInspector(landedTileId, currentTile);
+
+      if (currentTile && currentTile.type === 'RAILROAD') {
+        sounds.playTrainWhistle();
+        boardScene.vfxManager.spawnTrainSmoke(landingPos, 14);
+      } else if (currentTile && (currentTile.type === 'GO_TO_JAIL' || (currentTile.type === 'JAIL' && player && player.inJail))) {
+        sounds.playJailSlam();
+      }
+
+      if (data.passedGo) {
+        sounds.playCashTransaction();
+        boardScene.vfxManager.spawnFloatingDollar('200M (Lương)', landingPos, true);
+        boardScene.vfxManager.spawnStarBurst(landingPos, 20);
+      }
+
+      handleTileActionResult(data.actionResult, isMe, player, landingPos);
+      const snap = latestGameStateSnapshot || data.snapshot;
+      checkMyTurn(snap);
+    };
+
     boardScene.tokenManager.flyTokenDirect(
       data.userId,
       data.newPosition,
       slot,
       () => {
-        const token = boardScene.tokenManager.tokens.get(data.userId);
-        const landingPos = token ? token.mesh.position : boardScene.getTileWorldPosition(data.newPosition);
-
-        boardScene.highlightTile(data.newPosition);
-        const currentTile = boardTilesData[data.newPosition];
-        showTileInspector(data.newPosition, currentTile);
-
-        if (currentTile && currentTile.type === 'RAILROAD') {
-          sounds.playTrainWhistle();
-          boardScene.vfxManager.spawnTrainSmoke(landingPos, 14);
-        } else if (currentTile && (currentTile.type === 'GO_TO_JAIL' || (currentTile.type === 'JAIL' && player && player.inJail))) {
-          sounds.playJailSlam();
-        }
-
-        if (data.passedGo) {
-          sounds.playCashTransaction();
-          boardScene.vfxManager.spawnFloatingDollar('200M (Lương)', landingPos, true);
-          boardScene.vfxManager.spawnStarBurst(landingPos, 20);
-        }
-
-        handleTileActionResult(data.actionResult, isMe, player, landingPos);
-        const snap = latestGameStateSnapshot || data.snapshot;
-        checkMyTurn(snap);
-
-        const isModalOpen = (elPropertyModal && elPropertyModal.style.display === 'flex') ||
-                            (elCardModal && elCardModal.style.display === 'flex');
-        if (isMe && snap?.turnState?.phase === 'END_TURN' && !isModalOpen) {
-          scheduleAutoEndTurn(1500, 'Giao dịch chuyến bay hoàn tất');
+        const finalPos = player ? player.position : data.newPosition;
+        if (finalPos !== data.newPosition) {
+          boardScene.tokenManager.flyTokenDirect(data.userId, finalPos, slot, () => {
+            finishAirportLanding(finalPos);
+          });
+        } else {
+          finishAirportLanding(data.newPosition);
         }
       }
     );
 
     latestGameStateSnapshot = data.snapshot;
     latestPropertiesSnapshot = data.snapshot.properties || latestPropertiesSnapshot;
+    boardScene.syncProperties(data.snapshot.properties || [], data.snapshot.players || []);
+    (boardScene as any).setFestivalTile?.(data.snapshot?.festivalTileId ?? null);
     updateHudPlayers(data.snapshot);
     renderLogs(data.snapshot.logs);
   });
@@ -1376,6 +1951,7 @@ function bindSocketEvents() {
   socketClient.on('game:property_updated', (data: any) => {
     latestGameStateSnapshot = data.snapshot;
     boardScene.syncProperties(data.snapshot.properties || [], data.snapshot.players || []);
+    (boardScene as any).setFestivalTile?.(data.snapshot?.festivalTileId ?? null);
     const tilePos = boardScene.getTileWorldPosition(data.tileId);
     boardScene.vfxManager.spawnShockwave(tilePos, '#00B894', 3.0);
     latestPlayersSnapshot = data.snapshot.players;
@@ -1391,19 +1967,76 @@ function bindSocketEvents() {
     updateHudPlayers(data.snapshot);
     renderLogs(data.snapshot.logs);
     checkMyTurn(data.snapshot);
+  });
 
-    // Tự động kết thúc lượt sau khi mua hoặc nâng cấp bất động sản hoàn tất
-    const isMe = data.ownerId === socketClient.socket.id || data.snapshot?.turnState?.currentUserId === socketClient.socket.id;
-    if (isMe && data.snapshot?.turnState?.phase === 'END_TURN') {
-      scheduleAutoEndTurn(1200, 'Giao dịch mua / nâng cấp bất động sản hoàn tất');
+  socketClient.on('game:property_mortgaged', (data: any) => {
+    latestGameStateSnapshot = data.snapshot;
+    latestPlayersSnapshot = data.snapshot.players;
+    latestPropertiesSnapshot = data.snapshot.properties || latestPropertiesSnapshot;
+    if (Array.isArray(data.snapshot?.players)) {
+      data.snapshot.players.forEach((p: any) => {
+        if (p.id && p.diceSkin) playerDiceSkinCache.set(p.id, p.diceSkin);
+      });
     }
+    boardScene.syncProperties(data.snapshot.properties || [], data.snapshot.players || []);
+
+    const tileName = boardTilesData[data.tileId]?.name || `Ô #${data.tileId}`;
+    sounds.playCashTransaction();
+    showToast(`🏦 Đã thế chấp [${tileName}] (+${data.mortgageValue}M)`);
+
+    if (currentInspectedTileId === data.tileId) {
+      showTileInspector(data.tileId);
+    }
+    if (elBoardRosterModal.style.display === 'flex') {
+      renderBoardRoster();
+    }
+    updateHudPlayers(data.snapshot);
+    renderLogs(data.snapshot.logs);
+    checkMyTurn(data.snapshot);
+  });
+
+  socketClient.on('game:property_unmortgaged', (data: any) => {
+    latestGameStateSnapshot = data.snapshot;
+    latestPlayersSnapshot = data.snapshot.players;
+    latestPropertiesSnapshot = data.snapshot.properties || latestPropertiesSnapshot;
+    if (Array.isArray(data.snapshot?.players)) {
+      data.snapshot.players.forEach((p: any) => {
+        if (p.id && p.diceSkin) playerDiceSkinCache.set(p.id, p.diceSkin);
+      });
+    }
+    boardScene.syncProperties(data.snapshot.properties || [], data.snapshot.players || []);
+
+    const tileName = boardTilesData[data.tileId]?.name || `Ô #${data.tileId}`;
+    sounds.playCashTransaction();
+    showToast(`💎 Đã chuộc lại [${tileName}] (-${data.cost}M)`);
+
+    if (currentInspectedTileId === data.tileId) {
+      showTileInspector(data.tileId);
+    }
+    if (elBoardRosterModal.style.display === 'flex') {
+      renderBoardRoster();
+    }
+    updateHudPlayers(data.snapshot);
+    renderLogs(data.snapshot.logs);
+    checkMyTurn(data.snapshot);
   });
 
   socketClient.on('game:state_sync', (data: any) => {
     latestGameStateSnapshot = data.snapshot;
     latestPlayersSnapshot = data.snapshot.players;
     latestPropertiesSnapshot = data.snapshot.properties || latestPropertiesSnapshot;
+    if (Array.isArray(data.snapshot?.players)) {
+      data.snapshot.players.forEach((p: any) => {
+        if (p.id && p.diceSkin) playerDiceSkinCache.set(p.id, p.diceSkin);
+      });
+    }
+    if (Array.isArray(data.snapshot?.players)) {
+      data.snapshot.players.forEach((p: any) => {
+        if (p.id && p.diceSkin) playerDiceSkinCache.set(p.id, p.diceSkin);
+      });
+    }
     boardScene.syncProperties(data.snapshot.properties || [], data.snapshot.players || []);
+    (boardScene as any).setFestivalTile?.(data.snapshot?.festivalTileId ?? null);
     if (currentInspectedTileId !== null) {
       showTileInspector(currentInspectedTileId);
     }
@@ -1413,24 +2046,36 @@ function bindSocketEvents() {
     updateHudPlayers(data.snapshot);
     renderLogs(data.snapshot.logs);
     checkMyTurn(data.snapshot);
-
-    const isMe = data.snapshot?.turnState?.currentUserId === socketClient.socket.id;
-    const isModalOpen = (elPropertyModal && elPropertyModal.style.display === 'flex') ||
-                        (elCardModal && elCardModal.style.display === 'flex');
-    if (isMe && data.snapshot?.turnState?.phase === 'END_TURN' && !isModalOpen && !autoEndTurnTimer) {
-      scheduleAutoEndTurn(1200, 'Giao dịch hoàn tất');
-    }
   });
 
   socketClient.on('game:turn_change', (data: any) => {
     cancelAutoEndTurn();
+    currentPendingTileAction = null;
+    currentPendingActionMode = null;
     elPropertyModal.style.display = 'none';
+    elCardModal.style.display = 'none';
+    elFestivalModal.style.display = 'none';
+    elAuctionModal.style.display = 'none';
+    if (elAirportModal) elAirportModal.style.display = 'none';
+    if (airportFloatingBar) airportFloatingBar.style.display = 'none';
+    if (airportConfirmModal) airportConfirmModal.style.display = 'none';
+
     latestGameStateSnapshot = data.snapshot;
     latestPlayersSnapshot = data.snapshot.players;
     latestPropertiesSnapshot = data.snapshot.properties || latestPropertiesSnapshot;
+    if (Array.isArray(data.snapshot?.players)) {
+      data.snapshot.players.forEach((p: any) => {
+        if (p.id && p.diceSkin) playerDiceSkinCache.set(p.id, p.diceSkin);
+      });
+    }
+    (boardScene as any).setFestivalTile?.(data.snapshot?.festivalTileId ?? null);
     updateHudPlayers(data.snapshot);
     renderLogs(data.snapshot.logs);
     checkMyTurn(data.snapshot);
+
+    if (currentInspectedTileId !== null) {
+      showTileInspector(currentInspectedTileId);
+    }
 
     const nextPlayer = data.snapshot?.players?.find((p: any) => p.id === data.nextUserId);
     if (nextPlayer && boardScene?.tokenManager) {
@@ -1439,34 +2084,77 @@ function bindSocketEvents() {
   });
 
   socketClient.on('game:timer_tick', (data: { remaining: number }) => {
-    const pct = Math.max(0, Math.min(100, (data.remaining / 30) * 100));
+    const maxTimeout = latestGameStateSnapshot?.turnState?.turnTimeout || 30;
+    const pct = Math.max(0, Math.min(100, (data.remaining / maxTimeout) * 100));
     timerFill.style.width = `${pct}%`;
     timerFill.style.backgroundColor = data.remaining <= 5 ? '#D63031' : '#00B894';
   });
 
   socketClient.on('game:over', (data: any) => {
     cancelAutoEndTurn();
+    currentPendingTileAction = null;
+    currentPendingActionMode = null;
     if (boardScene?.tokenManager) {
       boardScene.tokenManager.setActiveTurnPlayer(null);
     }
     elPropertyModal.style.display = 'none';
     elCardModal.style.display = 'none';
+    elFestivalModal.style.display = 'none';
+    elAuctionModal.style.display = 'none';
+    elTradeProposeModal.style.display = 'none';
+    elTradeOfferModal.style.display = 'none';
+    if (auctionCountdownInterval !== null) {
+      clearInterval(auctionCountdownInterval);
+      auctionCountdownInterval = null;
+    }
+    if (matchTimerInterval !== null) {
+      clearInterval(matchTimerInterval);
+      matchTimerInterval = null;
+    }
+    if (elAirportModal) elAirportModal.style.display = 'none';
+    if (airportFloatingBar) airportFloatingBar.style.display = 'none';
+    if (airportConfirmModal) airportConfirmModal.style.display = 'none';
     showVictory(data);
+  });
+
+  socketClient.on('game:auction_resolved', (data: any) => {
+    elAuctionModal.style.display = 'none';
+    if (auctionCountdownInterval !== null) {
+      clearInterval(auctionCountdownInterval);
+      auctionCountdownInterval = null;
+    }
+    if (data?.winnerName && data?.amount) {
+      showToast(`🔨 ${data.winnerName} đã thắng đấu giá với ${data.amount}M!`);
+    } else if (data?.tileName) {
+      showToast(`🔨 Đấu giá ${data.tileName} kết thúc (không có người mua).`);
+    }
+    if (data?.snapshot) {
+      latestGameStateSnapshot = data.snapshot;
+      latestPlayersSnapshot = data.snapshot.players;
+      latestPropertiesSnapshot = data.snapshot.properties || latestPropertiesSnapshot;
+      boardScene.syncProperties(data.snapshot.properties || [], data.snapshot.players || []);
+      updateHudPlayers(data.snapshot);
+      renderLogs(data.snapshot.logs);
+      checkMyTurn(data.snapshot);
+    }
   });
 
   socketClient.on('error:message', (data: { message: string }) => {
     if (elJoinPasswordModal && elJoinPasswordModal.style.display !== 'none') {
       joinPasswordError.textContent = data.message;
       joinPasswordError.style.display = 'block';
-    } else {
-      if (data.message && data.message.includes('Mật khẩu') && pendingJoinRoomCode) {
-        joinPasswordRoomName.textContent = pendingJoinRoomCode;
-        joinPasswordError.textContent = data.message;
-        joinPasswordError.style.display = 'block';
-        elJoinPasswordModal.style.display = 'flex';
-      } else {
-        alert(data.message);
+    } else if (data.message && data.message.includes('Mật khẩu') && pendingJoinRoomCode) {
+      joinPasswordRoomName.textContent = pendingJoinRoomCode;
+      joinPasswordError.textContent = data.message;
+      joinPasswordError.style.display = 'block';
+      elJoinPasswordModal.style.display = 'flex';
+    } else if (elGameHud && elGameHud.style.display !== 'none') {
+      showToast(`⚠️ ${data.message}`);
+      if (latestGameStateSnapshot) {
+        checkMyTurn(latestGameStateSnapshot);
       }
+    } else {
+      alert(data.message);
     }
   });
 }
@@ -1706,19 +2394,200 @@ async function openProfileModal() {
     profileLevelBadge.className = `nameplate-badge ${getFrameTierClass(equipped)}`;
   }
 
+  if (profileEquippedTitle) {
+    const titleId = currentUser.equippedTitle || 'title_rookie';
+    profileEquippedTitle.textContent = `🏷️ ${TITLE_LABELS[titleId] || titleId}`;
+  }
+  if (profileBioText) {
+    profileBioText.textContent = currentUser.bio?.trim() ? currentUser.bio : 'Chưa có tiểu sử';
+  }
+  if (inputProfileBio) {
+    inputProfileBio.value = currentUser.bio || '';
+  }
+  renderProfileAvatarPicker();
+
   // Switch to default achievements tab
   switchProfileTab('achievements');
 
   elProfileModal.style.display = 'flex';
-  await Promise.all([fetchMyAchievements(), fetchMyFrames()]);
+  await Promise.all([fetchMyAchievements(), fetchMyFrames(), fetchMyCustomizations()]);
 }
 
-function switchProfileTab(tab: 'achievements' | 'frames') {
+function switchProfileTab(tab: 'achievements' | 'frames' | 'custom') {
   if (tabBtnProfileAchievements) tabBtnProfileAchievements.classList.toggle('active', tab === 'achievements');
   if (tabBtnProfileFrames) tabBtnProfileFrames.classList.toggle('active', tab === 'frames');
+  if (tabBtnProfileCustom) tabBtnProfileCustom.classList.toggle('active', tab === 'custom');
   if (paneProfileAchievements) paneProfileAchievements.style.display = tab === 'achievements' ? 'block' : 'none';
   if (paneProfileFrames) paneProfileFrames.style.display = tab === 'frames' ? 'block' : 'none';
+  if (paneProfileCustom) paneProfileCustom.style.display = tab === 'custom' ? 'block' : 'none';
 }
+
+let cachedCustomizationsData: any = null;
+
+function renderProfileAvatarPicker() {
+  if (!profileAvatarPicker || !currentUser) return;
+  profileAvatarPicker.innerHTML = SAMPLE_AVATARS.map(url => {
+    const isActive = currentUser?.avatarUrl === url;
+    return `
+      <div class="avatar-choice ${isActive ? 'selected' : ''}" data-avatar-url="${url}" title="Chọn avatar này">
+        <img src="${url}" alt="avatar" />
+      </div>
+    `;
+  }).join('');
+
+  profileAvatarPicker.querySelectorAll('.avatar-choice').forEach(el => {
+    el.addEventListener('click', () => {
+      const url = (el as HTMLElement).dataset.avatarUrl;
+      if (url) customizeProfileItem('avatar', url);
+    });
+  });
+}
+
+async function fetchMyCustomizations() {
+  const token = getAuthToken();
+  if (!token || !profileCustomSections) return;
+  profileCustomSections.innerHTML = '<div style="font-size:0.8rem;color:#B2BEC3;text-align:center;padding:12px;">Đang tải bộ sưu tập tùy biến 3D...</div>';
+  try {
+    const res = await fetch('/api/profile/customizations', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    cachedCustomizationsData = data;
+    if (currentUser) {
+      if (data.equippedToken) currentUser.equippedToken = data.equippedToken;
+      if (data.equippedDice) currentUser.equippedDice = data.equippedDice;
+      if (data.equippedTrail) currentUser.equippedTrail = data.equippedTrail;
+      if (data.equippedTitle) currentUser.equippedTitle = data.equippedTitle;
+      if (typeof data.bio === 'string') currentUser.bio = data.bio;
+      if (Array.isArray(data.unlockedItems)) currentUser.unlockedItems = data.unlockedItems;
+    }
+    renderCustomizationsPane(data);
+  } catch (e) {
+    if (profileCustomSections) {
+      profileCustomSections.innerHTML = '<div style="font-size:0.8rem;color:#E84118;text-align:center;padding:12px;">Không thể tải danh sách tùy biến.</div>';
+    }
+  }
+}
+
+function renderCustomizationsPane(data: any) {
+  if (!profileCustomSections || !data) return;
+  const catalog = data.catalog || {};
+  const unlockedSet = new Set<string>(data.unlockedItems || []);
+
+  const sections = [
+    {
+      heading: '🎭 Model Quân Cờ 3D (10 Mẫu)',
+      type: 'token',
+      equipped: data.equippedToken || currentUser?.equippedToken || 'car',
+      items: catalog.tokens || []
+    },
+    {
+      heading: '🎲 Skin Xúc Xắc 3D',
+      type: 'dice',
+      equipped: data.equippedDice || currentUser?.equippedDice || 'dice_ivory',
+      items: catalog.diceSkins || []
+    },
+    {
+      heading: '✨ Hiệu Ứng Bước Nhảy',
+      type: 'trail',
+      equipped: data.equippedTrail || currentUser?.equippedTrail || 'trail_default',
+      items: catalog.trails || []
+    },
+    {
+      heading: '🏷️ Danh Hiệu Tỷ Phú',
+      type: 'title',
+      equipped: data.equippedTitle || currentUser?.equippedTitle || 'title_rookie',
+      items: catalog.titles || []
+    }
+  ];
+
+  profileCustomSections.innerHTML = sections.map(sec => {
+    const cardsHtml = (sec.items || []).map((item: any) => {
+      const isEquipped = sec.equipped === item.id;
+      const isUnlocked = item.cost === 0 || unlockedSet.has(item.id) || item.isUnlocked;
+      const icon = item.icon || (sec.type === 'token' ? (TOKEN_ICONS[item.id] || '🚗') : sec.type === 'dice' ? '🎲' : sec.type === 'trail' ? '✨' : '🏷️');
+
+      let btnHtml = '';
+      if (isEquipped) {
+        btnHtml = `<button class="btn-chunky btn-xs" disabled style="background:#00B894;color:white;width:100%;">✓ Đang Dùng</button>`;
+      } else if (isUnlocked) {
+        btnHtml = `<button class="btn-chunky btn-primary btn-xs" onclick="window.customizeProfileItem('${sec.type}', '${item.id}')" style="width:100%;">Trang Bị</button>`;
+      } else {
+        btnHtml = `<button class="btn-chunky btn-accent btn-xs" onclick="window.customizeProfileItem('${sec.type}', '${item.id}')" style="width:100%;">Mở Khóa 🪙 ${item.cost}</button>`;
+      }
+
+      return `
+        <div class="custom-item-card ${isEquipped ? 'is-equipped' : ''} ${isUnlocked ? '' : 'locked'}">
+          <div class="custom-item-icon">${icon}</div>
+          <div class="custom-item-name">${item.name}</div>
+          <div class="custom-item-desc">${item.description || (item.cost === 0 ? 'Miễn phí' : `${item.cost} Vàng`)}</div>
+          <div style="width:100%;margin-top:auto;">${btnHtml}</div>
+        </div>
+      `;
+    }).join('');
+
+    return `
+      <div class="profile-custom-section">
+        <div class="profile-custom-heading">${sec.heading}</div>
+        <div class="profile-custom-grid">${cardsHtml}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+async function customizeProfileItem(type: 'token' | 'dice' | 'trail' | 'title' | 'bio' | 'avatar', value: string) {
+  const token = getAuthToken();
+  if (!token) return;
+  try {
+    const res = await fetch('/api/profile/customize', {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ type, value })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      showToast(`⚠️ ${data.error || 'Không thể cập nhật tùy biến'}`);
+      return;
+    }
+
+    if (data.user && currentUser) {
+      currentUser = { ...currentUser, ...data.user };
+    } else if (currentUser) {
+      if (type === 'token') currentUser.equippedToken = value;
+      if (type === 'dice') currentUser.equippedDice = value;
+      if (type === 'trail') currentUser.equippedTrail = value;
+      if (type === 'title') currentUser.equippedTitle = value;
+      if (type === 'bio') currentUser.bio = value;
+      if (type === 'avatar') currentUser.avatarUrl = value;
+    }
+
+    if (currentUser) {
+      headerUserGold.textContent = `🪙 ${(currentUser.goldBalance || 0).toLocaleString()} Vàng`;
+      profileGoldBalance.textContent = `${(currentUser.goldBalance || 0).toLocaleString()} Vàng`;
+      if (currentUser.avatarUrl) {
+        headerUserAvatar.src = currentUser.avatarUrl;
+        profileAvatarImg.src = currentUser.avatarUrl;
+      }
+      if (profileEquippedTitle) {
+        const titleId = currentUser.equippedTitle || 'title_rookie';
+        profileEquippedTitle.textContent = `🏷️ ${TITLE_LABELS[titleId] || titleId}`;
+      }
+      if (profileBioText) {
+        profileBioText.textContent = currentUser.bio?.trim() ? currentUser.bio : 'Chưa có tiểu sử';
+      }
+    }
+
+    renderProfileAvatarPicker();
+    await fetchMyCustomizations();
+    sounds.playTap();
+    showToast(data.message || 'Đã cập nhật tùy biến hồ sơ!');
+  } catch (e) {
+    showToast('⚠️ Lỗi kết nối khi lưu tùy biến.');
+  }
+}
+
+(window as any).customizeProfileItem = customizeProfileItem;
 
 async function fetchMyAchievements() {
   const token = getAuthToken();
@@ -2172,6 +3041,18 @@ function initAuthAndSocialUI() {
     });
   }
 
+  if (tabBtnProfileCustom) {
+    tabBtnProfileCustom.addEventListener('click', () => {
+      switchProfileTab('custom');
+    });
+  }
+
+  if (btnSaveBio && inputProfileBio) {
+    btnSaveBio.addEventListener('click', () => {
+      customizeProfileItem('bio', inputProfileBio.value.trim());
+    });
+  }
+
   // Tier filter chips for achievements
   document.querySelectorAll('.tier-chip').forEach(chip => {
     chip.addEventListener('click', () => {
@@ -2313,26 +3194,118 @@ function renderRoomList(rooms: any[]) {
   `).join('');
 }
 
+function renderWaitingTokenSelector(currentToken: string) {
+  if (!waitingTokenGrid) return;
+  waitingTokenGrid.innerHTML = '';
+
+  if (waitingSelectedTokenName) {
+    const curName = TOKEN_NAMES[currentToken] || currentToken;
+    const curIcon = TOKEN_ICONS[currentToken] || '🚗';
+    waitingSelectedTokenName.textContent = `${curIcon} ${curName}`;
+  }
+
+  AVAILABLE_TOKENS.forEach((tKey) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    const isSelected = tKey === currentToken;
+    btn.className = `waiting-token-btn ${isSelected ? 'is-selected' : ''}`;
+    btn.innerHTML = `
+      <span class="waiting-token-btn-icon">${TOKEN_ICONS[tKey] || '🚗'}</span>
+      <span class="waiting-token-btn-name">${TOKEN_NAMES[tKey] || tKey}</span>
+    `;
+    btn.addEventListener('click', () => {
+      socketClient.emit('room:select_token', { token: tKey });
+      renderWaitingTokenSelector(tKey);
+    });
+    waitingTokenGrid.appendChild(btn);
+  });
+}
+
+function syncWaitingLobby(data: any) {
+  if (!data) return;
+  if (data.name) waitingRoomName.textContent = data.name;
+  if (data.roomCode) waitingRoomCode.textContent = data.roomCode;
+
+  const players = data.players || [];
+  const maxPlayers = data.maxPlayers || latestWaitingMaxPlayers || 4;
+  latestWaitingPlayers = players;
+  latestWaitingMaxPlayers = maxPlayers;
+  waitingPlayerCount.textContent = `${players.length}/${maxPlayers}`;
+
+  if (data.hostId) {
+    isHost = data.hostId === socketClient.socket.id;
+  } else if (players.length > 0) {
+    const meInRoom = players.find((p: any) => p.id === socketClient.socket.id);
+    if (meInRoom) isHost = Boolean(meInRoom.isHost);
+  }
+
+  const me = players.find((p: any) => p.id === socketClient.socket.id);
+
+  if (isHost) {
+    if (btnToggleReady) btnToggleReady.style.display = 'none';
+    btnAddBot.style.display = players.length < maxPlayers ? 'inline-flex' : 'none';
+    btnStartGame.style.display = 'inline-flex';
+
+    const nonHosts = players.filter((p: any) => !p.isHost);
+    const allReady = nonHosts.every((p: any) => Boolean(p.isReady || p.isBot));
+    const canStart = players.length >= 2 && players.length <= 4 && allReady;
+
+    if (canStart) {
+      btnStartGame.disabled = false;
+      btnStartGame.style.opacity = '1';
+      btnStartGame.style.cursor = 'pointer';
+      if (waitingStartHint) waitingStartHint.style.display = 'none';
+    } else {
+      btnStartGame.disabled = true;
+      btnStartGame.style.opacity = '0.6';
+      btnStartGame.style.cursor = 'not-allowed';
+      if (waitingStartHint) {
+        waitingStartHint.style.display = 'block';
+        if (players.length < 2) {
+          waitingStartHint.textContent = '⚠️ Cần tối thiểu 2 người chơi để bắt đầu (hãy bấm Thêm Bot hoặc mời bạn)!';
+        } else {
+          const readyCount = nonHosts.filter((p: any) => Boolean(p.isReady || p.isBot)).length;
+          waitingStartHint.textContent = `⏳ Chờ người chơi sẵn sàng (${readyCount}/${nonHosts.length})...`;
+        }
+      }
+    }
+  } else {
+    btnAddBot.style.display = 'none';
+    btnStartGame.style.display = 'none';
+    if (waitingStartHint) waitingStartHint.style.display = 'none';
+
+    if (btnToggleReady && btnToggleReadyText) {
+      btnToggleReady.style.display = 'inline-flex';
+      const myReady = Boolean(me?.isReady);
+      if (myReady) {
+        btnToggleReady.className = 'btn-chunky btn-white';
+        btnToggleReady.style.flex = '1';
+        btnToggleReadyText.textContent = 'HỦY SẴN SÀNG';
+      } else {
+        btnToggleReady.className = 'btn-chunky btn-accent';
+        btnToggleReady.style.flex = '1';
+        btnToggleReadyText.textContent = 'SẴN SÀNG';
+      }
+    }
+  }
+
+  renderWaitingTokenSelector(me?.token || 'car');
+  renderWaitingSlots(players, maxPlayers);
+}
+
 function showWaitingLobby(data: any) {
   elLobbyView.style.display = 'none';
   elRoomWaiting.style.display = 'flex';
-
-  waitingRoomName.textContent = data.name;
-  waitingRoomCode.textContent = data.roomCode;
-  waitingPlayerCount.textContent = `${data.players.length}/${data.maxPlayers}`;
-
-  btnStartGame.style.display = isHost ? 'inline-flex' : 'none';
-  btnAddBot.style.display = isHost ? 'inline-flex' : 'none';
-
-  renderWaitingSlots(data.players, data.maxPlayers);
+  syncWaitingLobby(data);
 }
 
 function updateWaitingLobby(data: any) {
-  waitingPlayerCount.textContent = `${data.players.length}/${data.maxPlayers}`;
-  renderWaitingSlots(data.players, data.maxPlayers);
+  syncWaitingLobby(data);
 }
 
 function renderWaitingSlots(players: any[], max: number) {
+  latestWaitingPlayers = players || [];
+  latestWaitingMaxPlayers = max || 4;
   waitingSlots.innerHTML = '';
   for (let i = 0; i < max; i++) {
     const p = players[i];
@@ -2344,21 +3317,42 @@ function renderWaitingSlots(players: any[], max: number) {
       const frameClass = getFrameTierClass(frameId);
       const frameBadge = getFrameBadgeTag(frameId);
 
+      const titleLabel = p.title ? (TITLE_LABELS[p.title] || p.title) : '';
+      const tokenKey = p.token || 'car';
+      const tokenIcon = TOKEN_ICONS[tokenKey] || '🚗';
+      const tokenName = TOKEN_NAMES[tokenKey] || 'Siêu Xe';
+
+      let readyBadgeHtml = '';
+      if (p.isHost) {
+        readyBadgeHtml = '<span class="waiting-ready-badge host">👑 Sẵn Sàng</span>';
+      } else if (p.isReady || p.isBot) {
+        readyBadgeHtml = '<span class="waiting-ready-badge ready">✅ Đã Sẵn Sàng</span>';
+      } else {
+        readyBadgeHtml = '<span class="waiting-ready-badge waiting">⏳ Đang Chờ...</span>';
+      }
+
       slotDiv.className = `waiting-slot-card nameplate-frame ${frameClass}`;
       slotDiv.style.cssText = 'border-radius: 14px; padding: 10px 14px; display: flex; align-items: center; justify-content: space-between;';
       slotDiv.innerHTML = `
         <div style="display: flex; align-items: center; gap: 10px;">
-          <img src="${p.avatar}" style="width: 36px; height: 36px; border-radius: 50%; background: #EBF2FA; border: 2px solid ${p.color || '#CBD5E1'};" />
+          <img src="${p.avatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${p.username}`}" style="width: 36px; height: 36px; border-radius: 50%; background: #EBF2FA; border: 2px solid ${p.color || '#CBD5E1'};" />
           <div>
             <div style="font-weight: 800; font-size: 0.95rem; color: #2D3436; display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
               <span>${p.username}</span>
               ${isMe ? '<span style="color:#00B894; font-size:0.75rem;">(Bạn)</span>' : ''}
               ${frameBadge}
+              ${readyBadgeHtml}
             </div>
-            <div style="font-size: 0.75rem; color: #636E72;">${p.isHost ? '👑 Chủ phòng' : p.isBot ? '🤖 Bot AI' : 'Thành viên'}</div>
+            <div style="font-size: 0.75rem; color: #636E72; display: flex; align-items: center; gap: 6px; margin-top: 2px;">
+              <span>${p.isHost ? '👑 Chủ phòng' : p.isBot ? '🤖 Bot AI' : 'Thành viên'}</span>
+              ${titleLabel ? ` • <span style="color:#0984E3;font-weight:800;">🏷️ ${titleLabel}</span>` : ''}
+            </div>
           </div>
         </div>
-        <div style="font-size: 1.4rem;">${p.token === 'car' ? '🚗' : p.token === 'hat' ? '🎩' : p.token === 'dog' ? '🐕' : '🚀'}</div>
+        <div class="waiting-slot-token-tag" title="Model nhân vật 3D: ${tokenName}">
+          <span style="font-size: 1.1rem;">${tokenIcon}</span>
+          <span>${tokenName}</span>
+        </div>
       `;
     } else {
       slotDiv.style.cssText = 'background: white; border-radius: 14px; padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 6px rgba(0,0,0,0.04); opacity: 0.6;';
@@ -2392,6 +3386,7 @@ function updateHudPlayers(snapshot: any) {
     const frameId = p.frame || 'frame_default';
     const frameClass = getFrameTierClass(frameId);
     const frameBadge = getFrameBadgeTag(frameId);
+    const titleLabel = p.title ? (TITLE_LABELS[p.title] || p.title) : '';
 
     const dotsHtml = ownedProps.slice(0, 8).map((pr: any) => {
       const tile = boardTilesData && boardTilesData[pr.tileId];
@@ -2407,6 +3402,7 @@ function updateHudPlayers(snapshot: any) {
           <div class="player-name-row" style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;">
             <span class="player-name">${p.username} ${isMe ? '(Bạn)' : ''} ${p.inJail ? '🔒' : ''}</span>
             ${frameBadge}
+            ${titleLabel ? `<span class="hud-player-title">${titleLabel}</span>` : ''}
             ${isTurn ? '<span class="turn-badge-tag">LƯỢT ĐI</span>' : ''}
           </div>
           <div class="player-meta-row">
@@ -2420,62 +3416,8 @@ function updateHudPlayers(snapshot: any) {
   }).join('');
 }
 
-let autoEndTurnTimer: any = null;
-
 function cancelAutoEndTurn() {
-  if (autoEndTurnTimer) {
-    clearTimeout(autoEndTurnTimer);
-    autoEndTurnTimer = null;
-  }
-}
-
-function scheduleAutoEndTurn(delayMs: number = 1200, reason: string = 'Giao dịch hoàn tất') {
-  cancelAutoEndTurn();
-
-  const snap = latestGameStateSnapshot;
-  if (!snap || !snap.turnState) return;
-
-  const curUserId = snap.turnState.currentUserId;
-  const isMyTurn = curUserId === socketClient.socket.id;
-  const me = snap.players?.find((p: any) => p.id === socketClient.socket.id);
-
-  if (!isMyTurn || snap.isGameOver || me?.isBankrupt) return;
-
-  // Nếu đổ trúng đôi và đang ở pha lắc tiếp, người chơi được tung xúc xắc tiếp
-  if (snap.turnState.isDouble && snap.turnState.phase === 'ROLL_DICE') return;
-
-  // Không tự động kết thúc nếu đang mở hộp thoại mua đất hoặc thẻ vận mệnh
-  const isModalOpen = (elPropertyModal && elPropertyModal.style.display === 'flex') ||
-                      (elCardModal && elCardModal.style.display === 'flex');
-  if (isModalOpen) return;
-
-  if (turnStatusText) {
-    turnStatusText.textContent = `✅ ${reason} — Tự động chuyển lượt sau ${(delayMs / 1000).toFixed(1)}s...`;
-  }
-  if (btnEndTurn) {
-    btnEndTurn.innerHTML = `<span>⏳</span><span>TỰ ĐỘNG KẾT THÚC (${(delayMs / 1000).toFixed(1)}s)</span>`;
-    btnEndTurn.style.display = 'inline-flex';
-  }
-
-  autoEndTurnTimer = setTimeout(() => {
-    autoEndTurnTimer = null;
-    const currentSnap = latestGameStateSnapshot;
-    const isModalStillOpen = (elPropertyModal && elPropertyModal.style.display === 'flex') ||
-                            (elCardModal && elCardModal.style.display === 'flex');
-    const isMoving = boardScene?.tokenManager?.isAnyTokenMoving();
-
-    if (
-      currentSnap &&
-      !currentSnap.isGameOver &&
-      !isModalStillOpen &&
-      !isMoving &&
-      currentSnap.turnState?.currentUserId === socketClient.socket.id &&
-      currentSnap.turnState?.phase === 'END_TURN'
-    ) {
-      if (btnEndTurn) btnEndTurn.style.display = 'none';
-      socketClient.emit('game:end_turn');
-    }
-  }, delayMs);
+  // Đã gỡ bỏ tự động kết thúc lượt theo GAMEPLAY_SPEC.md mục 2.4
 }
 
 function checkMyTurn(snapshot?: any) {
@@ -2506,44 +3448,87 @@ function checkMyTurn(snapshot?: any) {
       turnStatusText.textContent = `⏳ Đang di chuyển quân cờ của ${activePlayer.username}...`;
     } else if (isMyTurn) {
       if (phase === 'ROLL_DICE') {
-        const isDoubleExtra = snap.turnState.isDouble || (snap.turnState.consecutiveDoubles > 0);
-        turnStatusText.textContent = isDoubleExtra
-          ? '🎉 Đổ trúng đôi! Hãy lắc thêm lượt!'
-          : '🎲 Đang tới lượt bạn — Hãy đổ xúc xắc!';
+        if (activePlayer.inJail) {
+          turnStatusText.textContent = `🔒 Bạn đang trong tù (${activePlayer.jailTurns || 0}/2 lượt) — Đổ đôi, nộp 50M hoặc dùng thẻ để ra tù!`;
+        } else {
+          const isDoubleExtra = snap.turnState.isDouble || (snap.turnState.consecutiveDoubles > 0);
+          turnStatusText.textContent = isDoubleExtra
+            ? '🎉 Đổ trúng đôi! Hãy lắc thêm lượt!'
+            : '🎲 Đang tới lượt bạn — Hãy đổ xúc xắc!';
+        }
       } else if (phase === 'BUY_PROPERTY') {
         turnStatusText.textContent = '🏠 Đang cân nhắc mua bất động sản...';
+      } else if (phase === 'BUYOUT_PROPERTY') {
+        turnStatusText.textContent = '💰 Đang cân nhắc mua lại bất động sản của đối thủ...';
+      } else if (phase === 'FESTIVAL_SELECT') {
+        turnStatusText.textContent = '🎪 Hãy chọn 1 bất động sản để tổ chức Lễ Hội x2!';
       } else if (phase === 'AIRPORT_SELECT') {
         turnStatusText.textContent = '✈️ Đang chọn điểm đến chuyến bay...';
+      } else if (phase === 'AUCTION') {
+        turnStatusText.textContent = '🔨 Đang diễn ra phiên Đấu Giá Công Khai!';
       } else {
-        turnStatusText.textContent = autoEndTurnTimer
-          ? '✅ Giao dịch hoàn tất — Đang tự động kết thúc lượt...'
-          : '✅ Lượt của bạn — Hoàn tất giao dịch & Kết thúc lượt';
+        turnStatusText.textContent = '✅ Pha quản lý — Nâng cấp/Thế chấp ô đất hoặc bấm Kết Thúc Lượt';
       }
     } else {
       turnStatusText.textContent = phase === 'ROLL_DICE'
         ? `🎲 Đang chờ ${activePlayer.username} đổ xúc xắc...`
         : phase === 'BUY_PROPERTY'
         ? `🏠 Đang chờ ${activePlayer.username} quyết định mua đất...`
+        : phase === 'BUYOUT_PROPERTY'
+        ? `💰 Đang chờ ${activePlayer.username} quyết định mua lại...`
+        : phase === 'FESTIVAL_SELECT'
+        ? `🎪 Đang chờ ${activePlayer.username} chọn ô Lễ Hội x2...`
         : phase === 'AIRPORT_SELECT'
         ? `✈️ Đang chờ ${activePlayer.username} chọn điểm đến chuyến bay...`
+        : phase === 'AUCTION'
+        ? '🔨 Đang diễn ra phiên Đấu Giá Công Khai!'
         : `⏳ Đang chờ ${activePlayer.username} hoàn tất lượt...`;
     }
   }
 
-  // Đảm bảo tuyệt đối KHÔNG hiển thị nút xúc xắc hoặc kết thúc lượt khi quân cờ đang di chuyển
+  updateMatchTimerFromSnapshot(snap);
+  renderIncomingTradeOffer(snap);
+
+  // Đảm bảo tuyệt đối KHÔNG hiển thị nút hành động khi quân cờ đang di chuyển
   if (isMoving) {
     btnRollDice.style.display = 'none';
     btnEndTurn.style.display = 'none';
+    if (btnOpenTrade) btnOpenTrade.style.display = 'none';
+    btnPayJailFine.style.display = 'none';
+    btnUseJailCard.style.display = 'none';
     return;
   }
 
-  if (isMyTurn && !snap.isGameOver) {
+  if (phase === 'AUCTION' && snap.auctionState && !snap.isGameOver) {
+    renderAuctionModal(snap);
+  } else {
+    elAuctionModal.style.display = 'none';
+    if (auctionCountdownInterval !== null) {
+      clearInterval(auctionCountdownInterval);
+      auctionCountdownInterval = null;
+    }
+  }
+
+  if (isMyTurn && !snap.isGameOver && !activePlayer?.isBankrupt) {
     if (phase === 'ROLL_DICE') {
-      const isDoubleExtra = snap.turnState.isDouble || (snap.turnState.consecutiveDoubles > 0);
-      if (isDoubleExtra) {
-        showToast('🎉 Đổ đôi thành công! Bạn được lắc thêm lượt!');
+      if (activePlayer?.inJail) {
+        showToast('🔒 Bạn đang ở trong tù! Hãy đổ đôi, nộp phạt 50M hoặc dùng Thẻ Đặc Xá.');
+        btnPayJailFine.style.display = 'inline-flex';
+        if ((activePlayer.getOutOfJailCards ?? 0) > 0) {
+          btnUseJailCard.innerHTML = `<span>🎫</span><span>DÙNG THẺ ĐẶC XÁ (${activePlayer.getOutOfJailCards})</span>`;
+          btnUseJailCard.style.display = 'inline-flex';
+        } else {
+          btnUseJailCard.style.display = 'none';
+        }
       } else {
-        showToast('Lượt của bạn! 🎲');
+        btnPayJailFine.style.display = 'none';
+        btnUseJailCard.style.display = 'none';
+        const isDoubleExtra = snap.turnState.isDouble || (snap.turnState.consecutiveDoubles > 0);
+        if (isDoubleExtra) {
+          showToast('🎉 Đổ đôi thành công! Bạn được lắc thêm lượt!');
+        } else {
+          showToast('Lượt của bạn! 🎲');
+        }
       }
       sounds.playTurnNotification();
       btnRollDice.style.display = 'inline-flex';
@@ -2551,29 +3536,69 @@ function checkMyTurn(snapshot?: any) {
     } else if (phase === 'AIRPORT_SELECT') {
       btnRollDice.style.display = 'none';
       btnEndTurn.style.display = 'none';
+      btnPayJailFine.style.display = 'none';
+      btnUseJailCard.style.display = 'none';
       if (elAirportModal.style.display !== 'flex' && airportFloatingBar.style.display !== 'flex') {
         showAirportModal();
       }
+    } else if (phase === 'FESTIVAL_SELECT') {
+      btnRollDice.style.display = 'none';
+      btnEndTurn.style.display = 'none';
+      btnPayJailFine.style.display = 'none';
+      btnUseJailCard.style.display = 'none';
+      if (elFestivalModal.style.display !== 'flex') {
+        showFestivalModal();
+      }
+    } else if (phase === 'BUYOUT_PROPERTY') {
+      btnRollDice.style.display = 'none';
+      btnEndTurn.style.display = 'none';
+      btnPayJailFine.style.display = 'none';
+      btnUseJailCard.style.display = 'none';
+      const pendingBuyout = snap.turnState?.pendingBuyout;
+      if (pendingBuyout && elPropertyModal.style.display !== 'flex') {
+        const buyoutTile = boardTilesData[pendingBuyout.tileId];
+        const targetOwner = snap.players?.find((p: any) => p.id === pendingBuyout.targetOwnerId);
+        currentPendingTileAction = {
+          type: 'PAY_RENT_AND_CAN_BUYOUT',
+          tileId: pendingBuyout.tileId,
+          buyoutCost: pendingBuyout.cost,
+          ownerName: targetOwner?.username || 'đối thủ'
+        };
+        currentPendingActionMode = 'BUYOUT';
+        propTitle.textContent = `${buyoutTile?.name || 'Bất Động Sản'} (Mua Lại)`;
+        populatePropertyDeedModal(
+          pendingBuyout.tileId,
+          `Giá mua lại (2x): ${pendingBuyout.cost}M`,
+          `MUA LẠI BẤT ĐỘNG SẢN • Ô #${pendingBuyout.tileId}`,
+          `Bạn có thể chi ${pendingBuyout.cost}M để mua lại ngay ô đất này từ ${targetOwner?.username || 'đối thủ'}!`,
+          `Mua Lại (${pendingBuyout.cost}M)`,
+          (activePlayer?.balance ?? 0) >= pendingBuyout.cost
+        );
+        elPropertyModal.style.display = 'flex';
+      }
     } else if (phase === 'END_TURN') {
       btnRollDice.style.display = 'none';
+      btnPayJailFine.style.display = 'none';
+      btnUseJailCard.style.display = 'none';
       btnEndTurn.style.display = 'inline-flex';
-      btnEndTurn.innerHTML = autoEndTurnTimer
-        ? `<span>⏳</span><span>TỰ ĐỘNG CHUYỂN...</span>`
-        : `<span>⏩</span><span>KẾT THÚC LƯỢT</span>`;
-
-      // Nếu không có modal nào đang mở và chưa lên lịch tự động kết thúc lượt, lên lịch ngay
-      const isModalOpen = (elPropertyModal && elPropertyModal.style.display === 'flex') ||
-                          (elCardModal && elCardModal.style.display === 'flex');
-      if (!isModalOpen && !autoEndTurnTimer) {
-        scheduleAutoEndTurn(1200, 'Giao dịch hoàn tất');
+      btnEndTurn.innerHTML = `<span>⏩</span><span>KẾT THÚC LƯỢT</span>`;
+      if (btnOpenTrade) {
+        const hasPartner = (snap.players || []).some((p: any) => p.id !== socketClient.socket.id && !p.isBankrupt);
+        btnOpenTrade.style.display = hasPartner ? 'inline-flex' : 'none';
       }
     } else {
       btnRollDice.style.display = 'none';
       btnEndTurn.style.display = 'none';
+      if (btnOpenTrade) btnOpenTrade.style.display = 'none';
+      btnPayJailFine.style.display = 'none';
+      btnUseJailCard.style.display = 'none';
     }
   } else {
     btnRollDice.style.display = 'none';
     btnEndTurn.style.display = 'none';
+    if (btnOpenTrade) btnOpenTrade.style.display = 'none';
+    btnPayJailFine.style.display = 'none';
+    btnUseJailCard.style.display = 'none';
   }
 }
 
@@ -2605,6 +3630,7 @@ function handleTileActionResult(action: any, isMe: boolean, player: any, pos: an
 
   if (action.type === 'CAN_BUY' && isMe) {
     currentPendingTileAction = action;
+    currentPendingActionMode = 'BUY';
     propTitle.textContent = action.tileName;
     const sub = LANDMARK_SUBTITLES[action.tileId] || 'Bất Động Sản Chiến Lược';
     populatePropertyDeedModal(
@@ -2618,6 +3644,7 @@ function handleTileActionResult(action: any, isMe: boolean, player: any, pos: an
     elPropertyModal.style.display = 'flex';
   } else if (action.type === 'CAN_UPGRADE' && isMe) {
     currentPendingTileAction = action;
+    currentPendingActionMode = 'BUY';
     propTitle.textContent = `${action.tileName} (Lên Cấp ${action.level})`;
     populatePropertyDeedModal(
       action.tileId,
@@ -2628,10 +3655,48 @@ function handleTileActionResult(action: any, isMe: boolean, player: any, pos: an
       action.canAfford
     );
     elPropertyModal.style.display = 'flex';
-  } else if (action.type === 'PAY_RENT') {
-    sounds.playCashTransaction();
-    boardScene.vfxManager.spawnFloatingDollar(`${action.amount}M`, pos, false);
-    showToast(`${player.username} đã trả ${action.amount}M tiền thuê cho ${action.ownerName}!`);
+  } else if (action.type === 'PAY_RENT' || action.type === 'RENT_WAIVED' || action.type === 'PAY_RENT_AND_CAN_BUYOUT' || action.type === 'RENT_WAIVED_AND_CAN_BUYOUT') {
+    const isWaived = action.type === 'RENT_WAIVED' || action.type === 'RENT_WAIVED_AND_CAN_BUYOUT';
+    if (isWaived) {
+      sounds.playCardChime();
+      showToast(`${player.username} được miễn tiền thuê nhờ Thẻ Miễn Thuê!`);
+    } else {
+      const paid = action.amount ?? action.rentPaid ?? 0;
+      sounds.playCashTransaction();
+      boardScene.vfxManager.spawnFloatingDollar(`${paid}M`, pos, false);
+      showToast(`${player.username} đã trả ${paid}M tiền thuê cho ${action.ownerName}!`);
+    }
+    const canBuyout = action.canBuyout || action.type === 'PAY_RENT_AND_CAN_BUYOUT' || action.type === 'RENT_WAIVED_AND_CAN_BUYOUT';
+    if (isMe && canBuyout && action.buyoutCost) {
+      const tile = boardTilesData[action.tileId];
+      currentPendingTileAction = action;
+      currentPendingActionMode = 'BUYOUT';
+      propTitle.textContent = `${tile?.name || 'Bất Động Sản'} (Mua Lại)`;
+      populatePropertyDeedModal(
+        action.tileId,
+        `Giá mua lại (2x): ${action.buyoutCost}M`,
+        `MUA LẠI BẤT ĐỘNG SẢN • Ô #${action.tileId}`,
+        `Bạn có quyền chi ${action.buyoutCost}M để mua lại ngay ô đất của ${action.ownerName}!`,
+        `Mua Lại (${action.buyoutCost}M)`,
+        true
+      );
+      elPropertyModal.style.display = 'flex';
+    }
+  } else if (action.type === 'FREE_PARKING' || action.type === 'FREE_PARKING_FESTIVAL') {
+    sounds.playCardChime();
+    boardScene.vfxManager.spawnStarBurst(pos, 24);
+    const reward = action.reward ?? action.amount ?? 0;
+    if (reward > 0) {
+      boardScene.vfxManager.spawnFloatingDollar(`${reward}M (Quỹ)`, pos, true);
+    }
+    if (action.canSelectFestival || action.type === 'FREE_PARKING_FESTIVAL') {
+      showToast(`🎪 ${player.username} đáp Bãi Đỗ Xe & chuẩn bị tổ chức Lễ Hội x2!`);
+      if (isMe) {
+        showFestivalModal();
+      }
+    } else {
+      showToast(`🅿️ ${player.username} nghỉ ngơi tại Bãi Đỗ Xe!`);
+    }
   } else if (action.type === 'TAX') {
     sounds.playCashTransaction();
     boardScene.vfxManager.spawnFloatingDollar(`${action.amount}M (Thuế)`, pos, false);
@@ -2678,12 +3743,26 @@ function showVictory(data: any) {
   const winnerTierClass = getFrameTierClass(winnerFrame);
   const winnerBadge = getFrameBadgeTag(winnerFrame);
 
+  const winReason = data.snapshot?.winReason || data.winReason;
+  const winningDetails = data.snapshot?.winningDetails || data.winningDetails;
+  const winReasonLabel =
+    winReason === 'COLOR_MONOPOLY' ? '🎨 ĐỘC QUYỀN 3 NHÓM MÀU!' :
+    winReason === 'LINE_MONOPOLY' ? '🛣️ ĐỘC QUYỀN 1 CẠNH BÀN CỜ!' :
+    winReason === 'RAILROAD_MONOPOLY' ? '🚂 ĐỘC QUYỀN 4 NHÀ GA / BẾN XE!' :
+    winReason === 'NET_WORTH' ? '⏱️ HẾT GIỜ — THẮNG THEO TỔNG TÀI SẢN!' :
+    '🏆 TỶ PHÚ CUỐI CÙNG TRỤ VỮNG!';
+
   if (winner) {
     victoryWinnerName.innerHTML = `
-      <span class="nameplate-frame ${winnerTierClass}" style="display: inline-flex; align-items: center; gap: 8px; padding: 4px 14px; border-radius: 9999px; margin-top: 4px;">
-        <span>👑 ${winner.username}</span>
-        ${winnerBadge}
-      </span>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
+        <span class="nameplate-frame ${winnerTierClass}" style="display: inline-flex; align-items: center; gap: 8px; padding: 4px 14px; border-radius: 9999px; margin-top: 4px;">
+          <span>👑 ${winner.username}</span>
+          ${winnerBadge}
+        </span>
+        <span style="font-size:0.85rem;font-weight:900;color:#E17055;background:#FFF9E6;padding:4px 12px;border-radius:9999px;border:1px solid #FDCB6E;">
+          ${winReasonLabel}${winningDetails ? ` — ${winningDetails}` : ''}
+        </span>
+      </div>
     `;
   } else {
     victoryWinnerName.textContent = 'Người Thắng';
@@ -2694,15 +3773,17 @@ function showVictory(data: any) {
     const frameId = p.frame || 'frame_default';
     const frameClass = getFrameTierClass(frameId);
     const frameBadge = getFrameBadgeTag(frameId);
+    const titleLabel = p.title ? (TITLE_LABELS[p.title] || p.title) : '';
     const isWinner = idx === 0;
 
     return `
       <div class="nameplate-frame ${frameClass} ${isWinner ? 'podium-winner' : ''}" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; border-radius: 12px; margin-bottom: 6px;">
-        <div style="display: flex; align-items: center; gap: 8px;">
+        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
           <span style="font-weight: 900; font-size: 1.1rem; color: ${idx === 0 ? '#FDCB6E' : idx === 1 ? '#00D2D3' : idx === 2 ? '#E17055' : '#636E72'};">${idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `#${idx + 1}`}</span>
           <img src="${p.avatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${p.username}`}" style="width: 32px; height: 32px; border-radius: 50%; background: #EBF2FA; border: 2px solid ${p.color || '#CBD5E1'};" />
           <span style="font-weight: 800; color: #2D3436;">${p.username}</span>
           ${frameBadge}
+          ${titleLabel ? `<span class="hud-player-title">${titleLabel}</span>` : ''}
         </div>
         <span style="font-weight: 900; color: #00B894; font-size: 1.05rem;">💰 ${p.netWorth}M</span>
       </div>
@@ -2717,5 +3798,338 @@ function showVictory(data: any) {
     origin: { y: 0.6 }
   });
 }
+
+// ====================================================
+// ⏱️ MATCH TIMER, 🔨 AUCTION & 🤝 P2P TRADE
+// ====================================================
+
+function formatMatchTime(totalSeconds: number): string {
+  const s = Math.max(0, Math.floor(totalSeconds));
+  const mins = Math.floor(s / 60);
+  const secs = s % 60;
+  return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+}
+
+function renderMatchTimerDisplay() {
+  if (!elMatchTimerText || matchTimeRemainingLocal === null) return;
+  elMatchTimerText.textContent = formatMatchTime(matchTimeRemainingLocal);
+  if (elMatchTimerPill) {
+    elMatchTimerPill.classList.toggle('is-urgent', matchTimeRemainingLocal <= 120);
+  }
+}
+
+function updateMatchTimerFromSnapshot(snap: any) {
+  if (typeof snap?.matchTimeRemaining !== 'number') return;
+  matchTimeRemainingLocal = Math.max(0, Math.floor(snap.matchTimeRemaining));
+  renderMatchTimerDisplay();
+
+  if (matchTimerInterval === null && !snap.isGameOver) {
+    matchTimerInterval = window.setInterval(() => {
+      if (matchTimeRemainingLocal !== null && matchTimeRemainingLocal > 0 && !latestGameStateSnapshot?.isGameOver) {
+        matchTimeRemainingLocal -= 1;
+        renderMatchTimerDisplay();
+      }
+    }, 1000);
+  }
+}
+
+function updateAuctionCountdownDisplay(endTime: number) {
+  const remainingSec = Math.max(0, Math.ceil((endTime - Date.now()) / 1000));
+  elAuctionTimerBadge.textContent = `${remainingSec}s`;
+  elAuctionTimerBadge.classList.toggle('is-urgent', remainingSec <= 4);
+}
+
+function renderAuctionModal(snap: any) {
+  const auction = snap?.auctionState;
+  if (!auction) return;
+
+  const tile = boardTilesData?.[auction.tileId];
+  const myId = socketClient.socket.id;
+  const myPlayer = (snap.players || []).find((p: any) => p.id === myId);
+  const highestBidder = (snap.players || []).find((p: any) => p.id === auction.highestBidderId);
+
+  elAuctionTileColor.style.background = tile?.districtColor || '#00B894';
+  elAuctionTileName.textContent = `${LANDMARK_ICONS[auction.tileId] || '🏛️'} ${tile?.name || `Ô #${auction.tileId}`}`;
+  elAuctionTileMeta.textContent = `Giá niêm yết: ${tile?.price || 0}M • Khởi điểm: ${auction.startingBid}M`;
+
+  elAuctionCurrentBid.textContent = auction.currentBid > 0
+    ? `${auction.currentBid}M`
+    : `Khởi điểm ${auction.startingBid}M`;
+  elAuctionHighestBidder.textContent = highestBidder ? highestBidder.username : 'Chưa có';
+
+  const hasPassed = Array.isArray(auction.passedPlayerIds) && auction.passedPlayerIds.includes(myId);
+  const isHighestBidder = auction.highestBidderId === myId;
+  const isBankrupt = Boolean(myPlayer?.isBankrupt);
+  const myBalance = myPlayer?.balance ?? 0;
+
+  if (isBankrupt) {
+    elAuctionStatusNote.textContent = 'Bạn đã phá sản và không thể tham gia đấu giá.';
+  } else if (isHighestBidder) {
+    elAuctionStatusNote.textContent = '✅ Bạn đang là người giữ giá cao nhất!';
+  } else if (hasPassed) {
+    elAuctionStatusNote.textContent = 'Bạn đã bỏ qua phiên đấu giá này. Đang chờ người chơi khác...';
+  } else {
+    elAuctionStatusNote.textContent = `Số dư của bạn: ${myBalance}M`;
+  }
+
+  const baseForIncrement = auction.currentBid === 0 ? auction.startingBid : auction.currentBid;
+  const bidMinAmount = auction.currentBid === 0 ? auction.startingBid : auction.currentBid + 10;
+  const bid50Amount = baseForIncrement + 50;
+  const bid100Amount = baseForIncrement + 100;
+
+  btnAuctionBidMin.textContent = auction.currentBid === 0
+    ? `Đặt ${bidMinAmount}M`
+    : `+10M (${bidMinAmount}M)`;
+  btnAuctionBid50.textContent = `+50M (${bid50Amount}M)`;
+  btnAuctionBid100.textContent = `+100M (${bid100Amount}M)`;
+
+  const cannotAct = isBankrupt || hasPassed || isHighestBidder;
+  btnAuctionBidMin.disabled = cannotAct || myBalance < bidMinAmount;
+  btnAuctionBid50.disabled = cannotAct || myBalance < bid50Amount;
+  btnAuctionBid100.disabled = cannotAct || myBalance < bid100Amount;
+  btnAuctionPass.disabled = cannotAct;
+
+  btnAuctionBidMin.dataset.amount = String(bidMinAmount);
+  btnAuctionBid50.dataset.amount = String(bid50Amount);
+  btnAuctionBid100.dataset.amount = String(bid100Amount);
+
+  updateAuctionCountdownDisplay(auction.endTime);
+  if (auctionCountdownInterval !== null) {
+    clearInterval(auctionCountdownInterval);
+  }
+  auctionCountdownInterval = window.setInterval(() => {
+    const latestAuction = latestGameStateSnapshot?.auctionState;
+    if (!latestAuction || latestGameStateSnapshot?.turnState?.phase !== 'AUCTION') {
+      if (auctionCountdownInterval !== null) {
+        clearInterval(auctionCountdownInterval);
+        auctionCountdownInterval = null;
+      }
+      return;
+    }
+    updateAuctionCountdownDisplay(latestAuction.endTime);
+  }, 250);
+
+  elAuctionModal.style.display = 'flex';
+}
+
+function getTradablePropertiesForPlayer(playerId: string): any[] {
+  const props = latestPropertiesSnapshot || latestGameStateSnapshot?.properties || [];
+  return props.filter((p: any) =>
+    p.ownerId === playerId &&
+    !p.isMortgaged &&
+    (p.houses || 0) === 0 &&
+    !p.hasHotel
+  );
+}
+
+function renderTradeSideProps(container: HTMLElement, playerId: string, checkboxName: string) {
+  const tradable = getTradablePropertiesForPlayer(playerId);
+  if (tradable.length === 0) {
+    container.innerHTML = `<div style="font-size: 0.76rem; color: #94A3B8; padding: 6px 0;">Không có ô đất đủ điều kiện</div>`;
+    return;
+  }
+  container.innerHTML = tradable.map((p: any) => {
+    const tile = boardTilesData?.[p.tileId];
+    const color = tile?.districtColor || '#64748B';
+    return `
+      <label class="trade-prop-item">
+        <input type="checkbox" name="${checkboxName}" value="${p.tileId}" />
+        <span class="trade-prop-dot" style="background: ${color};"></span>
+        <span>${tile?.name || `Ô #${p.tileId}`} (${tile?.price || 0}M)</span>
+      </label>
+    `;
+  }).join('');
+}
+
+function renderTradeSideCards(container: HTMLElement, player: any, prefix: string) {
+  const jailCards = player?.getOutOfJailCards ?? 0;
+  const waivers = player?.rentWaivers ?? 0;
+  if (jailCards <= 0 && waivers <= 0) {
+    container.innerHTML = '';
+    return;
+  }
+  container.innerHTML = `
+    ${jailCards > 0 ? `
+      <div class="trade-card-row">
+        <span>🎫 Thẻ Đặc Xá (có ${jailCards})</span>
+        <input id="${prefix}-jail-cards" type="number" min="0" max="${jailCards}" value="0" />
+      </div>
+    ` : ''}
+    ${waivers > 0 ? `
+      <div class="trade-card-row">
+        <span>🛡️ Thẻ Miễn Thuê (có ${waivers})</span>
+        <input id="${prefix}-rent-waivers" type="number" min="0" max="${waivers}" value="0" />
+      </div>
+    ` : ''}
+  `;
+}
+
+function renderTradeProposeFields() {
+  const myId = socketClient.socket.id;
+  const players = latestGameStateSnapshot?.players || latestPlayersSnapshot || [];
+  const me = players.find((p: any) => p.id === myId);
+  const partnerId = tradePartnerSelect.value;
+  const partner = players.find((p: any) => p.id === partnerId);
+
+  tradeOfferedCashInput.max = String(me?.balance ?? 0);
+  tradeRequestedCashInput.max = String(partner?.balance ?? 0);
+
+  renderTradeSideProps(tradeOfferedPropsEl, myId || '', 'trade-offered-tile');
+  renderTradeSideCards(tradeOfferedCardsEl, me, 'trade-offered');
+
+  if (partner) {
+    renderTradeSideProps(tradeRequestedPropsEl, partner.id, 'trade-requested-tile');
+    renderTradeSideCards(tradeRequestedCardsEl, partner, 'trade-requested');
+  }
+}
+
+function openTradeProposeModal() {
+  const myId = socketClient.socket.id;
+  const players = latestGameStateSnapshot?.players || latestPlayersSnapshot || [];
+  const partners = players.filter((p: any) => p.id !== myId && !p.isBankrupt);
+  if (partners.length === 0) {
+    showToast('Không có đối tác hợp lệ để giao dịch.');
+    return;
+  }
+
+  tradePartnerSelect.innerHTML = partners
+    .map((p: any) => `<option value="${p.id}">${p.username} (${p.balance}M)</option>`)
+    .join('');
+  tradeOfferedCashInput.value = '0';
+  tradeRequestedCashInput.value = '0';
+  tradeProposeErrorEl.style.display = 'none';
+  renderTradeProposeFields();
+  elTradeProposeModal.style.display = 'flex';
+}
+
+function formatTradeItemSummary(item: any): string {
+  const parts: string[] = [];
+  if ((item?.cash || 0) > 0) {
+    parts.push(`<div>💵 <b>${item.cash}M</b> tiền mặt</div>`);
+  }
+  if ((item?.getOutOfJailCards || 0) > 0) {
+    parts.push(`<div>🎫 <b>${item.getOutOfJailCards}</b> Thẻ Đặc Xá</div>`);
+  }
+  if ((item?.rentWaivers || 0) > 0) {
+    parts.push(`<div>🛡️ <b>${item.rentWaivers}</b> Thẻ Miễn Thuê</div>`);
+  }
+  if (Array.isArray(item?.tileIds) && item.tileIds.length > 0) {
+    const names = item.tileIds.map((id: number) => boardTilesData?.[id]?.name || `Ô #${id}`);
+    parts.push(`<div>🏠 <b>${names.join(', ')}</b></div>`);
+  }
+  return parts.length > 0 ? parts.join('') : '<div style="color:#94A3B8;">Không có</div>';
+}
+
+function renderIncomingTradeOffer(snap: any) {
+  const myId = socketClient.socket.id;
+  const offers = Array.isArray(snap?.tradeOffers) ? snap.tradeOffers : [];
+  const incoming = offers.find((t: any) => t.status === 'PENDING' && t.receiverId === myId);
+
+  if (!incoming || snap?.isGameOver) {
+    activeIncomingTradeId = null;
+    elTradeOfferModal.style.display = 'none';
+    return;
+  }
+
+  activeIncomingTradeId = incoming.id;
+  const sender = (snap.players || []).find((p: any) => p.id === incoming.senderId);
+  tradeOfferSubtitleEl.textContent = `${sender?.username || 'Đối thủ'} muốn trao đổi tài sản với bạn:`;
+  tradeOfferReceiveEl.innerHTML = formatTradeItemSummary(incoming.offered);
+  tradeOfferGiveEl.innerHTML = formatTradeItemSummary(incoming.requested);
+  elTradeOfferModal.style.display = 'flex';
+}
+
+// Auction listeners
+[btnAuctionBidMin, btnAuctionBid50, btnAuctionBid100].forEach((btn) => {
+  btn?.addEventListener('click', () => {
+    const amount = Number(btn.dataset.amount || 0);
+    if (amount > 0) {
+      socketClient.emit('game:auction_bid', { amount });
+    }
+  });
+});
+
+btnAuctionPass?.addEventListener('click', () => {
+  socketClient.emit('game:auction_pass');
+});
+
+// Trade listeners
+btnOpenTrade?.addEventListener('click', () => {
+  openTradeProposeModal();
+});
+
+btnCloseTradePropose?.addEventListener('click', () => {
+  elTradeProposeModal.style.display = 'none';
+});
+
+btnCancelTradePropose?.addEventListener('click', () => {
+  elTradeProposeModal.style.display = 'none';
+});
+
+tradePartnerSelect?.addEventListener('change', () => {
+  renderTradeProposeFields();
+});
+
+btnSubmitTrade?.addEventListener('click', () => {
+  const receiverId = tradePartnerSelect.value;
+  if (!receiverId) return;
+
+  const offeredTileIds = Array.from(
+    tradeOfferedPropsEl.querySelectorAll<HTMLInputElement>('input[name="trade-offered-tile"]:checked')
+  ).map((el) => Number(el.value));
+
+  const requestedTileIds = Array.from(
+    tradeRequestedPropsEl.querySelectorAll<HTMLInputElement>('input[name="trade-requested-tile"]:checked')
+  ).map((el) => Number(el.value));
+
+  const offeredCash = Math.max(0, Math.floor(Number(tradeOfferedCashInput.value || 0)));
+  const requestedCash = Math.max(0, Math.floor(Number(tradeRequestedCashInput.value || 0)));
+
+  const offeredJailCards = Math.max(0, Math.floor(Number((document.getElementById('trade-offered-jail-cards') as HTMLInputElement | null)?.value || 0)));
+  const offeredRentWaivers = Math.max(0, Math.floor(Number((document.getElementById('trade-offered-rent-waivers') as HTMLInputElement | null)?.value || 0)));
+  const requestedJailCards = Math.max(0, Math.floor(Number((document.getElementById('trade-requested-jail-cards') as HTMLInputElement | null)?.value || 0)));
+  const requestedRentWaivers = Math.max(0, Math.floor(Number((document.getElementById('trade-requested-rent-waivers') as HTMLInputElement | null)?.value || 0)));
+
+  const hasAnyOffered = offeredTileIds.length > 0 || offeredCash > 0 || offeredJailCards > 0 || offeredRentWaivers > 0;
+  const hasAnyRequested = requestedTileIds.length > 0 || requestedCash > 0 || requestedJailCards > 0 || requestedRentWaivers > 0;
+
+  if (!hasAnyOffered && !hasAnyRequested) {
+    tradeProposeErrorEl.textContent = 'Vui lòng chọn ít nhất một tài sản hoặc số tiền để giao dịch.';
+    tradeProposeErrorEl.style.display = 'block';
+    return;
+  }
+
+  socketClient.emit('game:propose_trade', {
+    receiverId,
+    offered: {
+      tileIds: offeredTileIds,
+      cash: offeredCash,
+      getOutOfJailCards: offeredJailCards,
+      rentWaivers: offeredRentWaivers
+    },
+    requested: {
+      tileIds: requestedTileIds,
+      cash: requestedCash,
+      getOutOfJailCards: requestedJailCards,
+      rentWaivers: requestedRentWaivers
+    }
+  });
+  elTradeProposeModal.style.display = 'none';
+  showToast('🤝 Đã gửi đề nghị giao dịch!');
+});
+
+btnAcceptTrade?.addEventListener('click', () => {
+  if (!activeIncomingTradeId) return;
+  socketClient.emit('game:accept_trade', { tradeId: activeIncomingTradeId });
+  elTradeOfferModal.style.display = 'none';
+  activeIncomingTradeId = null;
+});
+
+btnRejectTrade?.addEventListener('click', () => {
+  if (!activeIncomingTradeId) return;
+  socketClient.emit('game:reject_trade', { tradeId: activeIncomingTradeId });
+  elTradeOfferModal.style.display = 'none';
+  activeIncomingTradeId = null;
+});
 
 window.addEventListener('DOMContentLoaded', init);

@@ -175,6 +175,39 @@ app.post('/api/profile/equip-frame', authMiddleware, (req: AuthenticatedRequest,
   });
 });
 
+// ==================== Profile Customizations Endpoints ====================
+
+app.get('/api/profile/customizations', authMiddleware, (req: AuthenticatedRequest, res) => {
+  if (!req.user) {
+    return res.status(401).json({ error: 'Yêu cầu đăng nhập' });
+  }
+  const data = dbService.getUserCustomizations(req.user.id);
+  if (!data) {
+    return res.status(404).json({ error: 'Không tìm thấy người dùng' });
+  }
+  return res.json({ success: true, ...data });
+});
+
+app.post('/api/profile/customize', authMiddleware, (req: AuthenticatedRequest, res) => {
+  if (!req.user) {
+    return res.status(401).json({ error: 'Yêu cầu đăng nhập' });
+  }
+  const { type, value } = req.body;
+  if (!type || typeof value !== 'string') {
+    return res.status(400).json({ error: 'Thiếu tham số type hoặc value' });
+  }
+
+  const result = dbService.customizeProfile(req.user.id, type, value);
+  if (!result.success) {
+    return res.status(400).json({ error: result.error });
+  }
+
+  return res.json({
+    message: 'Cập nhật tùy biến hồ sơ thành công!',
+    ...result
+  });
+});
+
 // ==================== Friends REST Endpoints ====================
 
 app.get('/api/friends', authMiddleware, (req: AuthenticatedRequest, res) => {
@@ -292,6 +325,18 @@ io.on('connection', (socket: Socket) => {
     roomManager.addBot(socket);
   });
 
+  socket.on('room:toggle_ready', (payload?: { ready?: boolean }) => {
+    roomManager.handleToggleReady(socket, payload?.ready);
+  });
+
+  socket.on('room:set_ready', (payload?: { ready?: boolean }) => {
+    roomManager.handleToggleReady(socket, payload?.ready);
+  });
+
+  socket.on('room:select_token', (payload: any) => {
+    roomManager.handleSelectToken(socket, payload);
+  });
+
   socket.on('room:start', () => {
     const res = roomManager.startGame(socket);
     if (!res.success) {
@@ -317,6 +362,56 @@ io.on('connection', (socket: Socket) => {
     roomManager.handleSkipBuy(socket);
   });
 
+  socket.on('game:buyout_property', (data: { tileId: number }) => {
+    if (typeof data?.tileId === 'number') {
+      roomManager.handleBuyoutProperty(socket, data.tileId);
+    }
+  });
+
+  socket.on('game:skip_buyout', () => {
+    roomManager.handleSkipBuyout(socket);
+  });
+
+  socket.on('game:select_festival', (data: { tileId: number }) => {
+    if (typeof data?.tileId === 'number') {
+      roomManager.handleSelectFestival(socket, data.tileId);
+    }
+  });
+
+  socket.on('game:auction_bid', (data: { amount: number }) => {
+    if (typeof data?.amount === 'number') {
+      roomManager.handleAuctionBid(socket, data.amount);
+    }
+  });
+
+  socket.on('game:auction_pass', () => {
+    roomManager.handleAuctionPass(socket);
+  });
+
+  socket.on('game:propose_trade', (data: { receiverId: string; offered: any; requested: any }) => {
+    if (data?.receiverId) {
+      roomManager.handleProposeTrade(socket, data);
+    }
+  });
+
+  socket.on('game:accept_trade', (data: { tradeId: string }) => {
+    if (data?.tradeId) {
+      roomManager.handleAcceptTrade(socket, data.tradeId);
+    }
+  });
+
+  socket.on('game:reject_trade', (data: { tradeId: string }) => {
+    if (data?.tradeId) {
+      roomManager.handleRejectTrade(socket, data.tradeId);
+    }
+  });
+
+  socket.on('game:cancel_trade', (data: { tradeId: string }) => {
+    if (data?.tradeId) {
+      roomManager.handleCancelTrade(socket, data.tradeId);
+    }
+  });
+
   socket.on('game:mortgage_property', (data: { tileId: number }) => {
     roomManager.handleMortgageProperty(socket, data.tileId);
   });
@@ -339,6 +434,14 @@ io.on('connection', (socket: Socket) => {
 
   socket.on('game:end_turn', () => {
     roomManager.handleEndTurn(socket);
+  });
+
+  socket.on('game:leave_match', (callback?: (res: any) => void) => {
+    roomManager.handleLeaveMatch(socket, typeof callback === 'function' ? callback : undefined);
+  });
+
+  socket.on('room:leave', (callback?: (res: any) => void) => {
+    roomManager.handleLeaveMatch(socket, typeof callback === 'function' ? callback : undefined);
   });
 
   socket.on('disconnect', () => {

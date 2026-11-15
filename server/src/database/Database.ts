@@ -14,9 +14,63 @@ export interface UserRow {
   total_matches: number;
   total_wins: number;
   equipped_frame?: string;
+  equipped_token?: string;
+  equipped_dice?: string;
+  equipped_trail?: string;
+  equipped_title?: string;
+  bio?: string;
+  unlocked_items?: string;
   created_at: string;
   updated_at: string;
 }
+
+export interface CustomizationItem {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  cost: number;
+}
+
+export const CUSTOMIZATION_CATALOG: {
+  tokens: CustomizationItem[];
+  diceSkins: CustomizationItem[];
+  trails: CustomizationItem[];
+  titles: CustomizationItem[];
+} = {
+  tokens: [
+    { id: 'car', name: 'Siêu Xe Cổ Điển', description: 'Xe thể thao mui trần sang trọng', icon: '🏎️', cost: 0 },
+    { id: 'hat', name: 'Mũ Phớt Tỷ Phú', description: 'Biểu tượng giới thượng lưu cổ điển', icon: '🎩', cost: 0 },
+    { id: 'dog', name: 'Cún Vàng May Mắn', description: 'Chú cún trung thành mang lại tài lộc', icon: '🐕', cost: 0 },
+    { id: 'rocket', name: 'Tên Lửa Vũ Trụ', description: 'Chinh phục đỉnh cao công nghệ', icon: '🚀', cost: 0 },
+    { id: 'cyclo', name: 'Xích Lô Phố Cổ', description: 'Nét văn hóa truyền thống Việt Nam', icon: '🛺', cost: 500 },
+    { id: 'lotus', name: 'Đài Sen Vàng', description: 'Quốc hoa thanh cao, tỏa hương phú quý', icon: '🪷', cost: 800 },
+    { id: 'yacht', name: 'Du Thuyền Hạ Long', description: 'Du thuyền 5 sao lướt sóng kỳ quan', icon: '🛥️', cost: 1200 },
+    { id: 'dragon', name: 'Rồng Vàng Thăng Long', description: 'Uy nghi linh vật đất rồng thiêng', icon: '🐉', cost: 1500 },
+    { id: 'robot', name: 'Kỳ Lân AI', description: 'Robot tương lai của kỷ nguyên số', icon: '🤖', cost: 1600 },
+    { id: 'crown', name: 'Vương Miện Tỷ Phú', description: 'Đỉnh cao quyền lực tối thượng', icon: '👑', cost: 2000 }
+  ],
+  diceSkins: [
+    { id: 'dice_ivory', name: 'Ngà Cổ Điển', description: 'Xúc xắc trắng ngà truyền thống', icon: '🎲', cost: 0 },
+    { id: 'dice_gold', name: 'Vàng 24K', description: 'Ánh kim lấp lánh đẳng cấp đại gia', icon: '✨', cost: 800 },
+    { id: 'dice_emerald', name: 'Ngọc Lục Bảo', description: 'Sắc xanh ngọc bích may mắn', icon: '💚', cost: 1000 },
+    { id: 'dice_obsidian', name: 'Hắc Diện Thạch Neon', description: 'Đá đen huyền bí kết hợp viền neon', icon: '🖤', cost: 1200 },
+    { id: 'dice_ruby', name: 'Hồng Ngọc Ruby', description: 'Đỏ rực quyền quý và quyết đoán', icon: '♦️', cost: 1500 }
+  ],
+  trails: [
+    { id: 'trail_default', name: 'Mặc Định', description: 'Hiệu ứng đáp bước tiêu chuẩn', icon: '💫', cost: 0 },
+    { id: 'trail_gold', name: 'Bụi Vàng Tài Lộc', description: 'Tỏa sáng hạt vàng mỗi bước nhảy', icon: '🌟', cost: 600 },
+    { id: 'trail_sakura', name: 'Hoa Đào / Mai', description: 'Cánh hoa mùa xuân bay nhẹ theo bước', icon: '🌸', cost: 900 },
+    { id: 'trail_neon', name: 'Tia Sét Công Nghệ', description: 'Xung điện neon bùng nổ tốc độ', icon: '⚡', cost: 1200 }
+  ],
+  titles: [
+    { id: 'title_rookie', name: 'Tân Thủ Khởi Nghiệp', description: 'Bước chân đầu tiên vào thương trường', icon: '🌱', cost: 0 },
+    { id: 'title_tycoon', name: 'Chiến Thần BĐS', description: 'Bậc thầy thâu tóm đất vàng', icon: '🏢', cost: 500 },
+    { id: 'title_traveler', name: 'Lữ Khách Xuyên Việt', description: 'Chinh phục mọi miền đất nước', icon: '✈️', cost: 800 },
+    { id: 'title_shark', name: 'Cá Mập Đầu Tư', description: 'Thương vụ nào cũng sinh lời', icon: '🦈', cost: 1000 },
+    { id: 'title_emperor', name: 'Đế Chế Tỷ Phú', description: 'Chủ nhân tối cao của bàn cờ', icon: '👑', cost: 2000 }
+  ]
+};
 
 export interface UserSessionRow {
   id: string;
@@ -202,6 +256,24 @@ export class DatabaseService {
     // Migration: ensure new columns exist in existing database tables
     try {
       this.db.exec(`ALTER TABLE users ADD COLUMN equipped_frame TEXT DEFAULT 'frame_default'`);
+    } catch (e) {}
+    try {
+      this.db.exec(`ALTER TABLE users ADD COLUMN equipped_token TEXT DEFAULT 'car'`);
+    } catch (e) {}
+    try {
+      this.db.exec(`ALTER TABLE users ADD COLUMN equipped_dice TEXT DEFAULT 'dice_ivory'`);
+    } catch (e) {}
+    try {
+      this.db.exec(`ALTER TABLE users ADD COLUMN equipped_trail TEXT DEFAULT 'trail_default'`);
+    } catch (e) {}
+    try {
+      this.db.exec(`ALTER TABLE users ADD COLUMN equipped_title TEXT DEFAULT 'title_rookie'`);
+    } catch (e) {}
+    try {
+      this.db.exec(`ALTER TABLE users ADD COLUMN bio TEXT DEFAULT ''`);
+    } catch (e) {}
+    try {
+      this.db.exec(`ALTER TABLE users ADD COLUMN unlocked_items TEXT DEFAULT '[]'`);
     } catch (e) {}
     try {
       this.db.exec(`ALTER TABLE achievements ADD COLUMN tier TEXT DEFAULT 'GRAY'`);
@@ -700,6 +772,153 @@ export class DatabaseService {
     const updateStmt = this.db.prepare(`UPDATE users SET equipped_frame = ? WHERE id = ?`);
     updateStmt.run(frameId, userId);
     return { success: true, equippedFrame: frameId };
+  }
+
+  // --- Profile Customizations (3D Tokens, Dice Skins, Trails, Titles, Bio, Avatar) ---
+
+  public static parseUnlockedItems(raw?: string | null): string[] {
+    if (!raw) return [];
+    try {
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed.filter(x => typeof x === 'string') : [];
+    } catch {
+      return [];
+    }
+  }
+
+  public getUserCustomizations(userId: string) {
+    const user = this.getUserById(userId);
+    if (!user) return null;
+
+    const unlocked = DatabaseService.parseUnlockedItems(user.unlocked_items);
+    const mapCategory = (items: CustomizationItem[], equippedId: string) =>
+      items.map(item => ({
+        ...item,
+        isUnlocked: item.cost === 0 || unlocked.includes(item.id),
+        isEquipped: equippedId === item.id
+      }));
+
+    return {
+      equippedToken: user.equipped_token || 'car',
+      equippedDice: user.equipped_dice || 'dice_ivory',
+      equippedTrail: user.equipped_trail || 'trail_default',
+      equippedTitle: user.equipped_title || 'title_rookie',
+      bio: user.bio || '',
+      avatarUrl: user.avatar_url,
+      goldBalance: user.gold_balance,
+      unlockedItems: unlocked,
+      catalog: {
+        tokens: mapCategory(CUSTOMIZATION_CATALOG.tokens, user.equipped_token || 'car'),
+        diceSkins: mapCategory(CUSTOMIZATION_CATALOG.diceSkins, user.equipped_dice || 'dice_ivory'),
+        trails: mapCategory(CUSTOMIZATION_CATALOG.trails, user.equipped_trail || 'trail_default'),
+        titles: mapCategory(CUSTOMIZATION_CATALOG.titles, user.equipped_title || 'title_rookie')
+      }
+    };
+  }
+
+  public customizeProfile(
+    userId: string,
+    type: 'token' | 'dice' | 'trail' | 'title' | 'bio' | 'avatar',
+    value: string
+  ): {
+    success: boolean;
+    error?: string;
+    goldBalance?: number;
+    unlockedItems?: string[];
+    equippedToken?: string;
+    equippedDice?: string;
+    equippedTrail?: string;
+    equippedTitle?: string;
+    bio?: string;
+    avatarUrl?: string | null;
+  } {
+    const user = this.getUserById(userId);
+    if (!user) return { success: false, error: 'Người dùng không tồn tại' };
+
+    if (type === 'bio') {
+      const cleanBio = (value || '').trim();
+      if (cleanBio.length > 80) {
+        return { success: false, error: 'Tiểu sử (Bio) tối đa 80 ký tự' };
+      }
+      this.db.prepare(`UPDATE users SET bio = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`).run(cleanBio, userId);
+      const updated = this.getUserById(userId)!;
+      return {
+        success: true,
+        goldBalance: updated.gold_balance,
+        unlockedItems: DatabaseService.parseUnlockedItems(updated.unlocked_items),
+        equippedToken: updated.equipped_token || 'car',
+        equippedDice: updated.equipped_dice || 'dice_ivory',
+        equippedTrail: updated.equipped_trail || 'trail_default',
+        equippedTitle: updated.equipped_title || 'title_rookie',
+        bio: updated.bio || '',
+        avatarUrl: updated.avatar_url
+      };
+    }
+
+    if (type === 'avatar') {
+      const cleanAvatar = (value || '').trim();
+      if (!cleanAvatar || cleanAvatar.length > 255) {
+        return { success: false, error: 'URL Avatar không hợp lệ (tối đa 255 ký tự)' };
+      }
+      this.db.prepare(`UPDATE users SET avatar_url = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`).run(cleanAvatar, userId);
+      const updated = this.getUserById(userId)!;
+      return {
+        success: true,
+        goldBalance: updated.gold_balance,
+        unlockedItems: DatabaseService.parseUnlockedItems(updated.unlocked_items),
+        equippedToken: updated.equipped_token || 'car',
+        equippedDice: updated.equipped_dice || 'dice_ivory',
+        equippedTrail: updated.equipped_trail || 'trail_default',
+        equippedTitle: updated.equipped_title || 'title_rookie',
+        bio: updated.bio || '',
+        avatarUrl: updated.avatar_url
+      };
+    }
+
+    const categoryMap: Record<'token' | 'dice' | 'trail' | 'title', { items: CustomizationItem[]; column: string }> = {
+      token: { items: CUSTOMIZATION_CATALOG.tokens, column: 'equipped_token' },
+      dice: { items: CUSTOMIZATION_CATALOG.diceSkins, column: 'equipped_dice' },
+      trail: { items: CUSTOMIZATION_CATALOG.trails, column: 'equipped_trail' },
+      title: { items: CUSTOMIZATION_CATALOG.titles, column: 'equipped_title' }
+    };
+
+    const config = categoryMap[type];
+    if (!config) {
+      return { success: false, error: 'Loại tùy biến không hợp lệ' };
+    }
+
+    const item = config.items.find(i => i.id === value);
+    if (!item) {
+      return { success: false, error: 'Vật phẩm không tồn tại trong danh mục' };
+    }
+
+    const unlocked = DatabaseService.parseUnlockedItems(user.unlocked_items);
+    let newBalance = user.gold_balance;
+
+    if (item.cost > 0 && !unlocked.includes(item.id)) {
+      if (user.gold_balance < item.cost) {
+        return { success: false, error: `Không đủ vàng! Cần ${item.cost} vàng để mở khóa ${item.name}` };
+      }
+      newBalance = user.gold_balance - item.cost;
+      unlocked.push(item.id);
+    }
+
+    this.db
+      .prepare(`UPDATE users SET gold_balance = ?, unlocked_items = ?, ${config.column} = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`)
+      .run(newBalance, JSON.stringify(unlocked), item.id, userId);
+
+    const updated = this.getUserById(userId)!;
+    return {
+      success: true,
+      goldBalance: updated.gold_balance,
+      unlockedItems: unlocked,
+      equippedToken: updated.equipped_token || 'car',
+      equippedDice: updated.equipped_dice || 'dice_ivory',
+      equippedTrail: updated.equipped_trail || 'trail_default',
+      equippedTitle: updated.equipped_title || 'title_rookie',
+      bio: updated.bio || '',
+      avatarUrl: updated.avatar_url
+    };
   }
 
   // --- Friendship Operations ---

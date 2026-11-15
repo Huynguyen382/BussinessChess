@@ -1021,13 +1021,13 @@ test('Achievement & Nameplate Quality: index.html and style.css configure 5-tier
   assert(cssContent.includes('.profile-frames-grid'), 'CSS must define profile-frames-grid layout');
 });
 
-test('Turn Flow: main.ts configures automatic turn ending upon transaction completion', () => {
+test('Turn Flow: main.ts lets player manage properties and end turn manually in END_TURN phase (Spec 2.4)', () => {
   const mainTsPath = path.resolve(__dirname, '../src/main.ts');
   const mainTsContent = fs.readFileSync(mainTsPath, 'utf8');
 
-  assert(mainTsContent.includes('scheduleAutoEndTurn'), 'main.ts must define scheduleAutoEndTurn function');
-  assert(mainTsContent.includes('cancelAutoEndTurn'), 'main.ts must define cancelAutoEndTurn function');
-  assert(mainTsContent.includes('game:end_turn'), 'main.ts must emit game:end_turn when auto-turn completes');
+  assert(!mainTsContent.includes('scheduleAutoEndTurn'), 'main.ts must NOT auto-end turn via scheduleAutoEndTurn (violates GAMEPLAY_SPEC 2.4)');
+  assert(mainTsContent.includes('btnEndTurn'), 'main.ts must expose btnEndTurn for manual turn completion');
+  assert(mainTsContent.includes('game:end_turn'), 'main.ts must emit game:end_turn when player clicks End Turn');
 });
 
 test('Turn Pointer Arrow: TokenManager creates 3D arrow, locks onto moving token and tracks active player', () => {

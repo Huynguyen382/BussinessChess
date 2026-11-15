@@ -56,13 +56,19 @@ export class CameraManager {
   }
 
   // Căn chỉnh góc nhìn về góc Isometric 45 độ chuẩn mà vẫn giữ tự do xoay các góc
+  private getOverviewRadius(): number {
+    const aspect = window.innerWidth / Math.max(1, window.innerHeight);
+    const portraitBoost = aspect < 1 ? Math.min(11, (1 - aspect) * 18) : 0;
+    return (this.isMobile ? 27.5 : 25.5) + portraitBoost;
+  }
+
   public snapToGoldenAngle() {
     this.targetSpherical.theta = CameraManager.GOLDEN_THETA;
     this.targetSpherical.phi = CameraManager.GOLDEN_PHI;
     if (this.isZoomedIn) {
       this.targetSpherical.radius = this.isMobile ? 16.0 : 14.0;
     } else {
-      this.targetSpherical.radius = this.isMobile ? 28.5 : 25.5;
+      this.targetSpherical.radius = this.getOverviewRadius();
     }
   }
 
@@ -72,7 +78,7 @@ export class CameraManager {
 
   public toggleZoom(): boolean {
     this.isZoomedIn = !this.isZoomedIn;
-    const targetR = this.isZoomedIn ? (this.isMobile ? 16.0 : 14.0) : (this.isMobile ? 28.5 : 25.5);
+    const targetR = this.isZoomedIn ? (this.isMobile ? 16.0 : 14.0) : this.getOverviewRadius();
     this.targetSpherical.radius = targetR;
     return this.isZoomedIn;
   }
@@ -100,7 +106,8 @@ export class CameraManager {
 
   private clampSpherical(s: THREE.Spherical) {
     // Allows crisp zoom-in up to radius 6.5 to view landmark details cleanly without clipping
-    s.radius = THREE.MathUtils.clamp(s.radius, 6.5, 45);
+    // and up to 50 for tall portrait mobile screens
+    s.radius = THREE.MathUtils.clamp(s.radius, 6.5, 50);
     s.phi = THREE.MathUtils.clamp(s.phi, 0.15, Math.PI / 2.08);
   }
 
@@ -116,6 +123,8 @@ export class CameraManager {
 
     // 1. POINTER / TOUCH DOWN
     this.domElement.addEventListener('pointerdown', (e: PointerEvent) => {
+      if (!e.isPrimary || this.isPinching) return;
+
       // Check double-tap on mobile touch
       const now = performance.now();
       const distFromLastTap = Math.hypot(e.clientX - this.lastTapX, e.clientY - this.lastTapY);
@@ -140,7 +149,7 @@ export class CameraManager {
 
     // 2. POINTER / TOUCH MOVE (Orbit Controls & Panning - Luôn cho phép xoay tự do mọi góc)
     window.addEventListener('pointermove', (e: PointerEvent) => {
-      if (!this.isPointerDown || this.isPinching) return;
+      if (!e.isPrimary || !this.isPointerDown || this.isPinching) return;
 
       const deltaX = e.clientX - this.prevPointerX;
       const deltaY = e.clientY - this.prevPointerY;
@@ -194,6 +203,9 @@ export class CameraManager {
     this.domElement.addEventListener('touchstart', (e: TouchEvent) => {
       if (e.touches.length === 2) {
         this.isPinching = true;
+        this.isPointerDown = false;
+        this.pointerVelocityX = 0;
+        this.pointerVelocityY = 0;
         this.pinchStartDist = Math.hypot(
           e.touches[0].clientX - e.touches[1].clientX,
           e.touches[0].clientY - e.touches[1].clientY
@@ -262,9 +274,12 @@ export class CameraManager {
 
   public onResize() {
     this.isMobile = window.innerWidth <= 768;
-    this.camera.aspect = window.innerWidth / window.innerHeight;
+    this.camera.aspect = window.innerWidth / Math.max(1, window.innerHeight);
     this.camera.fov = this.camera.aspect < 1 ? (this.camera.aspect < 0.6 ? 53 : 50) : 46;
     this.camera.updateProjectionMatrix();
+    if (!this.isZoomedIn && !this.isFollowMode) {
+      this.targetSpherical.radius = this.getOverviewRadius();
+    }
   }
 
   public update(delta: number = 0.016) {

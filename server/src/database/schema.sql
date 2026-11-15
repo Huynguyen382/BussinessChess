@@ -11,6 +11,13 @@ CREATE TABLE IF NOT EXISTS users (
     gold_balance BIGINT DEFAULT 10000,
     total_matches INT DEFAULT 0,
     total_wins INT DEFAULT 0,
+    equipped_frame VARCHAR(64) DEFAULT 'frame_default',
+    equipped_token VARCHAR(32) DEFAULT 'car',
+    equipped_dice VARCHAR(32) DEFAULT 'dice_ivory',
+    equipped_trail VARCHAR(32) DEFAULT 'trail_default',
+    equipped_title VARCHAR(32) DEFAULT 'title_rookie',
+    bio VARCHAR(100) DEFAULT '',
+    unlocked_items TEXT DEFAULT '[]',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );

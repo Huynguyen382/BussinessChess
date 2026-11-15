@@ -584,6 +584,66 @@ test('RoomManager propagates equipped frame to room players and bot players', ()
   assert(botPlayer.frame && botPlayer.frame.startsWith('frame_'), 'Bot must have a designated frame');
 });
 
+// --- Suite 9: Profile Customizations (3D Tokens, Dice Skins, Trails, Titles, Bio) ---
+console.log('\n--- Suite 9: Profile Customizations & 3D Character Sync ---');
+
+test('getUserCustomizations returns catalog with 10 tokens, 5 dice skins, 4 trails, 5 titles', () => {
+  const data = dbService.getUserCustomizations(registeredUserId);
+  assert(data, 'Customization data should exist');
+  assert.strictEqual(data.catalog.tokens.length, 10);
+  assert.strictEqual(data.catalog.diceSkins.length, 5);
+  assert.strictEqual(data.catalog.trails.length, 4);
+  assert.strictEqual(data.catalog.titles.length, 5);
+});
+
+test('customizeProfile unlocks premium 3D token, dice, trail, title with gold and validates bio', () => {
+  const userBefore = dbService.getUserById(registeredUserId)!;
+  const startGold = userBefore.gold_balance;
+
+  // Unlock & equip dragon token (cost 1500)
+  const tokRes = dbService.customizeProfile(registeredUserId, 'token', 'dragon');
+  assert.strictEqual(tokRes.success, true);
+  assert.strictEqual(tokRes.equippedToken, 'dragon');
+  assert.strictEqual(tokRes.goldBalance, startGold - 1500);
+  assert(tokRes.unlockedItems?.includes('dragon'));
+
+  // Equipping again should NOT deduct gold a second time
+  const tokRes2 = dbService.customizeProfile(registeredUserId, 'token', 'dragon');
+  assert.strictEqual(tokRes2.success, true);
+  assert.strictEqual(tokRes2.goldBalance, startGold - 1500);
+
+  // Equip dice, trail, title
+  assert.strictEqual(dbService.customizeProfile(registeredUserId, 'dice', 'dice_gold').equippedDice, 'dice_gold');
+  assert.strictEqual(dbService.customizeProfile(registeredUserId, 'trail', 'trail_sakura').equippedTrail, 'trail_sakura');
+  assert.strictEqual(dbService.customizeProfile(registeredUserId, 'title', 'title_tycoon').equippedTitle, 'title_tycoon');
+
+  // Bio validation (>80 chars rejected, <=80 accepted)
+  const badBio = dbService.customizeProfile(registeredUserId, 'bio', 'A'.repeat(81));
+  assert.strictEqual(badBio.success, false);
+  const okBio = dbService.customizeProfile(registeredUserId, 'bio', 'Tỷ phú bất động sản Hà Nội');
+  assert.strictEqual(okBio.success, true);
+  assert.strictEqual(okBio.bio, 'Tỷ phú bất động sản Hà Nội');
+});
+
+test('RoomManager propagates 3D token, diceSkin, trailEffect, title, and bio into PlayerState', () => {
+  const io = new MockServer();
+  const mgr = new RoomManager(io as any);
+  const hostSocket = new MockSocket('custom_host_socket');
+
+  const room = mgr.createRoom(hostSocket as any, {
+    name: 'Phòng Tùy Biến',
+    username: 'CustomHost',
+    userId: registeredUserId
+  });
+
+  const hostPlayer = room.engine!.players[0];
+  assert.strictEqual(hostPlayer.token, 'dragon');
+  assert.strictEqual(hostPlayer.diceSkin, 'dice_gold');
+  assert.strictEqual(hostPlayer.trailEffect, 'trail_sakura');
+  assert.strictEqual(hostPlayer.title, 'title_tycoon');
+  assert.strictEqual(hostPlayer.bio, 'Tỷ phú bất động sản Hà Nội');
+});
+
 console.log('\n====================================================');
 console.log(` TEST SUMMARY: ${passedTests}/${passedTests} PASSED`);
 console.log(' ALL AUTH & ACHIEVEMENTS TESTS PASSED! 🚀');

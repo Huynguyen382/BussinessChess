@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import { dbService, UserRow } from '../database/Database';
+import { dbService, DatabaseService, UserRow } from '../database/Database';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'business_chess_secret_key_vietnam_diorama_2026';
 const TOKEN_EXPIRY_SECONDS = 7 * 24 * 3600; // 7 days
@@ -13,6 +13,12 @@ export interface AuthUserDTO {
   totalMatches: number;
   totalWins: number;
   equippedFrame?: string;
+  equippedToken?: string;
+  equippedDice?: string;
+  equippedTrail?: string;
+  equippedTitle?: string;
+  bio?: string;
+  unlockedItems?: string[];
   createdAt: string;
   unlockedAchievementsCount?: number;
 }
@@ -105,6 +111,12 @@ export class AuthService {
       totalMatches: user.total_matches,
       totalWins: user.total_wins,
       equippedFrame: user.equipped_frame || 'frame_default',
+      equippedToken: user.equipped_token || 'car',
+      equippedDice: user.equipped_dice || 'dice_ivory',
+      equippedTrail: user.equipped_trail || 'trail_default',
+      equippedTitle: user.equipped_title || 'title_rookie',
+      bio: user.bio || '',
+      unlockedItems: DatabaseService.parseUnlockedItems(user.unlocked_items),
       createdAt: user.created_at,
       unlockedAchievementsCount: unlockedCount
     };
