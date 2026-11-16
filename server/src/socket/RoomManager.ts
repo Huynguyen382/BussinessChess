@@ -244,6 +244,7 @@ export class RoomManager {
     if (!room || !room.engine) return { success: false, error: 'Phòng không tồn tại' };
 
     if (room.hostId !== socket.id) return { success: false, error: 'Chỉ chủ phòng mới được bắt đầu' };
+    if (room.status !== 'WAITING') return { success: false, error: 'Ván đấu đã bắt đầu' };
     if (room.engine.players.length < 2) return { success: false, error: 'Cần ít nhất 2 người chơi để bắt đầu' };
 
     const unreadyPlayers = room.engine.players.filter(p => !p.isReady);
