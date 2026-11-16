@@ -296,7 +296,13 @@ io.on('connection', (socket: Socket) => {
 
   socket.on('room:create', (payload) => {
     try {
-      const room = roomManager.createRoom(socket, { ...payload, userId: getRoomUserId() });
+      const solo = payload?.solo === true;
+      const room = roomManager.createRoom(socket, {
+        ...payload,
+        userId: getRoomUserId(),
+        maxPlayers: solo ? 4 : payload?.maxPlayers,
+        isPrivate: solo || payload?.isPrivate
+      });
       socket.emit('room:created', {
         roomCode: room.roomCode,
         name: room.name,
@@ -305,6 +311,14 @@ io.on('connection', (socket: Socket) => {
         players: room.engine?.players || []
       });
       roomManager.broadcastRoomUpdate(room);
+      if (solo) {
+        for (let slot = 1; slot < room.maxPlayers; slot++) {
+          const result = roomManager.addBot(socket);
+          if (!result.success) throw new Error(result.error);
+        }
+        const result = roomManager.startGame(socket);
+        if (!result.success) throw new Error(result.error);
+      }
     } catch (err: any) {
       socket.emit('error:message', { message: err.message });
     }
