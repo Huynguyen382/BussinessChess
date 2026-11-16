@@ -42,11 +42,17 @@ export class BuildingMesh {
   }
 
   public updateBuilding(tileId: number, level: number, position: THREE.Vector3, baseAngle: number, ownerColor?: string) {
+    const existing = this.buildingMap.get(tileId);
+    if (existing && existing.userData?.level === level && existing.userData?.ownerColor === ownerColor) {
+      return;
+    }
+
     this.removeBuilding(tileId);
 
     if (level === undefined || level === null || level < 0) return;
 
     const bGroup = new THREE.Group();
+    bGroup.userData = { level, ownerColor };
     // Cao độ bề mặt ô cờ chuẩn là world y = 0.305. Đặt móng công trình khớp hoàn hảo trên mặt gạch, không lún
     bGroup.position.set(position.x, 0.305, position.z);
     bGroup.rotation.y = baseAngle;
@@ -72,9 +78,9 @@ export class BuildingMesh {
     } else if (level === 2) {
       this.buildLevel2(modelSubGroup);
     } else if (level === 3) {
-      this.buildLevel3(modelSubGroup);
+      this.buildLevel3(modelSubGroup, ownerColor);
     } else if (level === 4) {
-      this.buildLevel4(modelSubGroup);
+      this.buildLevel4(modelSubGroup, ownerColor);
     }
 
     // Hoạt ảnh nảy lò xo đàn hồi vi mô theo frame-delta
@@ -770,11 +776,24 @@ export class BuildingMesh {
   // LEVEL 3: NHÀ CẤP 3 (DINH THỰ 3 TẦNG SANG TRỌNG)
   // ============================================================================
 
-  private buildLevel3(modelSubGroup: THREE.Group) {
+  private buildLevel3(modelSubGroup: THREE.Group, ownerColor?: string) {
     const plinthMat = this.getPlinthMat();
     const corniceMat = this.getCorniceMat();
     const goldMetalMat = LandmarkMaterials.getGoldMetalMat();
     const winGlowMat = LandmarkMaterials.getWarmWindowMat();
+    const colorHex = ownerColor || '#0984E3';
+
+    const ownerAccentMat = LandmarkModels.getMat(`bldgL3OwnerAccent_${colorHex}`, () => new THREE.MeshStandardMaterial({
+      color: colorHex,
+      roughness: 0.25,
+      metalness: 0.35
+    }));
+    const ownerGlowMat = LandmarkModels.getMat(`bldgL3OwnerGlow_${colorHex}`, () => new THREE.MeshStandardMaterial({
+      color: colorHex,
+      emissive: colorHex,
+      emissiveIntensity: 0.95,
+      roughness: 0.15
+    }));
 
     const plinth = new THREE.Mesh(new RoundedBoxGeometry(1.30, 0.08, 1.22, 2, 0.02), plinthMat);
     plinth.position.y = 0.04;
@@ -798,9 +817,12 @@ export class BuildingMesh {
       this.addClassicalColumn(modelSubGroup, cx, 0.08, 0.52, 0.48, 0.022, baseMat, goldMetalMat);
     });
 
-    // Mái đón sảnh tầng 1 viền vàng
-    const canopy = new THREE.Mesh(new RoundedBoxGeometry(0.62, 0.045, 0.22, 2, 0.01), goldMetalMat);
+    // Mái đón sảnh tầng 1 viền màu chủ sở hữu & biển hiệu Căn Hộ Penthouse
+    const canopy = new THREE.Mesh(new RoundedBoxGeometry(0.62, 0.045, 0.22, 2, 0.01), ownerAccentMat);
     canopy.position.set(-0.14, 0.58, 0.53);
+
+    const aptSign = new THREE.Mesh(new RoundedBoxGeometry(0.38, 0.06, 0.03, 2, 0.008), ownerGlowMat);
+    aptSign.position.set(-0.14, 0.62, 0.64);
 
     // Kính sảnh tầng 1 có khung & đố dọc
     this.addFramedWindow(modelSubGroup, -0.14, 0.34, 0.482, 0.58, 0.26, 0, { sill: false });
@@ -838,8 +860,8 @@ export class BuildingMesh {
       modelSubGroup.add(mullion);
     });
 
-    // Ban công tầng 2
-    const balcony2 = new THREE.Mesh(new RoundedBoxGeometry(0.72, 0.045, 0.18, 2, 0.01), baseMat);
+    // Ban công tầng 2 viền màu chủ sở hữu
+    const balcony2 = new THREE.Mesh(new RoundedBoxGeometry(0.72, 0.045, 0.18, 2, 0.01), ownerAccentMat);
     balcony2.position.set(-0.14, 0.725, 0.46);
     this.addBalconyRailing(modelSubGroup, -0.14, 0.75, 0.46, 0.70, 0.16, goldMetalMat, 6);
 
@@ -855,23 +877,19 @@ export class BuildingMesh {
     this.addFramedWindow(modelSubGroup, -0.14, 1.53, 0.342, 0.44, 0.24, 0, { sill: false });
     this.addFramedWindow(modelSubGroup, -0.442, 1.53, 0, 0.32, 0.22, -Math.PI / 2, { sill: false });
 
-    const balcony3 = new THREE.Mesh(new RoundedBoxGeometry(0.64, 0.04, 0.16, 2, 0.01), baseMat);
+    // Ban công Penthouse tầng 3 viền màu chủ sở hữu
+    const balcony3 = new THREE.Mesh(new RoundedBoxGeometry(0.64, 0.04, 0.16, 2, 0.01), ownerAccentMat);
     balcony3.position.set(-0.14, 1.305, 0.38);
     this.addBalconyRailing(modelSubGroup, -0.14, 1.325, 0.38, 0.62, 0.14, goldMetalMat, 5);
 
-    // Vành đai LED & Mái Mansard xếp lớp + mái vòm (Cupola)
-    const crownRimMat = LandmarkModels.getMat('bldgL3CrownNeon', () => new THREE.MeshStandardMaterial({
-      color: '#81ECEC',
-      emissive: '#00CEC9',
-      emissiveIntensity: 1.15
-    }));
-    const crownRim = new THREE.Mesh(new RoundedBoxGeometry(0.65, 0.045, 0.73, 2, 0.01), crownRimMat);
+    // Vành đai LED neon penthouse mang màu chủ sở hữu
+    const crownRim = new THREE.Mesh(new RoundedBoxGeometry(0.65, 0.045, 0.73, 2, 0.01), ownerGlowMat);
     crownRim.position.set(-0.14, 1.77, 0);
 
-    const mansardMat = LandmarkModels.getMat('bldgL3MansardTeal', () => new THREE.MeshStandardMaterial({
-      color: '#1E3A5F',
+    const mansardMat = LandmarkModels.getMat(`bldgL3Mansard_${colorHex}`, () => new THREE.MeshStandardMaterial({
+      color: colorHex,
       roughness: 0.35,
-      metalness: 0.25
+      metalness: 0.28
     }));
     const mansardRoof = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.44, 0.22, 4), mansardMat);
     mansardRoof.rotation.y = Math.PI / 4;
@@ -900,22 +918,35 @@ export class BuildingMesh {
     this.addMiniStreetLamp(modelSubGroup, 0.52, 0.08, 0.50, 0.38);
 
     modelSubGroup.add(
-      plinth, base, canopy, cornice1, f2, balcony2, cornice2,
+      plinth, base, canopy, aptSign, cornice1, f2, balcony2, cornice2,
       f3, balcony3, crownRim, mansardRoof, domeCupola, antenna, orb
     );
   }
 
   // ============================================================================
-  // LEVEL 4: KHÁCH SẠN HOÀNG GIA 5 SAO
+  // LEVEL 4: KHÁCH SẠN HOÀNG GIA 5 SAO (HOTEL)
   // ============================================================================
 
-  private buildLevel4(modelSubGroup: THREE.Group) {
+  private buildLevel4(modelSubGroup: THREE.Group, ownerColor?: string) {
     const plinthMat = this.getPlinthMat();
     const corniceMat = this.getCorniceMat();
     const tier1Mat = LandmarkMaterials.getSapphireGlassMat();
     const goldMetalMat = LandmarkMaterials.getGoldMetalMat();
     const winGlowMat = LandmarkMaterials.getWarmWindowMat();
     const carpetMat = LandmarkMaterials.getRedCarpetMat();
+    const colorHex = ownerColor || '#F1C40F';
+
+    const ownerAccentMat = LandmarkModels.getMat(`bldgL4OwnerAccent_${colorHex}`, () => new THREE.MeshStandardMaterial({
+      color: colorHex,
+      roughness: 0.22,
+      metalness: 0.5
+    }));
+    const ownerGlowMat = LandmarkModels.getMat(`bldgL4OwnerGlow_${colorHex}`, () => new THREE.MeshStandardMaterial({
+      color: colorHex,
+      emissive: colorHex,
+      emissiveIntensity: 1.15,
+      roughness: 0.15
+    }));
 
     // Đế đá hoa cương & bậc tam cấp mặt tiền
     const plinth = new THREE.Mesh(new RoundedBoxGeometry(1.34, 0.08, 1.34, 2, 0.02), plinthMat);
@@ -966,14 +997,14 @@ export class BuildingMesh {
     addHotelWindowBand(2.57, 0.48, 0.34);
     addHotelWindowBand(2.96, 0.48, 0.34);
 
-    // Gân chỉ mạ vàng Art Deco dọc mặt tiền
-    const ribL = new THREE.Mesh(new THREE.BoxGeometry(0.05, 2.28, 0.05), goldMetalMat);
+    // Gân chỉ Art Deco dọc mặt tiền mang màu sắc chủ sở hữu
+    const ribL = new THREE.Mesh(new THREE.BoxGeometry(0.05, 2.28, 0.05), ownerAccentMat);
     ribL.position.set(-0.28, 1.22, 0.605);
-    const ribR = new THREE.Mesh(new THREE.BoxGeometry(0.05, 2.28, 0.05), goldMetalMat);
+    const ribR = new THREE.Mesh(new THREE.BoxGeometry(0.05, 2.28, 0.05), ownerAccentMat);
     ribR.position.set(0.28, 1.22, 0.605);
 
-    // Ban công VIP tầng 2 mặt tiền
-    const vipBalcony = new THREE.Mesh(new RoundedBoxGeometry(0.68, 0.045, 0.16, 2, 0.01), corniceMat);
+    // Ban công VIP tầng 2 mặt tiền viền màu chủ sở hữu
+    const vipBalcony = new THREE.Mesh(new RoundedBoxGeometry(0.68, 0.045, 0.16, 2, 0.01), ownerAccentMat);
     vipBalcony.position.set(0, 1.36, 0.52);
     this.addBalconyRailing(modelSubGroup, 0, 1.385, 0.52, 0.66, 0.14, goldMetalMat, 6);
 
@@ -996,10 +1027,10 @@ export class BuildingMesh {
     this.addClassicalColumn(modelSubGroup, -0.24, 0.08, 0.80, 0.42, 0.025, corniceMat, goldMetalMat);
     this.addClassicalColumn(modelSubGroup, 0.24, 0.08, 0.80, 0.42, 0.025, corniceMat, goldMetalMat);
 
-    const canopy = new THREE.Mesh(new RoundedBoxGeometry(0.62, 0.06, 0.40, 2, 0.02), goldMetalMat);
+    const canopy = new THREE.Mesh(new RoundedBoxGeometry(0.62, 0.06, 0.40, 2, 0.02), ownerAccentMat);
     canopy.position.set(0, 0.52, 0.70);
 
-    // Biển hiệu đèn neon "HOTEL" nổi phía trên sảnh đón
+    // Biển hiệu đèn neon "HOTEL" nổi phía trên sảnh đón mang màu chủ sở hữu
     const signMat = LandmarkModels.getMat('bldgL4HotelSign', () => new THREE.MeshStandardMaterial({
       color: '#FFEAA7',
       emissive: '#FDCB6E',
@@ -1008,7 +1039,7 @@ export class BuildingMesh {
     }));
     const signFrame = new THREE.Mesh(new RoundedBoxGeometry(0.54, 0.13, 0.04, 2, 0.01), goldMetalMat);
     signFrame.position.set(0, 0.65, 0.65);
-    const hotelSign = new THREE.Mesh(new RoundedBoxGeometry(0.48, 0.09, 0.05, 2, 0.01), signMat);
+    const hotelSign = new THREE.Mesh(new RoundedBoxGeometry(0.48, 0.09, 0.05, 2, 0.01), ownerGlowMat);
     hotelSign.position.set(0, 0.65, 0.655);
 
     // Sân thượng tầng 1: Helipad bên phải & Hồ bơi Sky-Pool mini bên trái
@@ -1047,11 +1078,16 @@ export class BuildingMesh {
     // Hồ bơi Sky-Pool mini sân thượng tầng 1 bên trái
     this.addMiniPool(modelSubGroup, -0.39, 1.38, 0.39, 0.32, 0.32, -0.10);
 
-    // Chóp vương miện mạ vàng hoàng gia + 4 chóp góc + Quả cầu pha lê phát sáng
+    // Chóp vương miện mạ vàng hoàng gia mang màu chủ sở hữu + 4 chóp góc + Quả cầu pha lê phát sáng + Cờ hiệu đỉnh tháp
     const crownBase = new THREE.Mesh(new RoundedBoxGeometry(0.58, 0.06, 0.58, 2, 0.015), goldMetalMat);
     crownBase.position.y = 3.20;
 
-    const crown = new THREE.Mesh(new THREE.ConeGeometry(0.46, 0.84, 8), goldMetalMat);
+    const crownMat = LandmarkModels.getMat(`bldgL4Crown_${colorHex}`, () => new THREE.MeshStandardMaterial({
+      color: colorHex,
+      metalness: 0.65,
+      roughness: 0.25
+    }));
+    const crown = new THREE.Mesh(new THREE.ConeGeometry(0.46, 0.84, 8), crownMat);
     crown.position.y = 3.65;
 
     [[-0.28, -0.28], [0.28, -0.28], [-0.28, 0.28], [0.28, 0.28]].forEach(([fx, fz]) => {
@@ -1069,12 +1105,18 @@ export class BuildingMesh {
     const orb = new THREE.Mesh(new THREE.SphereGeometry(0.22, 20, 20), orbMat);
     orb.position.y = 4.16;
 
+    const flagMast = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.24, 6), goldMetalMat);
+    flagMast.position.set(0, 4.46, 0);
+
+    const flag = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.08, 0.01), ownerAccentMat);
+    flag.position.set(0.08, 4.52, 0);
+
     this.animatedSpireLandmarks.push(orb);
     modelSubGroup.add(
       plinth, step1, step2, tier1, tier2, tier3,
       ribL, ribR, vipBalcony, carpet, canopy, signFrame, hotelSign,
       heliPad, hL, hR, hMid, heliLightsGroup,
-      crownBase, crown, orb
+      crownBase, crown, orb, flagMast, flag
     );
   }
 

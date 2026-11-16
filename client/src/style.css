@@ -3165,6 +3165,296 @@ button, .btn-chunky, .dock-btn, .roster-tab, .quick-emote-btn, .inspector-close-
   transform: translateX(22px);
 }
 
+/* Locked Tokens in Waiting Room */
+.waiting-token-btn.is-locked {
+  opacity: 0.65;
+  background: #F1F2F6;
+  border-color: #DFE6E9;
+  cursor: pointer;
+  position: relative;
+}
+
+.waiting-token-btn.is-locked:hover {
+  transform: none;
+  border-color: #E17055;
+  background: #FFF5F5;
+}
+
+.waiting-token-lock-badge {
+  font-size: 0.60rem;
+  font-weight: 800;
+  color: #D63031;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  line-height: 1;
+  margin-top: 2px;
+}
+
+/* Online Friends Inviting Components */
+.create-room-friends-list {
+  max-height: 120px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.create-room-friend-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  background: #F8F9FA;
+  border-radius: 8px;
+  border: 1px solid #E2E8F0;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.create-room-friend-item:hover {
+  background: #EBF2FA;
+}
+
+.waiting-invite-box {
+  background: #F8F9FA;
+  border: 1px solid #E2E8F0;
+  border-radius: 14px;
+  padding: 10px 12px;
+  margin-bottom: 16px;
+}
+
+.waiting-online-friends-list {
+  max-height: 120px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.waiting-friend-invite-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  background: #FFFFFF;
+  border-radius: 8px;
+  border: 1px solid #E2E8F0;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.badge-online {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: #00B894;
+  background: #E6FFFA;
+  padding: 2px 6px;
+  border-radius: 6px;
+  border: 1px solid #38A169;
+}
+
+/* Build Manage Modal & HUD Build Action */
+.action-pill-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #D63031;
+  color: white;
+  border-radius: 9999px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  font-size: 0.68rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+/* ========================================================
+   BUSINESS TOUR PROPERTY DEED BUILD TIER SELECTOR
+   ======================================================== */
+.prop-build-options {
+  margin: 12px 0 14px 0;
+  text-align: left;
+}
+
+.prop-build-tier-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.prop-tier-card {
+  background: #FFFFFF;
+  border: 2px solid #E2E8F0;
+  border-radius: 12px;
+  padding: 8px 10px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  user-select: none;
+}
+
+.prop-tier-card:hover:not(.disabled) {
+  border-color: #0984E3;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(9, 132, 227, 0.15);
+}
+
+.prop-tier-card.active {
+  border-color: #00B894;
+  background: #E8F8F5;
+  box-shadow: 0 0 0 2px rgba(0, 184, 148, 0.25), 0 4px 12px rgba(0, 184, 148, 0.2);
+}
+
+.prop-tier-card.disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+  background: #F1F2F6;
+  border-color: #DFE6E9;
+  filter: grayscale(0.8);
+}
+
+.prop-tier-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.prop-tier-icon {
+  font-size: 1.15rem;
+}
+
+.prop-tier-level-name {
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: #2D3436;
+}
+
+.prop-tier-card.active .prop-tier-level-name {
+  color: #00B894;
+}
+
+.prop-tier-rent {
+  font-size: 0.74rem;
+  color: #636E72;
+  margin-bottom: 2px;
+}
+
+.prop-tier-rent strong {
+  color: #E17055;
+}
+
+.prop-tier-cost {
+  font-size: 0.78rem;
+  font-weight: 900;
+  color: #0984E3;
+}
+
+.prop-tier-card.active .prop-tier-cost {
+  color: #00B894;
+}
+
+.prop-tier-badge {
+  position: absolute;
+  top: -6px;
+  right: 6px;
+  background: #E17055;
+  color: white;
+  font-size: 0.62rem;
+  font-weight: 800;
+  padding: 1px 6px;
+  border-radius: 999px;
+  text-transform: uppercase;
+}
+
+.inspector-monopoly-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: linear-gradient(135deg, #FDCB6E, #E17055);
+  color: #2D3436;
+  font-weight: 800;
+  font-size: 0.7rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+  margin-left: 6px;
+}
+
+.inspector-upgrade-hint {
+  padding: 8px 10px;
+  background: #FFF9E6;
+  border: 1px solid #FDCB6E;
+  border-radius: 10px;
+  font-size: 0.78rem;
+  color: #636E72;
+  line-height: 1.4;
+  margin-top: 6px;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.inspector-upgrade-hint .hint-icon {
+  font-size: 0.95rem;
+  flex-shrink: 0;
+}
+
+/* ========================================================
+   AIRPORT FLOATING BAR & DIRECT BOARD SELECTION
+   ======================================================== */
+.airport-floating-bar {
+  position: fixed;
+  top: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 105;
+  padding: 10px 22px;
+  border-radius: 9999px;
+  border: 2px solid #0984E3;
+  box-shadow: 0 10px 30px rgba(9, 132, 227, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(14px);
+  max-width: 92vw;
+  animation: floatDownBar 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes floatDownBar {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -20px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+@media (max-width: 768px) {
+  .airport-floating-bar {
+    top: 12px;
+    padding: 8px 14px;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+}
+
+
 
 
 

@@ -270,6 +270,28 @@ async function runAllTests() {
     assert.equal(p1.balance, startBalance);
   });
 
+  await test('Landing on JAIL tile (tile 10) directly sends player to Jail and ends roll phase even with doubles', () => {
+    const game = createGameWithPlayers(2);
+    const p1 = game.players[0];
+    p1.position = 6; // Vũng Tàu (tile 6) -> steps = 4 -> lands on tile 10 (JAIL)
+
+    const origRandom = Math.random;
+    try {
+      Math.random = () => 0.2; // d1=2, d2=2 -> steps = 4, isDouble = true
+      const res = game.rollDice(p1.id);
+
+      assert.equal(p1.position, 10);
+      assert.equal(p1.inJail, true);
+      assert.equal(p1.jailTurns, 0);
+      assert.equal(game.turnState.isDouble, false, 'Double cancelled when sent to jail');
+      assert.equal(game.turnState.consecutiveDoubles, 0);
+      assert.equal(game.turnState.phase, 'END_TURN');
+      assert.equal(res.actionResult.type, 'GO_TO_JAIL');
+    } finally {
+      Math.random = origRandom;
+    }
+  });
+
   // ----------------------------------------------------
   // SUITE 3: Card Effects - All 50 Vietnamese Cultural & Strategic Cards
   // ----------------------------------------------------
@@ -496,15 +518,15 @@ async function runAllTests() {
     assert.equal(p2.balance, p2Bal);
   });
 
-  await test('Cannot upgrade properties in district if any property is mortgaged', () => {
+  await test('canUpgradeProperty: mortgaged property cannot be upgraded, unmortgaged property can be upgraded without monopoly', () => {
     const game = createGameWithPlayers(2);
     const p1 = game.players[0];
 
     game.properties.set(1, { tileId: 1, ownerId: p1.id, level: 0, isMortgaged: true });
     game.properties.set(3, { tileId: 3, ownerId: p1.id, level: 0, isMortgaged: false });
 
-    const canUpgrade = game.canUpgradeProperty(p1.id, BOARD_TILES[3]);
-    assert.equal(canUpgrade, false);
+    assert.equal(game.canUpgradeProperty(p1.id, BOARD_TILES[1]), false);
+    assert.equal(game.canUpgradeProperty(p1.id, BOARD_TILES[3]), true);
   });
 
   await test('sellBuilding() refunds 50% of house cost and decreases level', () => {
@@ -863,24 +885,20 @@ async function runAllTests() {
     assert.equal(nonBuyable.success, false);
   });
 
-  await test('buyProperty() rejects upgrading without full district monopoly or when district has mortgage', () => {
+  await test('buyProperty() allows upgrading without full district monopoly, rejects when property is mortgaged', () => {
     const game = createGameWithPlayers(2);
     const p1 = game.players[0];
 
     // District 1 has tiles 1 (Can Tho) and 3 (Ca Mau). Own only tile 1.
-    game.properties.set(1, { tileId: 1, ownerId: p1.id, level: 0, isMortgaged: false });
+    game.properties.set(1, { tileId: 1, ownerId: p1.id, level: 0, isMortgaged: true });
     game.turnState.phase = 'END_TURN';
 
-    const noMonopoly = game.buyProperty(p1.id, 1);
-    assert.equal(noMonopoly.success, false);
+    // Cannot upgrade when mortgaged
+    const mortgagedRes = game.buyProperty(p1.id, 1);
+    assert.equal(mortgagedRes.success, false);
 
-    // Own tile 3 too, but mortgage tile 3 -> still cannot upgrade tile 1
-    game.properties.set(3, { tileId: 3, ownerId: p1.id, level: 0, isMortgaged: true });
-    const withMortgaged = game.buyProperty(p1.id, 1);
-    assert.equal(withMortgaged.success, false);
-
-    // Unmortgage tile 3 -> now upgrade succeeds and stays in END_TURN
-    game.properties.get(3)!.isMortgaged = false;
+    // Unmortgage tile 1 -> upgrade succeeds even without owning tile 3 (no monopoly required)
+    game.properties.get(1)!.isMortgaged = false;
     const ok = game.buyProperty(p1.id, 1);
     assert.equal(ok.success, true);
     assert.equal(ok.level, 1);
@@ -1092,28 +1110,85 @@ async function runAllTests() {
     assert.equal(game.festivalTileId, null);
   });
 
-  await test('Even-Build and Even-Sell enforce max 1 level difference within district', () => {
+  await test('Business Tour Building: 4 tiers, toursCompleted limits (tour 1 max level 2), landing required for Apartment & Hotel', () => {
     const game = createGameWithPlayers(2);
     const p1 = game.players[0];
 
-    // District 1: tiles 1 & 3
-    game.properties.set(1, { tileId: 1, ownerId: p1.id, level: 0, isMortgaged: false });
-    game.properties.set(3, { tileId: 3, ownerId: p1.id, level: 0, isMortgaged: false });
+    // 1. Tour 0: Buy unowned property with up to 2 houses immediately
+    // Tile 1 (Can Tho): price = 60, houseCost = 50. Total = 60 + 2*50 = 160.
+    p1.position = 1;
+    game.turnState.phase = 'BUY_PROPERTY';
+    const initBal = p1.balance;
+
+    // Reject targetLevel > 2 for unowned land (max 2 houses on new land)
+    assert.equal(game.buyProperty(p1.id, 1, 3).success, false);
+    assert.equal(game.buyProperty(p1.id, 1, 4).success, false);
+
+    // Buy with 2 houses -> OK
+    const buyRes = game.buyProperty(p1.id, 1, 2);
+    assert.equal(buyRes.success, true);
+    assert.equal(buyRes.level, 2);
+    assert.equal(p1.balance, initBal - 160);
+    assert.equal(game.properties.get(1)?.level, 2);
+
+    // 2. Tour 0: In tour 0, even landing on the tile cannot upgrade to level 3 (Apartment)
+    p1.position = 1;
+    game.turnState.phase = 'BUY_PROPERTY';
+    assert.equal(game.canUpgradeProperty(p1.id, BOARD_TILES[1], true), false);
+    const tour0Reject = game.buyProperty(p1.id, 1, 3);
+    assert.equal(tour0Reject.success, false);
+
+    // In END_TURN phase (remote management), cannot upgrade to level 3 either
     game.turnState.phase = 'END_TURN';
+    assert.equal(game.buyProperty(p1.id, 1, 3).success, false);
 
-    // Upgrade tile 1 to level 1 -> OK
-    assert.equal(game.buyProperty(p1.id, 1).success, true);
-    // Upgrade tile 1 to level 2 while tile 3 is level 0 -> REJECTED
-    assert.equal(game.buyProperty(p1.id, 1).success, false);
-    // Upgrade tile 3 to level 1 -> OK
-    assert.equal(game.buyProperty(p1.id, 3).success, true);
-    // Now upgrade tile 1 to level 2 -> OK
-    assert.equal(game.buyProperty(p1.id, 1).success, true);
+    // But remote management CAN upgrade a level 0 property up to level 2
+    game.properties.set(3, { tileId: 3, ownerId: p1.id, level: 0, isMortgaged: false });
+    const remoteUpgrade = game.buyProperty(p1.id, 3, 2);
+    assert.equal(remoteUpgrade.success, true);
+    assert.equal(remoteUpgrade.level, 2);
 
-    // Even-Sell: cannot sell tile 3 (level 1) while tile 1 is level 2
-    assert.equal(game.sellBuilding(p1.id, 3).success, false);
-    // Selling tile 1 (level 2) succeeds
-    assert.equal(game.sellBuilding(p1.id, 1).success, true);
+    // 3. Tour 1: After passing GO (toursCompleted >= 1)
+    p1.toursCompleted = 1;
+
+    // Remote in END_TURN still cannot upgrade to Apartment (must land on tile)
+    game.turnState.phase = 'END_TURN';
+    assert.equal(game.buyProperty(p1.id, 1, 3).success, false);
+
+    // Land on tile 1 in BUY_PROPERTY phase
+    p1.position = 1;
+    game.turnState.phase = 'BUY_PROPERTY';
+    assert.equal(game.canUpgradeProperty(p1.id, BOARD_TILES[1], true), true);
+
+    // Cannot jump straight from level 2 to level 4 (Hotel) in same landing
+    assert.equal(game.buyProperty(p1.id, 1, 4).success, false);
+
+    // Upgrade to level 3 (Apartment) -> OK
+    const aptRes = game.buyProperty(p1.id, 1, 3);
+    assert.equal(aptRes.success, true);
+    assert.equal(aptRes.level, 3);
+    assert.equal(game.properties.get(1)?.level, 3);
+
+    // 4. Tour 2: Land on tile 1 again in BUY_PROPERTY phase
+    p1.toursCompleted = 2;
+    p1.position = 1;
+    game.turnState.phase = 'BUY_PROPERTY';
+    assert.equal(game.canUpgradeProperty(p1.id, BOARD_TILES[1], true), true);
+
+    // Upgrade to level 4 (Hotel) -> OK
+    const hotelRes = game.buyProperty(p1.id, 1, 4);
+    assert.equal(hotelRes.success, true);
+    assert.equal(hotelRes.level, 4);
+    assert.equal(game.properties.get(1)?.level, 4);
+
+    // Level 4 is max (cannot upgrade further)
+    assert.equal(game.canUpgradeProperty(p1.id, BOARD_TILES[1], true), false);
+    assert.equal(game.buyProperty(p1.id, 1, 5).success, false);
+
+    // 5. No Even-Sell: can sell building on tile 1 without selling on tile 3
+    const sellRes = game.sellBuilding(p1.id, 1);
+    assert.equal(sellRes.success, true);
+    assert.equal(sellRes.level, 3);
   });
 
   // ================================================================

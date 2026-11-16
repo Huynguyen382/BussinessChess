@@ -149,6 +149,31 @@ const TOKEN_NAMES: Record<string, string> = {
 
 const AVAILABLE_TOKENS = ['car', 'hat', 'dog', 'rocket', 'cyclo', 'lotus', 'dragon', 'yacht', 'robot', 'crown'];
 
+const STARTER_TOKENS = new Set(['car', 'hat', 'dog', 'rocket']);
+
+const TOKEN_COSTS: Record<string, number> = {
+  car: 0,
+  hat: 0,
+  dog: 0,
+  rocket: 0,
+  cyclo: 500,
+  lotus: 800,
+  yacht: 1200,
+  dragon: 1500,
+  robot: 1600,
+  crown: 2000
+};
+
+let cachedCustomizationsData: any = null;
+
+function isTokenUnlocked(tokenKey: string): boolean {
+  if (STARTER_TOKENS.has(tokenKey)) return true;
+  if (!currentUser) return false;
+  if (Array.isArray(currentUser.unlockedItems) && currentUser.unlockedItems.includes(tokenKey)) return true;
+  if (cachedCustomizationsData && Array.isArray(cachedCustomizationsData.unlockedItems) && cachedCustomizationsData.unlockedItems.includes(tokenKey)) return true;
+  return false;
+}
+
 const TITLE_LABELS: Record<string, string> = {
   title_rookie: 'Tân Thủ Khởi Nghiệp',
   title_tycoon: 'Chiến Thần BĐS',
@@ -374,6 +399,14 @@ const inspectorSpecialDesc = document.getElementById('inspector-special-desc')!;
 const elInspectorUpgradeContainer = document.getElementById('inspector-upgrade-container');
 const btnInspectorUpgrade = document.getElementById('btn-inspector-upgrade');
 const inspectorUpgradeLabel = document.getElementById('inspector-upgrade-label');
+const inspectorUpgradeRentDiff = document.getElementById('inspector-upgrade-rent-diff');
+const inspectorUpgradeHint = document.getElementById('inspector-upgrade-hint');
+
+// Property Deed Multi-Tier Build Selector (Business Tour)
+const propBuildOptionsContainer = document.getElementById('prop-build-options-container');
+const propBuildCashHint = document.getElementById('prop-build-cash-hint');
+const propBuildTierGrid = document.getElementById('prop-build-tier-grid');
+let selectedDeedTargetLevel: number = 0;
 
 // Dice Announcement Card DOM Elements
 const elDiceAnnouncement = document.getElementById('dice-announcement-card');
@@ -446,6 +479,7 @@ const airportConfirmTitle = document.getElementById('airport-confirm-title')!;
 const airportConfirmDesc = document.getElementById('airport-confirm-desc')!;
 const btnAirportConfirmCancel = document.getElementById('btn-airport-confirm-cancel')!;
 const btnAirportConfirmFly = document.getElementById('btn-airport-confirm-fly')!;
+const btnAirportFloatingGo = document.getElementById('btn-airport-floating-go');
 let currentAirportFilter = 'ALL';
 let selectedAirportTargetId: number | null = null;
 
@@ -476,6 +510,23 @@ const waitingStartHint = document.getElementById('waiting-start-hint');
 const waitingTokenBox = document.getElementById('waiting-token-box');
 const waitingTokenGrid = document.getElementById('waiting-token-grid');
 const waitingSelectedTokenName = document.getElementById('waiting-selected-token-name');
+
+const createRoomFriendsBox = document.getElementById('create-room-friends-box');
+const createRoomOnlineCount = document.getElementById('create-room-online-count');
+const createRoomFriendsList = document.getElementById('create-room-friends-list');
+
+const waitingInviteBox = document.getElementById('waiting-invite-box');
+const waitingOnlineFriendsList = document.getElementById('waiting-online-friends-list');
+const btnRefreshOnlineFriends = document.getElementById('btn-refresh-online-friends');
+const invitedFriendIdsInRoom = new Set<string>();
+
+const elRoomInviteModal = document.getElementById('room-invite-modal')!;
+const roomInviteSender = document.getElementById('room-invite-sender')!;
+const roomInviteRoomName = document.getElementById('room-invite-room-name')!;
+const roomInviteCode = document.getElementById('room-invite-code')!;
+const btnAcceptRoomInvite = document.getElementById('btn-accept-room-invite')!;
+const btnDeclineRoomInvite = document.getElementById('btn-decline-room-invite')!;
+let pendingInvitePayload: any = null;
 
 let latestWaitingPlayers: any[] = [];
 let latestWaitingMaxPlayers: number = 4;
@@ -591,8 +642,8 @@ const propTitle = document.getElementById('prop-title')!;
 const propPrice = document.getElementById('prop-price')!;
 const propDesc = document.getElementById('prop-desc')!;
 const propRentPreview = document.getElementById('prop-rent-preview');
-const btnSkipBuy = document.getElementById('btn-skip-buy')!;
-const btnConfirmBuy = document.getElementById('btn-confirm-buy')!;
+const btnSkipBuy = document.getElementById('btn-skip-buy') as HTMLButtonElement;
+const btnConfirmBuy = document.getElementById('btn-confirm-buy') as HTMLButtonElement;
 
 const cardBadge = document.getElementById('card-badge')!;
 const cardIcon = document.getElementById('card-icon')!;
@@ -704,6 +755,160 @@ const DISTRICT_NAMES: Record<number, string> = {
 let currentInspectedTileId: number | null = null;
 let currentRosterFilter = 'ALL';
 
+function getRentForTileAtLevel(tile: any, level: number, ownsMonopoly: boolean = false, isFestival: boolean = false): number {
+  if (!tile) return 0;
+  const base = tile.baseRent || 0;
+  let rent = base;
+  switch (level) {
+    case 0:
+      rent = ownsMonopoly ? base * 2 : base;
+      break;
+    case 1:
+      rent = tile.rentHouse1 ?? (base * 5 || 20);
+      break;
+    case 2:
+      rent = tile.rentHouse2 ?? (base * 15 || 60);
+      break;
+    case 3:
+      rent = tile.rentHouse3 ?? (base * 40 || 180);
+      break;
+    case 4:
+      rent = tile.rentHotel ?? (base * 80 || 450);
+      break;
+    default:
+      rent = base;
+  }
+  if (isFestival) rent *= 2;
+  return rent;
+}
+
+interface PropertyUpgradeDetails {
+  tileId: number;
+  tile: any;
+  prop: any;
+  owner: any;
+  isMyProp: boolean;
+  level: number;
+  levelName: string;
+  nextLevelName: string;
+  cost: number;
+  currentRent: number;
+  nextRent: number;
+  rentDiff: number;
+  ownsMonopoly: boolean;
+  ownedCount: number;
+  totalInDistrict: number;
+  isMortgaged: boolean;
+  anyDistrictMortgaged: boolean;
+  evenBuildViolation: boolean;
+  minDistrictLevel: number;
+  maxDistrictLevel: number;
+  canUpgrade: boolean;
+  reason: string;
+}
+
+function getPropertyUpgradeDetails(tileId: number, myUserId?: string): PropertyUpgradeDetails {
+  const targetId = myUserId || socketClient.socket?.id || '';
+  const tile = boardTilesData && boardTilesData[tileId];
+  const prop = latestPropertiesSnapshot.find(p => p.tileId === tileId);
+  const owner = prop ? latestPlayersSnapshot.find(p => p.id === prop.ownerId) : null;
+  const isMyProp = !!(prop && prop.ownerId === targetId);
+  const cost = tile?.houseCost || 100;
+  const level = prop?.level ?? 0;
+  const isMortgaged = !!(prop && prop.isMortgaged);
+
+  const levelNames = ['Đất trống', '1 Nhà', '2 Nhà', '🏢 Căn Hộ', '🏨 Khách Sạn'];
+  const levelName = levelNames[level] || 'Đất trống';
+  const nextLevelName = level < 4 ? levelNames[level + 1] : 'Tối đa';
+
+  const districtTiles = (tile && tile.district && boardTilesData)
+    ? boardTilesData.filter(t => t.district === tile.district && t.type === 'PROPERTY')
+    : [];
+  const totalInDistrict = districtTiles.length;
+  const ownedCount = districtTiles.filter(t => {
+    const p = latestPropertiesSnapshot.find(pr => pr.tileId === t.id);
+    return p && p.ownerId === targetId;
+  }).length;
+  const ownsMonopoly = totalInDistrict > 0 && ownedCount === totalInDistrict;
+
+  const isFestival = latestGameStateSnapshot?.festivalTileId === tileId;
+  const currentRent = getRentForTileAtLevel(tile, level, ownsMonopoly, isFestival);
+  const nextRent = level < 4 ? getRentForTileAtLevel(tile, level + 1, ownsMonopoly, isFestival) : currentRent;
+  const rentDiff = Math.max(0, nextRent - currentRent);
+
+  const myPlayer = latestPlayersSnapshot.find(p => p.id === targetId);
+  const myCash = myPlayer?.balance ?? 0;
+  const toursCompleted = myPlayer?.toursCompleted || 0;
+  const isMyTurn = latestTurnSnapshot && latestTurnSnapshot.currentUserId === targetId;
+  const currentPhase = latestTurnSnapshot?.phase;
+  const isLanding = isMyTurn && currentPhase === 'BUY_PROPERTY' && myPlayer?.position === tileId;
+  const isEndTurn = isMyTurn && currentPhase === 'END_TURN';
+
+  let canUpgrade = true;
+  let reason = 'Đủ điều kiện nâng cấp ngay!';
+
+  if (!tile || tile.type !== 'PROPERTY' || !tile.district) {
+    canUpgrade = false;
+    reason = 'Ô cờ này không phải là ô đất xây dựng.';
+  } else if (!isMyProp) {
+    canUpgrade = false;
+    reason = 'Bạn chưa sở hữu bất động sản này.';
+  } else if (isMortgaged) {
+    canUpgrade = false;
+    reason = 'Bất động sản đang bị thế chấp (cần chuộc lại trước).';
+  } else if (level >= 4) {
+    canUpgrade = false;
+    reason = 'Đã đạt cấp tối đa (Khách Sạn).';
+  } else if (!isMyTurn) {
+    canUpgrade = false;
+    reason = 'Chỉ có thể nâng cấp khi đến lượt của bạn.';
+  } else if (!isLanding && !isEndTurn) {
+    canUpgrade = false;
+    reason = 'Chỉ có thể nâng cấp trong lượt (pha Kết Thúc Lượt hoặc khi dừng chân tại ô này).';
+  } else if (isEndTurn && !isLanding && level >= 2) {
+    canUpgrade = false;
+    if (level === 2) {
+      reason = 'Cần đi hết ít nhất 1 vòng & dừng chân lại đúng ô đất này để nâng lên Căn Hộ (Cấp 3).';
+    } else {
+      reason = 'Cần dừng chân lại đúng ô đất này ở lượt tiếp theo để nâng lên Khách Sạn (Cấp 4).';
+    }
+  } else if (isLanding && level === 2 && toursCompleted === 0) {
+    canUpgrade = false;
+    reason = 'Cần hoàn thành ít nhất 1 vòng (đi qua ô GO) để mở khóa Căn Hộ (Cấp 3).';
+  } else if (isLanding && level < 3 && nextLevelName.includes('Khách Sạn')) {
+    canUpgrade = false;
+    reason = 'Cần có Căn Hộ (Cấp 3) và dừng chân lại ở lượt sau để nâng lên Khách Sạn.';
+  } else if (myCash < cost) {
+    canUpgrade = false;
+    reason = `Thiếu tiền mặt (Cần ${cost}M, bạn đang có ${myCash}M).`;
+  }
+
+  return {
+    tileId,
+    tile,
+    prop,
+    owner,
+    isMyProp,
+    level,
+    levelName,
+    nextLevelName,
+    cost,
+    currentRent,
+    nextRent,
+    rentDiff,
+    ownsMonopoly,
+    ownedCount,
+    totalInDistrict,
+    isMortgaged,
+    anyDistrictMortgaged: false,
+    evenBuildViolation: false,
+    minDistrictLevel: level,
+    maxDistrictLevel: level,
+    canUpgrade,
+    reason
+  };
+}
+
 function showTileInspector(tileId: number, tileData?: any) {
   const tile = tileData || (boardTilesData && boardTilesData[tileId]);
   if (!tile) return;
@@ -718,7 +923,7 @@ function showTileInspector(tileId: number, tileData?: any) {
     tile.type === 'COMMUNITY_CHEST' ? 'THẺ KHÍ VẬN' :
     tile.type === 'TAX' ? 'THUẾ VÀ LỆ PHÍ' :
     tile.type === 'GO' ? 'KHỞI HÀNH (GO)' :
-    tile.type === 'JAIL' ? 'NHÀ TÙ / THĂM TÙ' :
+    tile.type === 'JAIL' ? 'NHÀ TÙ' :
     tile.type === 'FREE_PARKING' ? 'BÃI ĐỖ XE MIỄN PHÍ' :
     tile.type === 'AIRPORT' ? 'SÂN BAY QUỐC TẾ' :
     tile.type === 'GO_TO_JAIL' ? 'LỆNH BẮT VÀO TÙ' : 'ĐỊA ĐIỂM';
@@ -764,7 +969,8 @@ function showTileInspector(tileId: number, tileData?: any) {
         inspectorBuildingLevel.textContent = '🔒 Đang thế chấp (Không thu tiền thuê)';
         inspectorBuildingLevel.style.color = '#D63031';
       } else {
-        const levelStr = prop.level === 0 ? 'Đất trống' : prop.level === 4 ? '🏨 Khách sạn Landmark' : `🏠 ${prop.level} Tầng Nhà`;
+        const levelNamesMap = ['Đất trống', '🏠 1 Nhà', '🏠🏠 2 Nhà', '🏢 Căn Hộ', '🏨 Khách Sạn'];
+        const levelStr = levelNamesMap[prop.level] || 'Đất trống';
         inspectorBuildingLevel.textContent = `Cấp độ: ${levelStr}${festivalSuffix}`;
         inspectorBuildingLevel.style.color = isFestivalTile ? '#D63031' : '#E17055';
       }
@@ -797,6 +1003,27 @@ function showTileInspector(tileId: number, tileData?: any) {
       }
     }
 
+    // Monopoly x2 badge on base rent in inspector
+    const rentRow0 = document.getElementById('rent-row-0');
+    if (rentRow0) {
+      const existingBadge = rentRow0.querySelector('.inspector-monopoly-badge');
+      if (existingBadge) existingBadge.remove();
+      const detailsCheck = getPropertyUpgradeDetails(tileId, socketClient.socket?.id);
+      if (detailsCheck.ownsMonopoly) {
+        const badge = document.createElement('span');
+        badge.className = 'inspector-monopoly-badge';
+        badge.textContent = '⭐ x2 Độc Quyền';
+        badge.style.marginLeft = '6px';
+        badge.style.fontSize = '0.68rem';
+        badge.style.fontWeight = '800';
+        badge.style.color = '#E17055';
+        badge.style.background = 'rgba(225, 112, 85, 0.12)';
+        badge.style.padding = '1px 6px';
+        badge.style.borderRadius = '4px';
+        rentRow0.querySelector('span')?.appendChild(badge);
+      }
+    }
+
     // Interactive Upgrade & Property Management Buttons in Inspector
     const isMyTurn = latestTurnSnapshot && latestTurnSnapshot.currentUserId === socketClient.socket.id;
     const currentPhase = latestTurnSnapshot?.phase;
@@ -804,53 +1031,43 @@ function showTileInspector(tileId: number, tileData?: any) {
     const isMyProp = owner && owner.id === socketClient.socket.id;
     const houseCost = tile.houseCost || 100;
 
-    // Kiểm tra sở hữu trọn bộ màu (monopoly) & không có ô nào cùng nhóm bị thế chấp
-    const districtTiles = tile.district
-      ? boardTilesData.filter(t => t.district === tile.district)
-      : [];
-    const ownsFullDistrict = districtTiles.length > 0 && districtTiles.every(t => {
-      const p = latestPropertiesSnapshot.find(pr => pr.tileId === t.id);
-      return p && p.ownerId === socketClient.socket.id;
-    });
-    const anyDistrictMortgaged = districtTiles.some(t => {
-      const p = latestPropertiesSnapshot.find(pr => pr.tileId === t.id);
-      return p && p.isMortgaged;
-    });
-    const anyDistrictHasBuildings = districtTiles.some(t => {
-      const p = latestPropertiesSnapshot.find(pr => pr.tileId === t.id);
-      return p && p.level > 0;
-    });
+    const details = getPropertyUpgradeDetails(tileId, socketClient.socket.id);
 
-    const districtLevels = districtTiles.map(t => {
-      const p = latestPropertiesSnapshot.find(pr => pr.tileId === t.id);
-      return p ? p.level : 0;
-    });
-    const minDistrictLevel = districtLevels.length > 0 ? Math.min(...districtLevels) : 0;
-    const maxDistrictLevel = districtLevels.length > 0 ? Math.max(...districtLevels) : 0;
-
-    const canUpgrade =
-      isMyTurn &&
-      currentPhase === 'END_TURN' &&
-      isMyProp &&
-      tile.type === 'PROPERTY' &&
-      prop &&
-      !prop.isMortgaged &&
-      prop.level < 4 &&
-      ownsFullDistrict &&
-      !anyDistrictMortgaged &&
-      prop.level <= minDistrictLevel &&
-      (owner.balance ?? 0) >= houseCost;
-
-    if (elInspectorUpgradeContainer && btnInspectorUpgrade && inspectorUpgradeLabel) {
-      if (canUpgrade) {
+    if (elInspectorUpgradeContainer) {
+      if (tile.type === 'PROPERTY' && isMyProp && prop) {
         elInspectorUpgradeContainer.style.display = 'block';
-        const nextLevelStr = prop.level === 3 ? 'Khách Sạn 5 Sao' : `Nhà Cấp ${prop.level + 1}`;
-        inspectorUpgradeLabel.textContent = `Nâng Cấp ${nextLevelStr} (${houseCost}M)`;
-        btnInspectorUpgrade.onclick = () => {
-          socketClient.emit('game:buy_property', { tileId });
-          btnInspectorUpgrade.onclick = null;
-          elInspectorUpgradeContainer.style.display = 'none';
-        };
+        if (details.canUpgrade) {
+          if (btnInspectorUpgrade) {
+            btnInspectorUpgrade.style.display = 'flex';
+            if (inspectorUpgradeLabel) {
+              inspectorUpgradeLabel.textContent = `🏗️ Nâng Cấp ${details.nextLevelName} (-${details.cost}M)`;
+            }
+            btnInspectorUpgrade.onclick = () => {
+              socketClient.emit('game:buy_property', { tileId, targetLevel: prop.level + 1 });
+              sounds.playBuild();
+              btnInspectorUpgrade.onclick = null;
+            };
+          }
+          if (inspectorUpgradeRentDiff) {
+            inspectorUpgradeRentDiff.style.display = 'block';
+            inspectorUpgradeRentDiff.innerHTML = `📈 Tiền thuê: <strong>${details.currentRent}M</strong> ➔ <strong>${details.nextRent}M</strong> <span style="color:#00B894;font-weight:700;">(+${details.rentDiff}M)</span>`;
+          }
+          if (inspectorUpgradeHint) {
+            inspectorUpgradeHint.style.display = 'none';
+          }
+        } else {
+          if (btnInspectorUpgrade) {
+            btnInspectorUpgrade.style.display = 'none';
+            btnInspectorUpgrade.onclick = null;
+          }
+          if (inspectorUpgradeRentDiff) {
+            inspectorUpgradeRentDiff.style.display = 'none';
+          }
+          if (inspectorUpgradeHint) {
+            inspectorUpgradeHint.style.display = 'block';
+            inspectorUpgradeHint.innerHTML = `⚠️ <strong>Chưa thể nâng:</strong> ${details.reason}`;
+          }
+        }
       } else {
         elInspectorUpgradeContainer.style.display = 'none';
       }
@@ -870,8 +1087,8 @@ function showTileInspector(tileId: number, tileData?: any) {
       if (canManageInPhase && isMyProp && prop) {
         const actions: HTMLElement[] = [];
 
-        // Bán 1 cấp nhà (tuân thủ Even-Build: chỉ bán ô có level cao nhất trong nhóm)
-        if (tile.type === 'PROPERTY' && prop.level > 0 && !prop.isMortgaged && prop.level >= maxDistrictLevel) {
+        // Bán 1 cấp nhà (Business Tour: tự do bán nhà khi cần tiền)
+        if (tile.type === 'PROPERTY' && prop.level > 0 && !prop.isMortgaged) {
           const refund = Math.floor(houseCost * 0.5);
           const btnSell = document.createElement('button');
           btnSell.className = 'btn-chunky btn-white btn-sm inspector-manage-btn';
@@ -882,8 +1099,8 @@ function showTileInspector(tileId: number, tileData?: any) {
           actions.push(btnSell);
         }
 
-        // Thế chấp đất trống (không có nhà trên đất & không có nhà trong cùng quận)
-        if (!prop.isMortgaged && prop.level === 0 && !anyDistrictHasBuildings) {
+        // Thế chấp đất trống (không có nhà trên đất)
+        if (!prop.isMortgaged && prop.level === 0) {
           const mortgageVal = Math.floor((tile.price || 0) * 0.5);
           const btnMortgage = document.createElement('button');
           btnMortgage.className = 'btn-chunky btn-accent btn-sm inspector-manage-btn';
@@ -1019,6 +1236,13 @@ function renderBoardRoster(filter: string = currentRosterFilter) {
   showTileInspector(tileId, boardTilesData[tileId]);
 };
 
+function activateAirportBoardSelection() {
+  closeTileInspector();
+  if (elAirportModal) elAirportModal.style.display = 'none';
+  if (airportConfirmModal) airportConfirmModal.style.display = 'none';
+  if (airportFloatingBar) airportFloatingBar.style.display = 'flex';
+}
+
 function showAirportModal() {
   renderAirportDestinations('ALL');
   elAirportModal.style.display = 'flex';
@@ -1127,16 +1351,50 @@ function init() {
                           latestGameStateSnapshot?.turnState?.currentUserId === socketClient.socket.id;
     if (isAirportTurn) {
       if (tileId === 30) {
-        showToast('⚠️ Không thể chọn bay lại vào ô Sân Bay!');
+        showToast('⚠️ Bạn đang ở Sân Bay! Hãy nhấp chọn một điểm đến khác trên bàn cờ.');
         return;
       }
       boardScene.highlightTile(tileId);
       selectedAirportTargetId = tileId;
       airportConfirmTitle.textContent = `Bay Đến ${tile.name} (ô #${tileId})?`;
+
+      // Render comprehensive details of destination tile
+      const prop = latestPropertiesSnapshot.find(p => p.tileId === tileId);
+      const owner = prop ? latestPlayersSnapshot.find(p => p.id === prop.ownerId) : null;
+      const isMyProp = owner && owner.id === socketClient.socket.id;
       const isPassGo = tileId < 30;
-      airportConfirmDesc.textContent = isPassGo
-        ? `Chuyến bay sẽ bay qua Khởi Hành (GO), nhận thêm 200M tiền lương và hạ cánh tại ${tile.name}.`
-        : `Chuyến bay sẽ cất cánh từ Sân Bay và đưa bạn hạ cánh thẳng xuống ${tile.name}.`;
+
+      let ownerHtml = '';
+      if (tile.type === 'PROPERTY' || tile.type === 'RAILROAD' || tile.type === 'UTILITY') {
+        if (!owner) {
+          ownerHtml = `<div>💰 <strong>Trạng thái:</strong> <span style="color:#00B894; font-weight:800;">Đang mở bán (${tile.price}M)</span> — Bạn có thể mua ngay khi hạ cánh!</div>`;
+        } else if (isMyProp) {
+          const levelName = prop.level === 4 ? '🏨 Khách Sạn 5 Sao' : prop.level === 0 ? 'Đất trống' : `🏠 ${prop.level} Nhà`;
+          ownerHtml = `<div>👑 <strong>Trạng thái:</strong> <span style="color:#0984E3; font-weight:800;">Bất động sản của bạn</span> (${levelName})</div>`;
+        } else {
+          const isFestival = latestGameStateSnapshot?.festivalTileId === tileId;
+          const rent = getRentForTileAtLevel(tile, prop.level, false, isFestival);
+          if (prop.isMortgaged) {
+            ownerHtml = `<div>⚠️ <strong>Chủ sở hữu:</strong> <span style="color:${owner.color || '#2D3436'}; font-weight:800;">${owner.username}</span> • <span style="color:#D63031; font-weight:700;">Đang thế chấp (Miễn trả tiền thuê)</span></div>`;
+          } else {
+            ownerHtml = `<div>⚠️ <strong>Chủ sở hữu:</strong> <span style="color:${owner.color || '#2D3436'}; font-weight:800;">${owner.username}</span> • Tiền thuê dự kiến: <strong style="color:#E17055;">${rent}M</strong></div>`;
+          }
+        }
+      } else {
+        ownerHtml = `<div>🎯 <strong>Loại ô:</strong> ${tile.description || 'Ô chức năng đặc biệt'}</div>`;
+      }
+
+      const passGoHtml = isPassGo
+        ? `<div style="margin-top: 8px; padding: 6px 10px; background: rgba(0, 184, 148, 0.12); border-radius: 8px; color: #00B894; font-weight: 800; font-size: 0.8rem;">🚩 Chuyến bay qua Khởi Hành: Nhận ngay +200M tiền lương!</div>`
+        : `<div style="margin-top: 8px; padding: 6px 10px; background: rgba(9, 132, 227, 0.08); border-radius: 8px; color: #0984E3; font-weight: 700; font-size: 0.8rem;">✈️ Chuyến bay cất cánh từ Sân Bay và hạ cánh thẳng xuống ${tile.name}.</div>`;
+
+      airportConfirmDesc.innerHTML = `
+        <div style="display: flex; flex-direction: column; gap: 4px;">
+          ${ownerHtml}
+          ${passGoHtml}
+        </div>
+      `;
+
       btnAirportConfirmFly.onclick = () => {
         executeAirportFlight(tileId);
       };
@@ -1194,6 +1452,7 @@ function bindUIEvents() {
   });
 
   btnOpenCreate.addEventListener('click', () => {
+    loadCreateRoomOnlineFriends();
     elCreateModal.style.display = 'flex';
   });
 
@@ -1364,9 +1623,16 @@ function bindUIEvents() {
     });
   }
 
+  btnAirportFloatingGo?.addEventListener('click', () => {
+    executeAirportFlight(0);
+  });
+
   if (btnAirportConfirmCancel) {
     btnAirportConfirmCancel.addEventListener('click', () => {
       airportConfirmModal.style.display = 'none';
+      if (boardScene) {
+        boardScene.clearTileHighlight();
+      }
     });
   }
 
@@ -1458,6 +1724,43 @@ function bindUIEvents() {
     showToast(checked
       ? '🎯 Đã bật Chế độ Tinh Gọn'
       : '🏛️ Đã chuyển về Sa Bàn Đầy Đủ');
+  });
+
+  // Room Invite Modal Listeners
+  btnDeclineRoomInvite?.addEventListener('click', () => {
+    if (elRoomInviteModal) elRoomInviteModal.style.display = 'none';
+    pendingInvitePayload = null;
+  });
+
+  btnAcceptRoomInvite?.addEventListener('click', () => {
+    if (!pendingInvitePayload) return;
+    const { roomCode, roomPassword } = pendingInvitePayload;
+    if (elRoomInviteModal) elRoomInviteModal.style.display = 'none';
+    pendingInvitePayload = null;
+    joinRoomWithCode(roomCode, roomPassword);
+  });
+
+  btnRefreshOnlineFriends?.addEventListener('click', () => {
+    loadWaitingOnlineFriends();
+  });
+
+  window.addEventListener('keydown', (e) => {
+    if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || (e.target as any)?.isContentEditable) {
+      return;
+    }
+    if (e.key === 'Escape') {
+      if (airportConfirmModal && airportConfirmModal.style.display === 'flex') {
+        airportConfirmModal.style.display = 'none';
+        if (boardScene) boardScene.clearTileHighlight();
+      } else if (elAirportModal && elAirportModal.style.display === 'flex') {
+        elAirportModal.style.display = 'none';
+        const isAirportTurn = latestGameStateSnapshot?.turnState?.phase === 'AIRPORT_SELECT' &&
+                              latestGameStateSnapshot?.turnState?.currentUserId === socketClient.socket.id;
+        if (isAirportTurn && airportFloatingBar) {
+          airportFloatingBar.style.display = 'flex';
+        }
+      }
+    }
   });
 
   // Chat & Emotes functionality
@@ -1557,13 +1860,14 @@ function bindUIEvents() {
     elPropertyModal.style.display = 'none';
     const mode = currentPendingActionMode;
     const action = currentPendingTileAction;
+    const targetLevel = selectedDeedTargetLevel;
     currentPendingTileAction = null;
     currentPendingActionMode = null;
     if (action) {
       if (mode === 'BUYOUT') {
         socketClient.emit('game:buyout_property', { tileId: action.tileId });
       } else {
-        socketClient.emit('game:buy_property', { tileId: action.tileId });
+        socketClient.emit('game:buy_property', { tileId: action.tileId, targetLevel });
       }
     }
   });
@@ -1652,6 +1956,10 @@ function resetMatchAndReturnToLobby() {
   elVictoryModal.style.display = 'none';
   elLeaveMatchModal.style.display = 'none';
   elSettingsModal.style.display = 'none';
+  if (elRoomInviteModal) elRoomInviteModal.style.display = 'none';
+  if (waitingInviteBox) waitingInviteBox.style.display = 'none';
+  invitedFriendIdsInRoom.clear();
+  pendingInvitePayload = null;
   playerDiceSkinCache.clear();
   if (auctionCountdownInterval !== null) {
     clearInterval(auctionCountdownInterval);
@@ -1722,6 +2030,17 @@ function bindSocketEvents() {
     btnRestoreLobby.style.display = 'none';
     showWaitingLobby(data);
 
+    // Auto-invite checked online friends from create room modal
+    if (createRoomFriendsList) {
+      const checkedBoxes = Array.from(createRoomFriendsList.querySelectorAll<HTMLInputElement>('.create-room-friend-cb:checked'));
+      checkedBoxes.forEach(cb => {
+        socketClient.emit('room:invite_friend', { friendId: cb.value, roomCode: data.roomCode });
+      });
+      if (checkedBoxes.length > 0) {
+        showToast(`Đã gửi lời mời tự động tới ${checkedBoxes.length} bạn bè online! 💌`);
+      }
+    }
+
     if ((window as any)._autoFillBotsAndStart) {
       (window as any)._autoFillBotsAndStart = false;
       setTimeout(() => socketClient.emit('room:add_bot'), 300);
@@ -1744,6 +2063,27 @@ function bindSocketEvents() {
 
   socketClient.on('room:left', () => {
     resetMatchAndReturnToLobby();
+  });
+
+  socketClient.on('room:invite_received', (data: any) => {
+    pendingInvitePayload = data;
+    if (roomInviteSender) roomInviteSender.textContent = data.inviterName || 'Một người bạn';
+    if (roomInviteRoomName) roomInviteRoomName.textContent = data.roomName || 'Phòng Chơi';
+    if (roomInviteCode) roomInviteCode.textContent = data.roomCode || '';
+    sounds.playTurnNotification?.();
+    if (elRoomInviteModal) elRoomInviteModal.style.display = 'flex';
+  });
+
+  socketClient.on('room:invite_sent', (data: any) => {
+    if (data?.friendId) {
+      invitedFriendIdsInRoom.add(data.friendId);
+      const btn = waitingOnlineFriendsList?.querySelector<HTMLButtonElement>(`button[data-friend-id="${data.friendId}"]`);
+      if (btn) {
+        btn.disabled = true;
+        btn.className = 'btn-chunky btn-white btn-xs btn-invite-slot';
+        btn.textContent = 'Đã mời ✓';
+      }
+    }
   });
 
   socketClient.on('game:start', (data: any) => {
@@ -2196,6 +2536,9 @@ function setLoggedInUser(user: AuthUser) {
 
   inputUsername.value = user.username;
   inputUsername.readOnly = true;
+
+  socketClient.emit('user:identify', { userId: user.id, token: getAuthToken() });
+  fetchMyCustomizations().catch(() => {});
 }
 
 function setGuestMode() {
@@ -2421,8 +2764,6 @@ function switchProfileTab(tab: 'achievements' | 'frames' | 'custom') {
   if (paneProfileFrames) paneProfileFrames.style.display = tab === 'frames' ? 'block' : 'none';
   if (paneProfileCustom) paneProfileCustom.style.display = tab === 'custom' ? 'block' : 'none';
 }
-
-let cachedCustomizationsData: any = null;
 
 function renderProfileAvatarPicker() {
   if (!profileAvatarPicker || !currentUser) return;
@@ -2876,13 +3217,13 @@ function renderFriendsList(friends: any[]) {
           <div>
             <div style="font-weight:800;font-size:0.88rem;color:#2D3436;display:flex;align-items:center;gap:6px;">
               <span>${f.username}</span>
-              <span class="friend-status-dot online" title="Trực tuyến"></span>
+              <span class="friend-status-dot ${f.isOnline ? 'online' : 'offline'}" title="${f.isOnline ? 'Trực tuyến' : 'Ngoại tuyến'}"></span>
             </div>
             <div style="font-size:0.75rem;color:#636E72;">🪙 ${(f.gold_balance || 0).toLocaleString()} • Thắng: ${f.total_wins || 0}</div>
           </div>
         </div>
         <div style="display:flex;align-items:center;gap:6px;">
-          <button class="btn-chunky btn-primary btn-xs" onclick="window.inviteFriendToRoom('${f.username}')" title="Mời vào phòng chơi">
+          <button class="btn-chunky btn-primary btn-xs" onclick="window.inviteFriendToRoom('${f.username}', '${f.id}')" title="Mời vào phòng chơi">
             💌 Mời
           </button>
           <button class="btn-chunky btn-white btn-xs" onclick="window.removeFriendPrompt('${f.id}', '${f.username}')" title="Xóa bạn">
@@ -2894,10 +3235,15 @@ function renderFriendsList(friends: any[]) {
   }).join('');
 }
 
-(window as any).inviteFriendToRoom = (friendUsername: string) => {
+(window as any).inviteFriendToRoom = (friendUsername: string, friendId?: string) => {
   if (currentRoomCode) {
-    navigator.clipboard.writeText(currentRoomCode).catch(() => {});
-    showToast(`Đã sao chép mã phòng ${currentRoomCode} để gửi mời ${friendUsername}! 💌`);
+    if (friendId) {
+      socketClient.emit('room:invite_friend', { friendId, roomCode: currentRoomCode });
+      showToast(`Đã gửi lời mời trực tiếp tới ${friendUsername}! 💌`);
+    } else {
+      navigator.clipboard.writeText(currentRoomCode).catch(() => {});
+      showToast(`Đã sao chép mã phòng ${currentRoomCode} để gửi mời ${friendUsername}! 💌`);
+    }
   } else {
     showToast(`Bạn chưa tham gia phòng nào! Hãy tạo phòng hoặc vào phòng trước.`);
   }
@@ -3208,17 +3554,122 @@ function renderWaitingTokenSelector(currentToken: string) {
     const btn = document.createElement('button');
     btn.type = 'button';
     const isSelected = tKey === currentToken;
-    btn.className = `waiting-token-btn ${isSelected ? 'is-selected' : ''}`;
+    const unlocked = isTokenUnlocked(tKey);
+    const cost = TOKEN_COSTS[tKey] || 0;
+
+    btn.className = `waiting-token-btn ${isSelected ? 'is-selected' : ''} ${!unlocked ? 'is-locked' : ''}`;
     btn.innerHTML = `
       <span class="waiting-token-btn-icon">${TOKEN_ICONS[tKey] || '🚗'}</span>
       <span class="waiting-token-btn-name">${TOKEN_NAMES[tKey] || tKey}</span>
+      ${!unlocked ? `<span class="waiting-token-lock-badge">🔒 ${cost}🪙</span>` : ''}
     `;
+
     btn.addEventListener('click', () => {
+      if (!isTokenUnlocked(tKey)) {
+        sounds.playTap();
+        showToast(`🔒 Model ${TOKEN_NAMES[tKey] || tKey} đang bị khóa (${cost} Vàng)! Hãy mở khóa trong Hồ Sơ -> Nhân Vật & 3D.`);
+        return;
+      }
       socketClient.emit('room:select_token', { token: tKey });
       renderWaitingTokenSelector(tKey);
     });
     waitingTokenGrid.appendChild(btn);
   });
+}
+
+async function loadCreateRoomOnlineFriends() {
+  if (!createRoomFriendsBox || !createRoomFriendsList) return;
+  if (!currentUser) {
+    createRoomFriendsBox.style.display = 'none';
+    return;
+  }
+  createRoomFriendsBox.style.display = 'block';
+  createRoomFriendsList.innerHTML = '<div style="font-size:0.75rem;color:#B2BEC3;padding:4px 0;">Đang kiểm tra bạn bè online...</div>';
+  try {
+    const token = getAuthToken();
+    if (!token) return;
+    const res = await fetch('/api/friends', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    const friends = data.friends || [];
+    const onlineFriends = friends.filter((f: any) => Boolean(f.isOnline));
+    if (createRoomOnlineCount) {
+      createRoomOnlineCount.textContent = `(${onlineFriends.length} online)`;
+    }
+    if (onlineFriends.length === 0) {
+      createRoomFriendsList.innerHTML = '<div style="font-size:0.75rem;color:#B2BEC3;padding:4px 0;">Không có bạn bè nào đang trực tuyến.</div>';
+      return;
+    }
+    createRoomFriendsList.innerHTML = onlineFriends.map((f: any) => `
+      <label class="create-room-friend-item">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <input type="checkbox" value="${f.id}" class="create-room-friend-cb" />
+          <span>${f.username}</span>
+        </div>
+        <span class="badge-online">Online</span>
+      </label>
+    `).join('');
+  } catch (e) {
+    createRoomFriendsList.innerHTML = '<div style="font-size:0.75rem;color:#B2BEC3;">Không thể tải danh sách.</div>';
+  }
+}
+
+async function loadWaitingOnlineFriends() {
+  if (!waitingInviteBox || !waitingOnlineFriendsList) return;
+  if (!currentUser) {
+    waitingInviteBox.style.display = 'none';
+    return;
+  }
+  waitingInviteBox.style.display = 'block';
+  waitingOnlineFriendsList.innerHTML = '<div style="font-size:0.75rem;color:#B2BEC3;padding:4px 0;">Đang kiểm tra bạn bè online...</div>';
+  try {
+    const token = getAuthToken();
+    if (!token) return;
+    const res = await fetch('/api/friends', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    const friends = data.friends || [];
+    const onlineFriends = friends.filter((f: any) => Boolean(f.isOnline));
+    if (onlineFriends.length === 0) {
+      waitingOnlineFriendsList.innerHTML = '<div style="font-size:0.75rem;color:#B2BEC3;padding:4px 0;">Không có bạn bè nào đang trực tuyến.</div>';
+      return;
+    }
+    waitingOnlineFriendsList.innerHTML = onlineFriends.map((f: any) => {
+      const isInvited = invitedFriendIdsInRoom.has(f.id);
+      return `
+        <div class="waiting-friend-invite-row">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span>${f.username}</span>
+            <span class="badge-online">Online</span>
+          </div>
+          <button class="btn-chunky ${isInvited ? 'btn-white' : 'btn-primary'} btn-xs btn-invite-slot"
+            data-friend-id="${f.id}" data-friend-name="${f.username}" ${isInvited ? 'disabled' : ''} style="padding: 2px 10px; font-size: 0.75rem;">
+            ${isInvited ? 'Đã mời ✓' : 'Mời 💌'}
+          </button>
+        </div>
+      `;
+    }).join('');
+
+    waitingOnlineFriendsList.querySelectorAll<HTMLButtonElement>('.btn-invite-slot').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const friendId = btn.dataset.friendId;
+        const friendName = btn.dataset.friendName;
+        if (!friendId || !currentRoomCode) return;
+        socketClient.emit('room:invite_friend', { friendId, roomCode: currentRoomCode });
+        invitedFriendIdsInRoom.add(friendId);
+        btn.disabled = true;
+        btn.className = 'btn-chunky btn-white btn-xs btn-invite-slot';
+        btn.textContent = 'Đã mời ✓';
+        showToast(`Đã gửi lời mời tới ${friendName || 'bạn bè'}! 💌`);
+      });
+    });
+  } catch (e) {
+    waitingOnlineFriendsList.innerHTML = '<div style="font-size:0.75rem;color:#B2BEC3;">Không thể tải danh sách.</div>';
+  }
 }
 
 function syncWaitingLobby(data: any) {
@@ -3291,6 +3742,7 @@ function syncWaitingLobby(data: any) {
 
   renderWaitingTokenSelector(me?.token || 'car');
   renderWaitingSlots(players, maxPlayers);
+  loadWaitingOnlineFriends();
 }
 
 function showWaitingLobby(data: any) {
@@ -3463,7 +3915,7 @@ function checkMyTurn(snapshot?: any) {
       } else if (phase === 'FESTIVAL_SELECT') {
         turnStatusText.textContent = '🎪 Hãy chọn 1 bất động sản để tổ chức Lễ Hội x2!';
       } else if (phase === 'AIRPORT_SELECT') {
-        turnStatusText.textContent = '✈️ Đang chọn điểm đến chuyến bay...';
+        turnStatusText.textContent = '✈️ Chế độ chọn chuyến bay: Bấm trực tiếp vào ô cờ 3D để cất cánh!';
       } else if (phase === 'AUCTION') {
         turnStatusText.textContent = '🔨 Đang diễn ra phiên Đấu Giá Công Khai!';
       } else {
@@ -3538,8 +3990,9 @@ function checkMyTurn(snapshot?: any) {
       btnEndTurn.style.display = 'none';
       btnPayJailFine.style.display = 'none';
       btnUseJailCard.style.display = 'none';
-      if (elAirportModal.style.display !== 'flex' && airportFloatingBar.style.display !== 'flex') {
-        showAirportModal();
+      closeTileInspector();
+      if (elAirportModal.style.display !== 'flex' && airportConfirmModal.style.display !== 'flex') {
+        if (airportFloatingBar) airportFloatingBar.style.display = 'flex';
       }
     } else if (phase === 'FESTIVAL_SELECT') {
       btnRollDice.style.display = 'none';
@@ -3582,6 +4035,11 @@ function checkMyTurn(snapshot?: any) {
       btnUseJailCard.style.display = 'none';
       btnEndTurn.style.display = 'inline-flex';
       btnEndTurn.innerHTML = `<span>⏩</span><span>KẾT THÚC LƯỢT</span>`;
+
+      if (turnStatusText) {
+        turnStatusText.textContent = '💡 Bạn có thể nhấp vào ô đất của mình trên bàn cờ 3D để nâng cấp công trình trước khi kết thúc lượt!';
+      }
+
       if (btnOpenTrade) {
         const hasPartner = (snap.players || []).some((p: any) => p.id !== socketClient.socket.id && !p.isBankrupt);
         btnOpenTrade.style.display = hasPartner ? 'inline-flex' : 'none';
@@ -3602,7 +4060,15 @@ function checkMyTurn(snapshot?: any) {
   }
 }
 
-function populatePropertyDeedModal(tileId: number, costLabel: string, badgeLabel: string, descText: string, btnLabel: string, canAfford: boolean) {
+function populatePropertyDeedModal(
+  tileId: number,
+  costLabel: string,
+  badgeLabel: string,
+  descText: string,
+  btnLabel: string,
+  canAfford: boolean,
+  actionType: 'CAN_BUY' | 'CAN_UPGRADE' | 'BUYOUT' = 'CAN_BUY'
+) {
   const tile = boardTilesData && boardTilesData[tileId];
   const color = (tile && tile.districtColor) ? tile.districtColor : '#00B894';
   propColorBar.style.background = `linear-gradient(135deg, ${color}, #2D3436)`;
@@ -3610,18 +4076,222 @@ function populatePropertyDeedModal(tileId: number, costLabel: string, badgeLabel
   if (propBadge) propBadge.textContent = badgeLabel;
   propPrice.textContent = costLabel;
   propDesc.textContent = descText;
-  btnConfirmBuy.textContent = btnLabel;
-  btnConfirmBuy.style.display = canAfford ? 'inline-block' : 'none';
 
-  if (propRentPreview && tile && (tile.type === 'PROPERTY' || tile.type === 'RAILROAD' || tile.type === 'UTILITY')) {
-    propRentPreview.style.display = 'grid';
-    propRentPreview.innerHTML = `
-      <div class="prop-rent-chip"><span>Thuê cơ bản</span><b>${tile.baseRent || 25}M</b></div>
-      <div class="prop-rent-chip"><span>🏠 1-2 Nhà</span><b>${tile.rentHouse1 || 100}M - ${tile.rentHouse2 || 250}M</b></div>
-      <div class="prop-rent-chip"><span>🏨 Khách Sạn</span><b>${tile.rentHotel || 600}M</b></div>
-    `;
-  } else if (propRentPreview) {
-    propRentPreview.style.display = 'none';
+  const myId = socketClient.socket?.id || '';
+  const myPlayer = latestPlayersSnapshot.find(p => p.id === myId);
+  const myCash = myPlayer?.balance ?? 0;
+  const toursCompleted = myPlayer?.toursCompleted || 0;
+
+  // 1. BUYOUT mode or Non-PROPERTY tiles (RAILROAD, UTILITY)
+  if (actionType === 'BUYOUT' || !tile || tile.type !== 'PROPERTY') {
+    if (propBuildOptionsContainer) propBuildOptionsContainer.style.display = 'none';
+    selectedDeedTargetLevel = 0;
+    btnConfirmBuy.textContent = btnLabel;
+    btnConfirmBuy.style.display = canAfford ? 'inline-block' : 'none';
+    btnConfirmBuy.disabled = !canAfford;
+
+    if (propRentPreview && tile && (tile.type === 'RAILROAD' || tile.type === 'UTILITY')) {
+      propRentPreview.style.display = 'grid';
+      propRentPreview.innerHTML = `
+        <div class="prop-rent-chip"><span>Thuê cơ bản</span><b>${tile.baseRent || 25}M</b></div>
+        <div class="prop-rent-chip"><span>2-3 Bến/Ga</span><b>${(tile.baseRent || 25) * 2}M - ${(tile.baseRent || 25) * 4}M</b></div>
+        <div class="prop-rent-chip"><span>Trọn Bộ 4 Ga</span><b>${(tile.baseRent || 25) * 8}M</b></div>
+      `;
+    } else if (propRentPreview) {
+      propRentPreview.style.display = 'none';
+    }
+    return;
+  }
+
+  // 2. Business Tour Multi-Tier Build Selector for PROPERTY
+  if (propRentPreview) propRentPreview.style.display = 'none';
+
+  const prop = latestPropertiesSnapshot.find(p => p.tileId === tileId);
+  const currentLevel = prop ? prop.level : -1; // -1 means unowned / fresh buy
+  const houseCost = tile.houseCost || 100;
+  const basePrice = tile.price || 0;
+
+  // District monopoly calculation for rent
+  const districtTiles = tile.district
+    ? boardTilesData.filter(t => t.district === tile.district && t.type === 'PROPERTY')
+    : [];
+  const ownedCount = districtTiles.filter(t => {
+    const p = latestPropertiesSnapshot.find(pr => pr.tileId === t.id);
+    return p && p.ownerId === myId;
+  }).length;
+  const willOwnCount = currentLevel === -1 ? ownedCount + 1 : ownedCount;
+  const ownsMonopoly = districtTiles.length > 0 && willOwnCount === districtTiles.length;
+  const isFestival = latestGameStateSnapshot?.festivalTileId === tileId;
+
+  // Standard Business Tour Tier Metadata
+  const tierMeta: Record<number, { icon: string; name: string; badge: string }> = {
+    0: { icon: '🏕️', name: 'Đất trống', badge: 'Đất nền' },
+    1: { icon: '🏠', name: '1 Nhà', badge: '+1 Cấp' },
+    2: { icon: '🏠🏠', name: '2 Nhà', badge: '+2 Cấp' },
+    3: { icon: '🏢', name: 'Căn Hộ', badge: 'Apartment' },
+    4: { icon: '🏨', name: 'Khách Sạn', badge: 'Hotel (Bất tử)' }
+  };
+
+  interface TierOption {
+    targetLevel: number;
+    cost: number;
+    rent: number;
+    isLocked: boolean;
+    lockReason?: string;
+  }
+
+  const tierOptions: TierOption[] = [];
+
+  if (currentLevel === -1) {
+    // Mua đất trống: tối đa 2 nhà (cấp 0, 1, 2)
+    for (let l = 0; l <= 2; l++) {
+      const cost = basePrice + l * houseCost;
+      const rent = getRentForTileAtLevel(tile, l, ownsMonopoly, isFestival);
+      tierOptions.push({
+        targetLevel: l,
+        cost,
+        rent,
+        isLocked: false
+      });
+    }
+  } else {
+    // Nâng cấp đất của mình khi dừng chân
+    const candidateLevels: number[] = [];
+    if (currentLevel === 0) candidateLevels.push(1, 2, 3);
+    else if (currentLevel === 1) candidateLevels.push(2, 3);
+    else if (currentLevel === 2) candidateLevels.push(3, 4);
+    else if (currentLevel === 3) candidateLevels.push(4);
+
+    for (const l of candidateLevels) {
+      const cost = (l - currentLevel) * houseCost;
+      const rent = getRentForTileAtLevel(tile, l, ownsMonopoly, isFestival);
+      let isLocked = false;
+      let lockReason = '';
+
+      if (l === 3 && toursCompleted === 0) {
+        isLocked = true;
+        lockReason = 'Mở khóa sau vòng 1';
+      } else if (l === 4 && currentLevel < 3) {
+        isLocked = true;
+        lockReason = 'Cần có Căn Hộ & dừng lại lần sau';
+      }
+
+      tierOptions.push({
+        targetLevel: l,
+        cost,
+        rent,
+        isLocked,
+        lockReason
+      });
+    }
+  }
+
+  // Chọn mặc định: chọn cấp hợp lệ có thể chi trả được, hoặc cấp mở đầu tiên
+  const defaultOption = tierOptions.find(opt => !opt.isLocked && myCash >= opt.cost) ||
+                        tierOptions.find(opt => !opt.isLocked) ||
+                        tierOptions[0];
+  selectedDeedTargetLevel = defaultOption ? defaultOption.targetLevel : 0;
+
+  if (propBuildOptionsContainer && propBuildTierGrid) {
+    propBuildOptionsContainer.style.display = 'block';
+    if (propBuildCashHint) {
+      propBuildCashHint.textContent = toursCompleted > 0
+        ? `Vòng ${toursCompleted + 1} • Số dư: ${myCash}M`
+        : `Vòng 1 (Khởi hành) • Số dư: ${myCash}M`;
+    }
+
+    const updateSelectionUI = (targetLevel: number) => {
+      const opt = tierOptions.find(o => o.targetLevel === targetLevel);
+      if (!opt) return;
+
+      selectedDeedTargetLevel = targetLevel;
+      const targetCost = opt.cost;
+      const isAffordable = myCash >= targetCost;
+      const canBuy = !opt.isLocked && isAffordable;
+
+      propPrice.textContent = `Tổng chi phí: ${targetCost}M`;
+      if (currentLevel === -1) {
+        if (targetLevel === 0) {
+          btnConfirmBuy.textContent = `Mua Đất (${targetCost}M)`;
+        } else {
+          btnConfirmBuy.textContent = `Mua + ${targetLevel} Nhà (${targetCost}M)`;
+        }
+      } else {
+        const meta = tierMeta[targetLevel];
+        btnConfirmBuy.textContent = `Nâng Cấp ${meta?.name || `Cấp ${targetLevel}`} (${targetCost}M)`;
+      }
+
+      btnConfirmBuy.style.display = 'inline-block';
+      btnConfirmBuy.disabled = !canBuy;
+      if (opt.isLocked) {
+        btnConfirmBuy.textContent = `🔒 ${opt.lockReason}`;
+      } else if (!isAffordable) {
+        btnConfirmBuy.textContent = `Thiếu tiền (${targetCost}M / ${myCash}M)`;
+      }
+
+      propBuildTierGrid.querySelectorAll('.prop-tier-card').forEach((card) => {
+        const lvl = parseInt(card.getAttribute('data-target-level') || '-1', 10);
+        if (lvl === targetLevel) {
+          card.classList.add('active');
+        } else {
+          card.classList.remove('active');
+        }
+      });
+    };
+
+    let gridHtml = '';
+    for (const opt of tierOptions) {
+      const meta = tierMeta[opt.targetLevel] || { icon: '🏗️', name: `Cấp ${opt.targetLevel}`, badge: '' };
+      const isAffordable = myCash >= opt.cost;
+      const isActive = opt.targetLevel === selectedDeedTargetLevel;
+      const isDisabled = opt.isLocked || !isAffordable;
+      const badgeText = opt.isLocked ? `🔒 ${opt.lockReason}` : meta.badge;
+
+      gridHtml += `
+        <div class="prop-tier-card ${isActive ? 'active' : ''} ${isDisabled ? 'disabled' : ''}" 
+             data-target-level="${opt.targetLevel}" 
+             data-cost="${opt.cost}"
+             data-locked="${opt.isLocked ? 'true' : 'false'}"
+             data-lock-reason="${opt.lockReason || ''}">
+          <span class="prop-tier-badge" style="${opt.isLocked ? 'background: #636E72;' : ''}">${badgeText}</span>
+          <div class="prop-tier-top">
+            <span class="prop-tier-icon">${meta.icon}</span>
+            <span class="prop-tier-level-name">${meta.name}</span>
+          </div>
+          <div class="prop-tier-rent">Thuê: <strong>${opt.rent}M</strong>${ownsMonopoly && opt.targetLevel === 0 ? ' (x2)' : ''}</div>
+          <div class="prop-tier-cost">${opt.cost}M</div>
+        </div>
+      `;
+    }
+
+    propBuildTierGrid.innerHTML = gridHtml;
+
+    propBuildTierGrid.querySelectorAll('.prop-tier-card').forEach((card) => {
+      card.addEventListener('click', () => {
+        const tLevel = parseInt(card.getAttribute('data-target-level') || '-1', 10);
+        const cost = parseInt(card.getAttribute('data-cost') || '0', 10);
+        const isLocked = card.getAttribute('data-locked') === 'true';
+        const lockReason = card.getAttribute('data-lock-reason');
+
+        if (isLocked) {
+          sounds.playCardChime();
+          showToast(`🔒 Chưa thể nâng lên cấp này: ${lockReason}`);
+          return;
+        }
+
+        if (tLevel >= 0) {
+          if (myCash < cost) {
+            sounds.playCardChime();
+            showToast(`⚠️ Không đủ tiền: Cần ${cost}M, bạn đang có ${myCash}M.`);
+            return;
+          }
+          sounds.playTap();
+          updateSelectionUI(tLevel);
+        }
+      });
+    });
+
+    updateSelectionUI(selectedDeedTargetLevel);
   }
 }
 
@@ -3637,22 +4307,24 @@ function handleTileActionResult(action: any, isMe: boolean, player: any, pos: an
       action.tileId,
       `Giá sở hữu: ${action.cost}M`,
       `SỔ ĐỎ ĐỊA DANH • Ô #${action.tileId}`,
-      `${sub}. Sở hữu ngay lô đất này để thu tiền thuê từ mọi đối thủ đi ngang qua!`,
+      `${sub}. Sở hữu ngay lô đất này và chọn xây thêm công trình để tối ưu hóa thu nhập!`,
       `Mua Đất (${action.cost}M)`,
-      action.canAfford
+      action.canAfford,
+      'CAN_BUY'
     );
     elPropertyModal.style.display = 'flex';
   } else if (action.type === 'CAN_UPGRADE' && isMe) {
     currentPendingTileAction = action;
     currentPendingActionMode = 'BUY';
-    propTitle.textContent = `${action.tileName} (Lên Cấp ${action.level})`;
+    propTitle.textContent = `${action.tileName} (Nâng Cấp)`;
     populatePropertyDeedModal(
       action.tileId,
       `Chi phí nâng cấp: ${action.cost}M`,
-      `NÂNG CẤP CÔNG TRÌNH • CẤP ${action.level}`,
+      `NÂNG CẤP CÔNG TRÌNH • Ô #${action.tileId}`,
       `Nâng cấp công trình kiến trúc trên ô đất của bạn để nhân gấp bội tiền thuê!`,
       `Nâng Cấp (${action.cost}M)`,
-      action.canAfford
+      action.canAfford,
+      'CAN_UPGRADE'
     );
     elPropertyModal.style.display = 'flex';
   } else if (action.type === 'PAY_RENT' || action.type === 'RENT_WAIVED' || action.type === 'PAY_RENT_AND_CAN_BUYOUT' || action.type === 'RENT_WAIVED_AND_CAN_BUYOUT') {
@@ -3678,7 +4350,8 @@ function handleTileActionResult(action: any, isMe: boolean, player: any, pos: an
         `MUA LẠI BẤT ĐỘNG SẢN • Ô #${action.tileId}`,
         `Bạn có quyền chi ${action.buyoutCost}M để mua lại ngay ô đất của ${action.ownerName}!`,
         `Mua Lại (${action.buyoutCost}M)`,
-        true
+        true,
+        'BUYOUT'
       );
       elPropertyModal.style.display = 'flex';
     }
@@ -3713,12 +4386,13 @@ function handleTileActionResult(action: any, isMe: boolean, player: any, pos: an
     boardScene.vfxManager.spawnStarBurst(pos, 24);
     showToast(`✈️ ${player.username} đáp Sân Bay Quốc Tế!`);
     if (isMe) {
-      showAirportModal();
+      activateAirportBoardSelection();
     }
   } else if (action.type === 'GO_TO_JAIL') {
     sounds.playJailSlam();
     boardScene.vfxManager.triggerCameraShake(0.4);
     boardScene.vfxManager.spawnFloatingText('VÀO TÙ 🔒', pos, false);
+    showToast(`🔒 ${player.username} đã bị vào tù!`);
   } else if (action.type === 'BANKRUPT') {
     sounds.playBankrupt();
     boardScene.vfxManager.triggerCameraShake(0.5);

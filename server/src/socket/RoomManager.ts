@@ -26,6 +26,7 @@ export class RoomManager {
   private rooms: Map<string, RoomInfo> = new Map(); // key: roomCode
   private userToRoom: Map<string, string> = new Map(); // key: socketId -> roomCode
   private socketToUserId: Map<string, string> = new Map(); // socketId -> registered userId
+  private onlineSocketsByUserId: Map<string, Set<string>> = new Map(); // userId -> Set<socketId>
 
   constructor(io: Server) {
     this.io = io;
@@ -33,7 +34,51 @@ export class RoomManager {
   }
 
   public setSocketUser(socketId: string, userId: string) {
+    const oldUserId = this.socketToUserId.get(socketId);
+    if (oldUserId && oldUserId !== userId) {
+      this.removeOnlineSocket(socketId);
+    }
     this.socketToUserId.set(socketId, userId);
+    let socketSet = this.onlineSocketsByUserId.get(userId);
+    if (!socketSet) {
+      socketSet = new Set();
+      this.onlineSocketsByUserId.set(userId, socketSet);
+    }
+    socketSet.add(socketId);
+  }
+
+  public removeOnlineSocket(socketId: string) {
+    const userId = this.socketToUserId.get(socketId);
+    if (userId) {
+      const socketSet = this.onlineSocketsByUserId.get(userId);
+      if (socketSet) {
+        socketSet.delete(socketId);
+        if (socketSet.size === 0) {
+          this.onlineSocketsByUserId.delete(userId);
+        }
+      }
+      this.socketToUserId.delete(socketId);
+    }
+  }
+
+  public isUserOnline(userId: string): boolean {
+    const socketSet = this.onlineSocketsByUserId.get(userId);
+    return !!socketSet && socketSet.size > 0;
+  }
+
+  public getUserRoomCode(userId: string): string | undefined {
+    const socketSet = this.onlineSocketsByUserId.get(userId);
+    if (!socketSet) return undefined;
+    for (const sid of socketSet) {
+      const rCode = this.userToRoom.get(sid);
+      if (rCode) return rCode;
+    }
+    return undefined;
+  }
+
+  public getOnlineSocketsForUser(userId: string): string[] {
+    const socketSet = this.onlineSocketsByUserId.get(userId);
+    return socketSet ? Array.from(socketSet) : [];
   }
 
   public generateRoomCode(): string {
@@ -57,6 +102,7 @@ export class RoomManager {
       initialCash?: number;
       turnTimeout?: number;
       frame?: string;
+      token?: string;
     }
   ): RoomInfo {
     const roomCode = this.generateRoomCode();
@@ -82,13 +128,19 @@ export class RoomManager {
     this.userToRoom.set(socket.id, roomCode);
     let userFrame = payload.frame || 'frame_default';
     let customization: PlayerCustomization | undefined;
-    if (payload.userId) {
-      this.socketToUserId.set(socket.id, payload.userId);
-      const user = dbService.getUserById(payload.userId);
+    const userId = payload.userId || null;
+    let preferredToken: TokenType = (payload.token as TokenType) || 'car';
+
+    if (userId) {
+      this.setSocketUser(socket.id, userId);
+      const user = dbService.getUserById(userId);
       if (user) {
         if (user.equipped_frame) userFrame = user.equipped_frame;
+        if (!payload.token && user.equipped_token) {
+          preferredToken = user.equipped_token as TokenType;
+        }
         customization = {
-          token: (user.equipped_token as TokenType) || 'car',
+          token: preferredToken,
           diceSkin: user.equipped_dice || 'dice_ivory',
           trailEffect: user.equipped_trail || 'trail_default',
           title: user.equipped_title || 'title_rookie',
@@ -97,6 +149,16 @@ export class RoomManager {
         };
       }
     }
+
+    if (!dbService.isTokenUnlocked(userId, preferredToken)) {
+      preferredToken = 'car';
+    }
+    if (customization) {
+      customization.token = preferredToken;
+    } else {
+      customization = { token: preferredToken };
+    }
+
     socket.join(roomCode);
 
     // Host joins as first player
@@ -107,7 +169,7 @@ export class RoomManager {
 
   public joinRoom(
     socket: Socket,
-    payload: { roomCode: string; username: string; userId?: string; password?: string; frame?: string }
+    payload: { roomCode: string; username: string; userId?: string; password?: string; frame?: string; token?: string }
   ): { success: boolean; room?: RoomInfo; error?: string } {
     const room = this.rooms.get(payload.roomCode.toUpperCase());
     if (!room) {
@@ -129,13 +191,19 @@ export class RoomManager {
     this.userToRoom.set(socket.id, room.roomCode);
     let userFrame = payload.frame || 'frame_default';
     let customization: PlayerCustomization | undefined;
-    if (payload.userId) {
-      this.socketToUserId.set(socket.id, payload.userId);
-      const user = dbService.getUserById(payload.userId);
+    const userId = payload.userId || null;
+    let preferredToken: TokenType = (payload.token as TokenType) || 'car';
+
+    if (userId) {
+      this.setSocketUser(socket.id, userId);
+      const user = dbService.getUserById(userId);
       if (user) {
         if (user.equipped_frame) userFrame = user.equipped_frame;
+        if (!payload.token && user.equipped_token) {
+          preferredToken = user.equipped_token as TokenType;
+        }
         customization = {
-          token: (user.equipped_token as TokenType) || 'car',
+          token: preferredToken,
           diceSkin: user.equipped_dice || 'dice_ivory',
           trailEffect: user.equipped_trail || 'trail_default',
           title: user.equipped_title || 'title_rookie',
@@ -144,6 +212,16 @@ export class RoomManager {
         };
       }
     }
+
+    if (!dbService.isTokenUnlocked(userId, preferredToken)) {
+      preferredToken = 'car';
+    }
+    if (customization) {
+      customization.token = preferredToken;
+    } else {
+      customization = { token: preferredToken };
+    }
+
     socket.join(room.roomCode);
 
     const player = room.engine.addPlayer(socket.id, socket.id, payload.username, false, room.initialCash, userFrame, customization);
@@ -224,12 +302,83 @@ export class RoomManager {
       return { success: false, error: 'Model nhân vật không hợp lệ' };
     }
 
+    const userId = this.socketToUserId.get(socket.id) || null;
+    if (!dbService.isTokenUnlocked(userId, token)) {
+      const errorMsg = 'Model nhân vật này đang bị khóa! Hãy mở khóa bằng Vàng trong Hồ Sơ.';
+      socket.emit('error:message', { message: errorMsg });
+      return { success: false, error: errorMsg };
+    }
+
     const player = room.engine.players.find(p => p.id === socket.id || p.socketId === socket.id);
     if (!player) return { success: false, error: 'Không tìm thấy người chơi' };
 
     player.token = token as TokenType;
     this.broadcastRoomUpdate(room);
     return { success: true, token: player.token };
+  }
+
+  public handleInviteFriend(
+    socket: Socket,
+    data: { friendId: string; roomCode?: string }
+  ): { success: boolean; error?: string } {
+    if (!data?.friendId) {
+      const err = 'Thiếu friendId để mời';
+      socket.emit('error:message', { message: err });
+      return { success: false, error: err };
+    }
+
+    const roomCode = data.roomCode || this.userToRoom.get(socket.id);
+    if (!roomCode) {
+      const err = 'Bạn không ở trong phòng nào';
+      socket.emit('error:message', { message: err });
+      return { success: false, error: err };
+    }
+
+    const room = this.rooms.get(roomCode.toUpperCase());
+    if (!room || !room.engine) {
+      const err = 'Phòng không tồn tại';
+      socket.emit('error:message', { message: err });
+      return { success: false, error: err };
+    }
+
+    if (room.status !== 'WAITING') {
+      const err = 'Trận đấu trong phòng này đã bắt đầu';
+      socket.emit('error:message', { message: err });
+      return { success: false, error: err };
+    }
+
+    if (room.engine.players.length >= room.maxPlayers) {
+      const err = 'Phòng đã đủ số lượng người chơi';
+      socket.emit('error:message', { message: err });
+      return { success: false, error: err };
+    }
+
+    const inviter = room.engine.players.find(p => p.id === socket.id || p.socketId === socket.id);
+    const inviterName = inviter?.username || 'Bạn của bạn';
+    const inviterId = this.socketToUserId.get(socket.id) || socket.id;
+
+    const targetSockets = this.getOnlineSocketsForUser(data.friendId);
+    if (targetSockets.length === 0) {
+      const err = 'Người bạn này hiện không online';
+      socket.emit('error:message', { message: err });
+      return { success: false, error: err };
+    }
+
+    const invitePayload = {
+      roomCode: room.roomCode,
+      roomName: room.name,
+      inviterId,
+      inviterName,
+      isProtected: Boolean(room.password),
+      roomPassword: room.password || undefined
+    };
+
+    for (const sid of targetSockets) {
+      this.io.to(sid).emit('room:invite_received', invitePayload);
+    }
+
+    socket.emit('room:invite_sent', { success: true, friendId: data.friendId, roomCode: room.roomCode });
+    return { success: true };
   }
 
   public startGame(socket: Socket): { success: boolean; error?: string } {
@@ -378,14 +527,14 @@ export class RoomManager {
     }
   }
 
-  public handleBuyProperty(socket: Socket, tileId: number) {
+  public handleBuyProperty(socket: Socket, tileId: number, targetLevel?: number) {
     const roomCode = this.userToRoom.get(socket.id);
     if (!roomCode) return;
     const room = this.rooms.get(roomCode);
     if (!room || !room.engine || room.status !== 'PLAYING') return;
 
     const player = room.engine.players.find(p => p.id === socket.id);
-    const result = room.engine.buyProperty(socket.id, tileId);
+    const result = room.engine.buyProperty(socket.id, tileId, targetLevel);
     if (result.success) {
       if (player) {
         AchievementEngine.onPropertyBought(
@@ -986,7 +1135,7 @@ export class RoomManager {
             }
           } catch (e) {}
         } else if (action === 'BUY_PROPERTY') {
-          const res = room.engine!.buyProperty(curPlayer.id, payload.tileId);
+          const res = room.engine!.buyProperty(curPlayer.id, payload.tileId, payload?.targetLevel);
           if (res.success) {
             AchievementEngine.onPropertyBought(
               room.roomCode,
@@ -1168,6 +1317,7 @@ export class RoomManager {
   }
 
   public handleDisconnect(socket: Socket) {
+    this.removeOnlineSocket(socket.id);
     const roomCode = this.userToRoom.get(socket.id);
     if (!roomCode) return;
 

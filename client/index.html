@@ -36,7 +36,7 @@
               <img id="header-user-avatar" class="header-avatar-thumb" src="https://api.dicebear.com/7.x/bottts/svg?seed=TyPhu" alt="Avatar" />
               <div class="auth-user-text">
                 <span id="header-user-name" class="header-username">Tỷ Phú</span>
-                <span id="header-user-gold" class="badge-gold">🪙 10,000</span>
+                <span id="header-user-gold" class="badge-gold">🪙 0</span>
               </div>
             </div>
             <div class="auth-actions-group">
@@ -151,6 +151,18 @@
                 style="width: 100%; padding: 10px 14px; border-radius: 12px; border: 2px solid #DFE6E9; font-weight: 700; font-family: inherit;" />
             </div>
           </div>
+
+          <!-- Online Friends Invite in Create Room -->
+          <div id="create-room-friends-box" style="display: none; border-top: 1px solid #DFE6E9; padding-top: 10px;">
+            <label style="font-weight: 700; font-size: 0.8rem; color: #636E72; display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+              <span>👥 MỜI BẠN BÈ ĐANG ONLINE</span>
+              <span id="create-room-online-count" style="color: #00B894; font-size: 0.75rem;">(0 online)</span>
+            </label>
+            <div id="create-room-friends-list" class="create-room-friends-list">
+              <!-- Injected online friends checkboxes -->
+            </div>
+          </div>
+
           <div style="display: flex; gap: 10px; margin-top: 14px;">
             <button id="btn-cancel-create" class="btn-chunky btn-white" style="flex: 1;">Hủy</button>
             <button id="btn-confirm-create" class="btn-chunky btn-primary" style="flex: 1;">Tạo Phòng</button>
@@ -194,6 +206,20 @@
           </div>
           <div id="waiting-token-grid" class="waiting-token-grid">
             <!-- 10 tokens injected -->
+          </div>
+        </div>
+
+        <!-- Online Friends Invite Box in Waiting Room -->
+        <div id="waiting-invite-box" class="waiting-invite-box" style="display: none;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <div style="font-size: 0.78rem; font-weight: 800; color: #2D3436; display: flex; align-items: center; gap: 6px;">
+              <span>📨</span>
+              <span>MỜI BẠN BÈ ONLINE VÀO PHÒNG:</span>
+            </div>
+            <button id="btn-refresh-online-friends" class="btn-chunky btn-white btn-xs" type="button" style="padding: 2px 8px; font-size: 0.72rem;">🔄 Làm mới</button>
+          </div>
+          <div id="waiting-online-friends-list" class="waiting-online-friends-list">
+            <!-- Injected online friends with [Mời] button -->
           </div>
         </div>
 
@@ -347,8 +373,20 @@
         </div>
         <div id="prop-price" class="prop-deed-price">Giá: 300M</div>
         <p id="prop-desc" class="prop-deed-desc">Bạn đã dừng chân tại ô đất trống này. Bạn có muốn mua để bắt đầu thu tiền thuê?</p>
+        
+        <!-- Multi-tier Building Selector (Business Tour) -->
+        <div id="prop-build-options-container" class="prop-build-options" style="display: none;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <span style="font-size: 0.78rem; font-weight: 800; color: #2D3436; text-transform: uppercase;">
+              🏗️ Chọn cấp độ công trình muốn xây ngay:
+            </span>
+            <span id="prop-build-cash-hint" style="font-size: 0.74rem; font-weight: 800; color: #0984E3;"></span>
+          </div>
+          <div id="prop-build-tier-grid" class="prop-build-tier-grid"></div>
+        </div>
+
         <div id="prop-rent-preview" class="prop-rent-strip"></div>
-        <div style="display: flex; gap: 12px;">
+        <div style="display: flex; gap: 12px; margin-top: 10px;">
           <button id="btn-skip-buy" class="btn-chunky btn-white" style="flex: 1;">Bỏ Qua</button>
           <button id="btn-confirm-buy" class="btn-chunky btn-primary" style="flex: 1.4;">Mua Đất (300M)</button>
         </div>
@@ -488,11 +526,11 @@
               <b id="inspector-rent-h2">450M</b>
             </div>
             <div class="rent-row" id="rent-row-3">
-              <span>🏠🏠🏠 3 Nhà:</span>
+              <span>🏢 Căn Hộ:</span>
               <b id="inspector-rent-h3">1200M</b>
             </div>
             <div class="rent-row" id="rent-row-4">
-              <span>🏨 Khách sạn:</span>
+              <span>🏨 Khách Sạn:</span>
               <b id="inspector-rent-hotel">1650M</b>
             </div>
           </div>
@@ -507,6 +545,8 @@
               <span>🏗️</span>
               <span id="inspector-upgrade-label">Nâng Cấp Công Trình</span>
             </button>
+            <div id="inspector-upgrade-rent-diff" style="font-size: 0.76rem; font-weight: 800; color: #00B894; text-align: center; margin-top: 4px; display: none;"></div>
+            <div id="inspector-upgrade-hint" class="inspector-upgrade-hint" style="display: none;"></div>
           </div>
         </div>
 
@@ -579,22 +619,39 @@
       </div>
     </div>
 
-    <!-- AIRPORT FLOATING BAR (Hiển thị khi đang ở Sân Bay và người chơi muốn ngắm bàn cờ 3D để chọn ô) -->
-    <div id="airport-floating-bar" class="interactive glass-panel" style="display: none; position: fixed; top: 18px; left: 50%; transform: translateX(-50%); z-index: 105; padding: 10px 18px; border-radius: 9999px; border: 2px solid #0984E3; box-shadow: 0 10px 25px rgba(9, 132, 227, 0.25); align-items: center; gap: 12px;">
-      <span style="font-size: 1.2rem;">✈️</span>
-      <span style="font-size: 0.85rem; font-weight: 800; color: #2D3436;">Nhấp vào ô cờ 3D muốn bay đến (trừ Sân Bay)</span>
-      <button id="btn-airport-reopen-list" class="btn-chunky btn-primary" style="padding: 4px 12px; font-size: 0.78rem; background: #0984E3;">Mở Danh Sách</button>
+    <!-- AIRPORT FLOATING BAR (Chế độ chọn trực tiếp điểm đến trên bàn cờ 3D) -->
+    <div id="airport-floating-bar" class="interactive glass-panel airport-floating-bar" style="display: none;">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span style="font-size: 1.3rem;">✈️</span>
+        <span style="font-size: 0.88rem; font-weight: 800; color: #2D3436;">
+          <strong style="color: #0984E3;">CHẾ ĐỘ CHỌN CHUYẾN BAY:</strong> Hãy bấm trực tiếp vào ô bất kỳ trên bàn cờ 3D để bay tới!
+        </span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <button id="btn-airport-floating-go" class="btn-chunky btn-emerald" type="button" style="padding: 6px 14px; font-size: 0.82rem; white-space: nowrap; font-weight: 800;">
+          🚩 Bay Về Khởi Hành (GO)
+        </button>
+        <button id="btn-airport-reopen-list" class="btn-chunky btn-primary" type="button" style="padding: 6px 14px; font-size: 0.82rem; background: #0984E3; white-space: nowrap; font-weight: 800;">
+          📋 Mở Danh Sách
+        </button>
+      </div>
     </div>
 
     <!-- AIRPORT CONFIRM MODAL (Xác nhận khi nhấp ô 3D) -->
-    <div id="airport-confirm-modal" class="interactive modal-overlay" style="display: none; align-items: flex-end; padding-bottom: 24px;">
-      <div class="glass-panel modal-content" style="max-width: 420px; border: 3px solid #0984E3; padding: 20px; text-align: center;">
-        <span style="font-size: 2.2rem; display: block; margin-bottom: 6px;">🛫</span>
-        <h3 id="airport-confirm-title" style="margin: 0 0 6px 0; font-size: 1.25rem; color: #2D3436;">Bay Đến [Tên Ô]?</h3>
-        <p id="airport-confirm-desc" style="font-size: 0.85rem; color: #636E72; margin: 0 0 16px 0;">Chuyên cơ sẽ cất cánh và đưa bạn hạ cánh thẳng xuống vị trí này.</p>
+    <div id="airport-confirm-modal" class="interactive modal-overlay" style="display: none; align-items: flex-end; padding-bottom: 28px;">
+      <div class="glass-panel modal-content" style="max-width: 460px; width: 92vw; border: 3px solid #0984E3; padding: 22px 24px; text-align: center; border-radius: 20px; box-shadow: 0 20px 40px rgba(9, 132, 227, 0.35);">
+        <span style="font-size: 2.4rem; display: block; margin-bottom: 6px;">🛫</span>
+        <h3 id="airport-confirm-title" style="margin: 0 0 8px 0; font-size: 1.25rem; font-weight: 900; color: #2D3436;">Bay Đến [Tên Ô]?</h3>
+        <div id="airport-confirm-desc" style="font-size: 0.84rem; color: #4A5568; margin: 0 0 16px 0; line-height: 1.45; text-align: left; background: #F8FAFC; border-radius: 12px; padding: 12px 14px; border: 1px solid #E2E8F0;">
+          <!-- Chuyến bay sẽ cất cánh và đưa bạn hạ cánh thẳng xuống vị trí này -->
+        </div>
         <div style="display: flex; gap: 10px;">
-          <button id="btn-airport-confirm-cancel" class="btn-chunky btn-white" style="flex: 1;">Chọn Ô Khác</button>
-          <button id="btn-airport-confirm-fly" class="btn-chunky btn-primary" style="flex: 1; background: #0984E3;">Cất Cánh ✈️</button>
+          <button id="btn-airport-confirm-cancel" class="btn-chunky btn-white" style="flex: 1; padding: 10px; font-weight: 800;">
+            ✕ Chọn Ô Khác
+          </button>
+          <button id="btn-airport-confirm-fly" class="btn-chunky btn-primary" style="flex: 1.2; background: #0984E3; padding: 10px; font-weight: 900;">
+            ✈️ Cất Cánh Ngay
+          </button>
         </div>
       </div>
     </div>
@@ -805,7 +862,7 @@
             </div>
             <div class="profile-hero-gold">
               <span>🪙</span>
-              <span id="profile-gold-balance">10,000 Vàng</span>
+              <span id="profile-gold-balance">0 Vàng</span>
             </div>
             <!-- Mastery Level & Progress -->
             <div class="profile-mastery-banner">
@@ -1018,6 +1075,21 @@
           <button id="btn-save-settings" class="btn-chunky btn-primary" type="button" style="padding: 8px 24px;">
             Đã Xong ✓
           </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 16. ROOM INVITE RECEIVED MODAL -->
+    <div id="room-invite-modal" class="interactive modal-overlay" style="display: none; z-index: 99999;">
+      <div class="glass-panel modal-content" style="max-width: 380px; text-align: center; padding: 22px;">
+        <div style="font-size: 2.2rem; margin-bottom: 8px;">💌</div>
+        <h3 id="room-invite-title" style="margin: 0 0 6px 0; font-size: 1.25rem; color: #2D3436;">Lời Mời Vào Phòng</h3>
+        <p id="room-invite-desc" style="font-size: 0.85rem; color: #636E72; margin: 0 0 16px 0;">
+          <b id="room-invite-sender" style="color: #0984E3;">Bạn</b> mời bạn tham gia phòng <b id="room-invite-room-name">Phòng Chơi</b> (Mã: <span id="room-invite-code" style="color: #E17055; font-weight: 800;">ABC123</span>)
+        </p>
+        <div style="display: flex; gap: 10px;">
+          <button id="btn-decline-room-invite" class="btn-chunky btn-white" type="button" style="flex: 1;">✕ Từ Chối</button>
+          <button id="btn-accept-room-invite" class="btn-chunky btn-primary" type="button" style="flex: 1.2;">✅ Tham Gia</button>
         </div>
       </div>
     </div>

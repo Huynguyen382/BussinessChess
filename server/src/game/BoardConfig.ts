@@ -52,7 +52,7 @@ export const BOARD_TILES: BoardTile[] = [
   { id: 8, name: 'Phan Thiết', type: 'PROPERTY', district: 2, districtColor: '#74B9FF', price: 110, baseRent: 8, rentHouse1: 40, rentHouse2: 120, rentHouse3: 360, rentHotel: 600, houseCost: 50 },
   { id: 9, name: 'Nha Trang', type: 'PROPERTY', district: 2, districtColor: '#74B9FF', price: 120, baseRent: 10, rentHouse1: 50, rentHouse2: 150, rentHouse3: 450, rentHotel: 750, houseCost: 50 },
 
-  { id: 10, name: 'Nhà Tù / Thăm Tù', type: 'JAIL', price: 0, baseRent: 0, description: 'Thăm bạn bè hoặc chấp hành án' },
+  { id: 10, name: 'Nhà Tù', type: 'JAIL', price: 0, baseRent: 0, description: 'Vào tù tạm giam! Đổ đôi, dùng Thẻ Đặc Xá hoặc nộp 50M để ra tù.' },
   { id: 11, name: 'Đà Lạt', type: 'PROPERTY', district: 3, districtColor: '#FD79A8', price: 140, baseRent: 12, rentHouse1: 60, rentHouse2: 180, rentHouse3: 500, rentHotel: 900, houseCost: 100 },
   { id: 12, name: 'Công Ty Điện Lực', type: 'UTILITY', price: 150, baseRent: 15, description: 'Tiền thuê tính theo số nút xí ngầu x4/x10' },
   { id: 13, name: 'Buôn Ma Thuột', type: 'PROPERTY', district: 3, districtColor: '#FD79A8', price: 150, baseRent: 12, rentHouse1: 60, rentHouse2: 180, rentHouse3: 500, rentHotel: 900, houseCost: 100 },

@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import { RoomManager, RoomInfo } from '../src/socket/RoomManager';
+import { AuthService } from '../src/auth/AuthService';
+import { dbService } from '../src/database/Database';
 
 // Mock Socket and Server
 class MockSocket {
@@ -290,19 +292,99 @@ async function runTests() {
     assert.equal(invalidTokenRes.success, false);
     assert.match(invalidTokenRes.error || '', /không hợp lệ/i);
 
-    // Select token: valid token accepted and broadcasted
+    // Select token: locked premium token rejected for guest
+    const lockedTokenRes = mgr.handleSelectToken(s2 as any, { token: 'dragon' });
+    assert.equal(lockedTokenRes.success, false);
+    assert.match(lockedTokenRes.error || '', /bị khóa/i);
+
+    // Select token: free starter token 'rocket' accepted and broadcasted
     io.clear();
-    const validTokenRes = mgr.handleSelectToken(s2 as any, { token: 'dragon' });
+    const validTokenRes = mgr.handleSelectToken(s2 as any, { token: 'rocket' });
     assert.equal(validTokenRes.success, true);
-    assert.equal(validTokenRes.token, 'dragon');
-    assert.equal(p2.token, 'dragon');
+    assert.equal(validTokenRes.token, 'rocket');
+    assert.equal(p2.token, 'rocket');
     assert.ok(io.broadcastedEvents.some(e => e.event === 'room:updated'));
 
     // Ready up and start game -> token preserved in engine
     mgr.handleToggleReady(s2 as any, true);
     const startRes = mgr.startGame(sHost as any);
     assert.equal(startRes.success, true);
-    assert.equal(room.engine!.players[1].token, 'dragon');
+    assert.equal(room.engine!.players[1].token, 'rocket');
+  });
+
+  await test('3.4 Locked token fallback on create/join and selection with registered user', () => {
+    const io = new MockServer();
+    const mgr = new RoomManager(io as any);
+    const sHost = new MockSocket('s_host_34');
+    const s2 = new MockSocket('s_2_34');
+
+    // Register a user with gold and unlock dragon
+    const regRes = AuthService.register({
+      username: 'TokenTycoon_' + Math.random().toString(36).substring(2, 6),
+      password: 'password123',
+      email: 'tycoon_' + Math.random().toString(36).substring(2, 6) + '@test.com'
+    });
+    const user = regRes.user!;
+    // Give user gold to buy premium dragon token
+    dbService.updateUserGold(user.id, 5000);
+    const buyRes = dbService.customizeProfile(user.id, 'token', 'dragon');
+    assert.equal(buyRes.success, true);
+
+    // Host joins with unlocked dragon
+    const room = mgr.createRoom(sHost as any, {
+      name: 'Unlocked Token Room',
+      username: user.username,
+      userId: user.id,
+      token: 'dragon'
+    });
+    assert.equal(room.engine!.players[0].token, 'dragon');
+
+    // Guest tries to join with locked token 'lotus' -> fallback to 'car'
+    mgr.joinRoom(s2 as any, {
+      roomCode: room.roomCode,
+      username: 'GuestWithLocked',
+      token: 'lotus'
+    });
+    assert.equal(room.engine!.players[1].token, 'car');
+  });
+
+  await test('3.5 Online status tracking and handleInviteFriend', () => {
+    const io = new MockServer();
+    const mgr = new RoomManager(io as any);
+    const s1 = new MockSocket('s_inviter');
+    const sFriend = new MockSocket('s_friend');
+
+    const u1Id = 'user_inviter_' + Math.random().toString(36).substring(2, 6);
+    const fId = 'user_friend_' + Math.random().toString(36).substring(2, 6);
+
+    // Track online
+    mgr.setSocketUser(s1.id, u1Id);
+    mgr.setSocketUser(sFriend.id, fId);
+    assert.equal(mgr.isUserOnline(fId), true);
+    assert.equal(mgr.isUserOnline('unknown_user'), false);
+
+    const room = mgr.createRoom(s1 as any, { name: 'Invite Room', username: 'Inviter' });
+    assert.equal(mgr.getUserRoomCode(u1Id), room.roomCode);
+
+    // Invite offline user -> fails
+    const failOffline = mgr.handleInviteFriend(s1 as any, { friendId: 'offline_user' });
+    assert.equal(failOffline.success, false);
+    assert.match(failOffline.error || '', /không online/i);
+
+    // Invite online friend -> succeeds and friend socket receives room:invite_received
+    io.clear();
+    const okInvite = mgr.handleInviteFriend(s1 as any, { friendId: fId });
+    assert.equal(okInvite.success, true);
+    const inviteEvent = io.broadcastedEvents.find(e => e.event === 'room:invite_received');
+    assert.ok(inviteEvent);
+    assert.equal(inviteEvent.room, sFriend.id);
+    assert.equal(inviteEvent.data.roomCode, room.roomCode);
+    assert.equal(inviteEvent.data.inviterName, 'Inviter');
+    assert.ok(s1.emittedEvents.some(e => e.event === 'room:invite_sent'));
+
+    // Disconnect friend -> offline
+    mgr.handleDisconnect(sFriend as any);
+    assert.equal(mgr.isUserOnline(fId), false);
   });
 
   console.log('\n--- Suite 4: Gameplay Socket Handlers ---');

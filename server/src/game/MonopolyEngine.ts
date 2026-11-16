@@ -42,6 +42,7 @@ export interface PlayerState {
   isHost: boolean;
   isReady: boolean;
   netWorth: number;
+  toursCompleted: number;
   frame?: string;
   diceSkin?: string;
   trailEffect?: string;
@@ -203,6 +204,7 @@ export class MonopolyEngine {
       isHost,
       isReady: isHost,
       netWorth: initialCash,
+      toursCompleted: 0,
       frame: frame || 'frame_default',
       diceSkin: customization?.diceSkin || 'dice_ivory',
       trailEffect: customization?.trailEffect || 'trail_default',
@@ -333,6 +335,7 @@ export class MonopolyEngine {
     let passedGo = false;
     if (prevPos + steps >= 40) {
       passedGo = true;
+      player.toursCompleted++;
       player.balance += 200;
       this.addLog(`${player.username} đi qua ô Khởi Hành (GO), nhận lương 200M!`, 'MONEY', player.id, player.username);
     }
@@ -374,8 +377,8 @@ export class MonopolyEngine {
             canAfford: player.balance >= tile.price
           };
         } else if (prop.ownerId === player.id) {
-          // Owned by self - can upgrade if property and not mortgaged
-          if (tile.type === 'PROPERTY' && prop.level < 4 && !prop.isMortgaged && this.canUpgradeProperty(player.id, tile)) {
+          // Owned by self - can upgrade if property and not mortgaged and within tour limits
+          if (tile.type === 'PROPERTY' && prop.level < 4 && !prop.isMortgaged && this.canUpgradeProperty(player.id, tile, true)) {
             const cost = tile.houseCost || 100;
             this.turnState.phase = 'BUY_PROPERTY';
             return {
@@ -534,8 +537,14 @@ export class MonopolyEngine {
         return { type: 'GO_TO_JAIL' };
 
       case 'JAIL':
-        this.setNextPhaseAfterAction(player);
-        return { type: 'JUST_VISITING', message: 'Chỉ ghé thăm nhà tù.' };
+        player.position = 10;
+        player.inJail = true;
+        player.jailTurns = 0;
+        this.turnState.isDouble = false;
+        this.turnState.consecutiveDoubles = 0;
+        this.turnState.phase = 'END_TURN';
+        this.addLog(`${player.username} bước vào ô Nhà Tù! Phải chấp hành tạm giam.`, 'JAIL', player.id, player.username);
+        return { type: 'GO_TO_JAIL' };
 
       case 'FREE_PARKING': {
         const jackpot = Math.max(50, this.freeParkingJackpot);
@@ -668,6 +677,7 @@ export class MonopolyEngine {
         let passedGo = false;
         if (target === 0 || target < prevPos) {
           passedGo = true;
+          player.toursCompleted++;
           player.balance += 200;
           this.addLog(`${player.username} đi qua ô Khởi Hành (GO), nhận thưởng 200M!`, 'MONEY', player.id, player.username);
         }
@@ -868,6 +878,7 @@ export class MonopolyEngine {
         if (nextStation === undefined) {
           nextStation = 5;
           passedGo = true;
+          player.toursCompleted++;
           player.balance += 200;
           this.addLog(`${player.username} đi qua ô Khởi Hành (GO), nhận lương 200M!`, 'MONEY', player.id, player.username);
         }
@@ -1004,24 +1015,50 @@ export class MonopolyEngine {
     return rent;
   }
 
-  public canUpgradeProperty(userId: string, tile: BoardTile): boolean {
-    if (tile.type !== 'PROPERTY' || !tile.district) return false;
-    const districtTiles = BOARD_TILES.filter(t => t.district === tile.district);
-    const ownsAll = districtTiles.every(t => this.properties.get(t.id)?.ownerId === userId);
-    if (!ownsAll) return false;
-
-    // Không thể xây nhà nếu có bất động sản nào cùng nhóm màu đang bị cầm cố
-    const anyMortgaged = districtTiles.some(t => this.properties.get(t.id)?.isMortgaged);
-    if (anyMortgaged) return false;
-
-    // Quy tắc xây nhà đồng đều (Even-Build): chênh lệch giữa các ô cùng màu tối đa 1 cấp
-    const currentProp = this.properties.get(tile.id);
-    if (!currentProp || currentProp.level >= 4) return false;
-    const minLevel = Math.min(...districtTiles.map(t => this.properties.get(t.id)?.level ?? 0));
-    return currentProp.level <= minLevel;
+  public getMaxAllowedUpgradeLevel(player: PlayerState, prop: PropertyState | undefined, isLandingOnTile: boolean): number {
+    if (!prop) {
+      // Mua đất trống: tối đa cấp 2 (0, 1 hoặc 2 nhà) cả ở vòng 1 lẫn các vòng sau
+      return 2;
+    }
+    if (prop.level >= 4) {
+      return 4;
+    }
+    if (!isLandingOnTile) {
+      // Quản lý từ xa (pha END_TURN): chỉ cho nâng cấp tối đa lên cấp 2 (nhà cấp 1-2); không cho nâng lên Căn Hộ (cấp 3) hoặc Khách Sạn (cấp 4) từ xa
+      return 2;
+    }
+    // Đang dừng chân tại ô đất (phase === 'BUY_PROPERTY' && player.position === prop.tileId)
+    if (player.toursCompleted < 1) {
+      // Vòng đầu tiên: tối đa cấp 2
+      return 2;
+    }
+    // Từ vòng thứ hai trở đi (toursCompleted >= 1) và đang dừng chân tại ô:
+    if (prop.level < 3) {
+      // Cho phép nâng lên tối đa Cấp 3 (Căn Hộ). Không được nhảy cóc lên cấp 4 trong cùng 1 lần dừng!
+      return 3;
+    }
+    if (prop.level === 3) {
+      // Ô đất đã ở Cấp 3 (Căn Hộ) và người chơi dừng lại ở ô đất đó thêm một lần nữa ở lượt sau -> Lên Khách Sạn (Cấp 4)
+      return 4;
+    }
+    return prop.level;
   }
 
-  public buyProperty(userId: string, tileId: number): {
+  public canUpgradeProperty(userId: string, tile: BoardTile, isLandingOnTile = false): boolean {
+    if (tile.type !== 'PROPERTY') return false;
+    const currentProp = this.properties.get(tile.id);
+    if (!currentProp || currentProp.ownerId !== userId) return false;
+    if (currentProp.isMortgaged) return false;
+    if (currentProp.level >= 4) return false;
+
+    const player = this.players.find(p => p.id === userId);
+    if (!player) return false;
+
+    const maxAllowed = this.getMaxAllowedUpgradeLevel(player, currentProp, isLandingOnTile);
+    return currentProp.level < maxAllowed;
+  }
+
+  public buyProperty(userId: string, tileId: number, targetLevel?: number): {
     success: boolean;
     tileId: number;
     level: number;
@@ -1049,27 +1086,57 @@ export class MonopolyEngine {
       return { success: false, tileId, level: 0, remainingCash: player.balance, error: 'Không thể mua hoặc nâng cấp ở pha hiện tại' };
     }
 
+    const isLandingOnTile = wasBuyPhase && player.position === tileId;
     let prop = this.properties.get(tileId);
 
     if (!prop) {
       // Mua đất lần đầu: chỉ được mua ô đang đứng trong pha BUY_PROPERTY
-      if (!wasBuyPhase || player.position !== tileId) {
+      if (!isLandingOnTile) {
         return { success: false, tileId, level: 0, remainingCash: player.balance, error: 'Chỉ có thể mua ô đất bạn vừa dừng chân' };
       }
-      if (player.balance < tile.price) {
-        return { success: false, tileId, level: 0, remainingCash: player.balance, error: 'Không đủ tiền mua đất' };
+
+      const desiredLevel = targetLevel !== undefined ? targetLevel : 0;
+      const maxAllowed = this.getMaxAllowedUpgradeLevel(player, undefined, true);
+      if (desiredLevel < 0 || desiredLevel > maxAllowed) {
+        return {
+          success: false,
+          tileId,
+          level: 0,
+          remainingCash: player.balance,
+          error: desiredLevel > 2
+            ? 'Khi mua đất mới chỉ được xây tối đa 2 nhà (cấp 2)'
+            : 'Cấp độ công trình không hợp lệ'
+        };
       }
-      player.balance -= tile.price;
+
+      if (tile.type !== 'PROPERTY' && desiredLevel > 0) {
+        return { success: false, tileId, level: 0, remainingCash: player.balance, error: 'Loại bất động sản này không thể xây dựng công trình' };
+      }
+
+      const houseCost = tile.houseCost || 100;
+      const totalCost = tile.price + (desiredLevel * houseCost);
+
+      if (player.balance < totalCost) {
+        return { success: false, tileId, level: 0, remainingCash: player.balance, error: 'Không đủ tiền mua đất và xây dựng' };
+      }
+
+      player.balance -= totalCost;
       prop = {
         tileId,
         ownerId: player.id,
-        level: 0,
+        level: desiredLevel,
         isMortgaged: false
       };
       this.properties.set(tileId, prop);
-      this.addLog(`${player.username} đã chi ${tile.price}M mua ô đất [${tile.name}].`, 'ACTION', player.id, player.username);
+
+      const levelNames = ['Đất trống', '1 Nhà', '2 Nhà', 'Căn Hộ', 'Khách Sạn 5 Sao'];
+      if (desiredLevel === 0) {
+        this.addLog(`${player.username} đã chi ${tile.price}M mua ô đất [${tile.name}].`, 'ACTION', player.id, player.username);
+      } else {
+        this.addLog(`${player.username} đã chi ${totalCost}M mua ô đất [${tile.name}] kèm ${levelNames[desiredLevel]}.`, 'ACTION', player.id, player.username);
+      }
     } else if (prop.ownerId === player.id) {
-      // Nâng cấp nhà: trong pha BUY_PROPERTY (ô vừa dừng chân) hoặc pha END_TURN (bất kỳ ô đủ điều kiện)
+      // Nâng cấp nhà: trong pha BUY_PROPERTY (ô vừa dừng chân) hoặc pha END_TURN (quản lý từ xa)
       if (wasBuyPhase && player.position !== tileId) {
         return { success: false, tileId, level: prop.level, remainingCash: player.balance, error: 'Chỉ có thể nâng cấp ô đất vừa dừng chân ở pha này' };
       }
@@ -1079,20 +1146,51 @@ export class MonopolyEngine {
       if (prop.isMortgaged) {
         return { success: false, tileId, level: prop.level, remainingCash: player.balance, error: 'Bất động sản đang cầm cố, cần chuộc lại trước khi xây dựng' };
       }
-      if (!this.canUpgradeProperty(player.id, tile)) {
-        return { success: false, tileId, level: prop.level, remainingCash: player.balance, error: 'Cần sở hữu đủ nhóm màu và không có ô nào đang cầm cố để nâng cấp' };
-      }
       if (prop.level >= 4) {
-        return { success: false, tileId, level: prop.level, remainingCash: player.balance, error: 'Bất động sản đã đạt cấp Landmark cao nhất' };
+        return { success: false, tileId, level: prop.level, remainingCash: player.balance, error: 'Bất động sản đã đạt cấp Khách Sạn cao nhất' };
       }
-      const cost = tile.houseCost || 100;
-      if (player.balance < cost) {
+
+      const maxAllowed = this.getMaxAllowedUpgradeLevel(player, prop, isLandingOnTile);
+      if (prop.level >= maxAllowed) {
+        let err = 'Không thể nâng cấp bất động sản này ở thời điểm hiện tại';
+        if (!isLandingOnTile && prop.level >= 2) {
+          err = 'Chỉ có thể nâng lên Căn Hộ hoặc Khách Sạn khi dừng chân trực tiếp tại ô đất';
+        } else if (player.toursCompleted < 1 && prop.level >= 2) {
+          err = 'Cần hoàn thành ít nhất 1 vòng cờ (qua GO) để mở khóa Căn Hộ (Cấp 3)';
+        }
+        return { success: false, tileId, level: prop.level, remainingCash: player.balance, error: err };
+      }
+
+      const desiredLevel = targetLevel !== undefined ? targetLevel : prop.level + 1;
+      if (desiredLevel <= prop.level) {
+        return { success: false, tileId, level: prop.level, remainingCash: player.balance, error: 'Cấp mục tiêu phải lớn hơn cấp hiện tại' };
+      }
+      if (desiredLevel > maxAllowed) {
+        let err = `Cấp mục tiêu vượt quá giới hạn cho phép (tối đa cấp ${maxAllowed})`;
+        if (desiredLevel === 4 && prop.level < 3) {
+          err = 'Cần xây dựng Căn Hộ (Cấp 3) trước, và dừng chân lại ô đất ở lượt sau mới có thể lên Khách Sạn';
+        } else if (desiredLevel === 3 && player.toursCompleted < 1) {
+          err = 'Cần hoàn thành ít nhất 1 vòng cờ (qua GO) để mở khóa Căn Hộ (Cấp 3)';
+        } else if (desiredLevel >= 3 && !isLandingOnTile) {
+          err = 'Chỉ có thể nâng lên Căn Hộ hoặc Khách Sạn khi dừng chân trực tiếp tại ô đất';
+        } else if (desiredLevel > 4) {
+          err = 'Cấp mục tiêu không thể vượt quá cấp Khách Sạn (4)';
+        }
+        return { success: false, tileId, level: prop.level, remainingCash: player.balance, error: err };
+      }
+
+      const houseCost = tile.houseCost || 100;
+      const levelsToAdd = desiredLevel - prop.level;
+      const totalCost = levelsToAdd * houseCost;
+
+      if (player.balance < totalCost) {
         return { success: false, tileId, level: prop.level, remainingCash: player.balance, error: 'Không đủ tiền nâng cấp' };
       }
-      player.balance -= cost;
-      prop.level++;
-      const levelNames = ['Đất trống', 'Nhà cấp 1', 'Nhà cấp 2', 'Nhà cấp 3', 'Landmark 5 Sao'];
-      this.addLog(`${player.username} nâng cấp [${tile.name}] lên ${levelNames[prop.level]} (-${cost}M).`, 'ACTION', player.id, player.username);
+
+      player.balance -= totalCost;
+      prop.level = desiredLevel;
+      const levelNames = ['Đất trống', '1 Nhà', '2 Nhà', 'Căn Hộ', 'Khách Sạn 5 Sao'];
+      this.addLog(`${player.username} nâng cấp [${tile.name}] lên ${levelNames[prop.level]} (-${totalCost}M).`, 'ACTION', player.id, player.username);
     } else {
       return { success: false, tileId, level: prop.level, remainingCash: player.balance, error: 'Bất động sản đã có chủ' };
     }
@@ -1416,6 +1514,7 @@ export class MonopolyEngine {
     // Bay qua GO (từ vị trí 30 bay tới các ô có chỉ số nhỏ hơn 30 như ô 0 -> 29)
     if (targetTileId < prevPosition) {
       passedGo = true;
+      player.toursCompleted++;
       player.balance += 200;
       this.addLog(`✈️ ${player.username} bay qua ô Khởi Hành (GO), nhận 200M tiền lương!`, 'MONEY', player.id, player.username);
     }
@@ -1568,26 +1667,6 @@ export class MonopolyEngine {
 
     if (prop.level <= 0) {
       return { success: false, tileId, level: 0, refund: 0, remainingCash: player.balance, error: 'Ô đất chưa có nhà để bán' };
-    }
-
-    if (tile.district) {
-      const districtTiles = BOARD_TILES.filter(t => t.district === tile.district);
-      const maxLevel = Math.max(
-        ...districtTiles.map(t => {
-          const p = this.properties.get(t.id);
-          return p && p.ownerId === userId ? p.level : 0;
-        })
-      );
-      if (prop.level < maxLevel) {
-        return {
-          success: false,
-          tileId,
-          level: prop.level,
-          refund: 0,
-          remainingCash: player.balance,
-          error: 'Phải bán nhà đồng đều từ ô có cấp công trình cao nhất trong khu vực'
-        };
-      }
     }
 
     const houseCost = tile.houseCost || 100;

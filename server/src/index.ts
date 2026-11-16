@@ -215,7 +215,16 @@ app.get('/api/friends', authMiddleware, (req: AuthenticatedRequest, res) => {
     return res.status(401).json({ error: 'Yêu cầu đăng nhập' });
   }
   const data = dbService.getFriends(req.user.id);
-  return res.json({ success: true, ...data });
+  const friendsWithStatus = (data.friends || []).map((f: any) => {
+    const isOnline = roomManager.isUserOnline(f.id);
+    const inRoomCode = roomManager.getUserRoomCode(f.id);
+    return {
+      ...f,
+      isOnline,
+      inRoomCode: inRoomCode || null
+    };
+  });
+  return res.json({ success: true, ...data, friends: friendsWithStatus });
 });
 
 app.post('/api/friends/request', authMiddleware, (req: AuthenticatedRequest, res) => {
@@ -283,6 +292,26 @@ io.on('connection', (socket: Socket) => {
       }
     }
     socket.emit('auth:error', { message: 'Xác thực không thành công' });
+  });
+
+  socket.on('user:identify', (data: { userId?: string; token?: string }) => {
+    if (data?.token) {
+      const user = AuthService.authenticateToken(data.token);
+      if (user) {
+        socket.data.user = user;
+        roomManager.setSocketUser(socket.id, user.id);
+        socket.emit('user:identified', { success: true, userId: user.id });
+        return;
+      }
+    }
+    if (data?.userId) {
+      roomManager.setSocketUser(socket.id, data.userId);
+      socket.emit('user:identified', { success: true, userId: data.userId });
+    }
+  });
+
+  socket.on('room:invite_friend', (data: { friendId: string; roomCode?: string }) => {
+    roomManager.handleInviteFriend(socket, data);
   });
 
   socket.on('room:list', () => {
@@ -354,8 +383,8 @@ io.on('connection', (socket: Socket) => {
     }
   });
 
-  socket.on('game:buy_property', (data: { tileId: number }) => {
-    roomManager.handleBuyProperty(socket, data.tileId);
+  socket.on('game:buy_property', (data: { tileId: number; targetLevel?: number }) => {
+    roomManager.handleBuyProperty(socket, data.tileId, data?.targetLevel);
   });
 
   socket.on('game:skip_buy', () => {

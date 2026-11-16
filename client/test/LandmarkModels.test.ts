@@ -52,7 +52,7 @@ import { LandmarkHelpers } from '../src/three/landmarks/LandmarkHelpers';
 import { BuildingMesh } from '../src/three/BuildingMesh';
 import { DetailedModels } from '../src/three/DetailedModels';
 import { CameraManager } from '../src/three/CameraManager';
-import { TokenManager } from '../src/three/TokenManager';
+import { TokenManager, type TokenType } from '../src/three/TokenManager';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -770,6 +770,69 @@ test('BuildingMesh Level 4: Royal 5-Star Hotel (sapphire tower, red carpet, stan
   assert(helipadAnimFound, 'Level 4 hotel must feature rotating helipad beacon lights with spin_y animType');
 });
 
+test('BuildingMesh Level 3 & 4 ownerColor architectural synchronization and ownership transfer', () => {
+  const bm = new BuildingMesh();
+  const ownerRed = '#E74C3C';
+  const ownerPurple = '#8E44AD';
+
+  // 1. Level 3 with red ownerColor
+  bm.updateBuilding(8, 3, new THREE.Vector3(0, 0, 0), 0, ownerRed);
+  let bGroup = (bm as any).buildingMap.get(8);
+  assert(bGroup, 'Building group for level 3 must exist');
+  assert.strictEqual(bGroup.userData.ownerColor, ownerRed, 'Building userData must record ownerColor');
+  assert.strictEqual(bGroup.userData.level, 3, 'Building userData must record level');
+
+  // Verify that owner-accented materials in Level 3 carry the red color
+  let redMatFound = false;
+  bGroup.traverse((child: any) => {
+    if (child.isMesh && child.material) {
+      const mat = child.material;
+      if (mat.color && mat.color.getHexString().toUpperCase() === 'E74C3C') {
+        redMatFound = true;
+      }
+    }
+  });
+  assert(redMatFound, 'Level 3 must feature materials customized with ownerColor');
+
+  // 2. Ownership transfer (Buyout / hostile takeover) to purple owner
+  bm.updateBuilding(8, 3, new THREE.Vector3(0, 0, 0), 0, ownerPurple);
+  bGroup = (bm as any).buildingMap.get(8);
+  assert.strictEqual(bGroup.userData.ownerColor, ownerPurple, 'Ownership transfer must update userData.ownerColor');
+  let purpleMatFound = false;
+  bGroup.traverse((child: any) => {
+    if (child.isMesh && child.material) {
+      const mat = child.material;
+      if (mat.color && mat.color.getHexString().toUpperCase() === '8E44AD') {
+        purpleMatFound = true;
+      }
+    }
+  });
+  assert(purpleMatFound, 'Level 3 must rebuild with new ownerColor upon ownership transfer');
+
+  // 3. Level 4 Hotel upgrade with ownerColor
+  bm.updateBuilding(9, 4, new THREE.Vector3(0, 0, 0), 0, ownerPurple);
+  const hotelGroup = (bm as any).buildingMap.get(9);
+  assert(hotelGroup, 'Hotel group must exist');
+  assert.strictEqual(hotelGroup.userData.ownerColor, ownerPurple, 'Hotel userData must record ownerColor');
+  assert.strictEqual(hotelGroup.userData.level, 4, 'Hotel userData must record level 4');
+
+  let hotelOwnerMatFound = false;
+  let flagFound = false;
+  hotelGroup.traverse((child: any) => {
+    if (child.isMesh && child.material) {
+      const mat = child.material;
+      if (mat.color && mat.color.getHexString().toUpperCase() === '8E44AD') {
+        hotelOwnerMatFound = true;
+      }
+    }
+    if (child.isMesh && child.geometry instanceof THREE.BoxGeometry && child.position.y > 4.4) {
+      flagFound = true;
+    }
+  });
+  assert(hotelOwnerMatFound, 'Level 4 hotel must feature ownerColor on ribs, VIP balcony, crown & flag');
+  assert(flagFound, 'Level 4 hotel must feature royal summit flagpole & banner');
+});
+
 test('BuildingMesh Business Tour architectural Zone A alignment (z = ±0.72) preventing landmark collisions', () => {
   const bm = new BuildingMesh();
   // Side 1 (tile 5): buildingZ must be -0.72
@@ -1060,6 +1123,137 @@ test('Turn Pointer Arrow: TokenManager creates 3D arrow, locks onto moving token
   assert(tokenManager.arrowGroup, 'arrowGroup must persist after clearTokens');
   assert.strictEqual(tokenManager.arrowGroup.visible, false, 'Arrow must hide after clearTokens');
   assert.strictEqual(tokenManager.activeUserId, null, 'activeUserId must be reset to null');
+});
+
+test('High-Fidelity 3D Tokens: TokenManager instantiates all 10 detailed models with correct surface elevation and animated accessories', () => {
+  const tokenManager = new TokenManager();
+  const dummyPositions = [new THREE.Vector3(0, 0, 0)];
+  tokenManager.setTilePositions(dummyPositions);
+
+  const tokenTypes: TokenType[] = [
+    'car',
+    'hat',
+    'dog',
+    'rocket',
+    'cyclo',
+    'lotus',
+    'dragon',
+    'yacht',
+    'robot',
+    'crown'
+  ];
+
+  for (const tType of tokenTypes) {
+    const userId = `player_${tType}`;
+    const tokenMesh = tokenManager.createToken(userId, tType, '#00B894', 0);
+    assert(tokenMesh, `Token mesh must be created for ${tType}`);
+    const token = tokenManager.tokens.get(userId);
+    assert(token, `Token instance must exist for ${tType}`);
+
+    // Verify token sits firmly on top surface (y = 0.155 relative to dummy tile at y = 0)
+    assert.strictEqual(token.mesh.position.y, 0.155, `${tType} mesh position.y must equal surface Y offset (0.155)`);
+    assert(token.innerModel, `${tType} must have an innerModel`);
+    assert(token.innerModel.children.length >= 4, `${tType} innerModel must contain high-fidelity detail parts`);
+
+    // Verify shadow disc sits at y = 0.006 (world 0.311)
+    assert(token.shadowDisc, `${tType} must have a contact shadow disc`);
+    assert.strictEqual(token.shadowDisc.position.y, 0.006, `${tType} shadow disc must be at y = 0.006`);
+
+    // Verify specific animated accessories
+    if (tType === 'car') {
+      assert(token.wheels && token.wheels.length === 4, 'Car token must register 4 wheels for rolling');
+    } else if (tType === 'cyclo') {
+      assert(token.wheels && token.wheels.length === 3, 'Cyclo token must register 3 wheels for rolling');
+    } else if (tType === 'dog') {
+      assert(token.ears, 'Dog token must have animated ears');
+      assert(token.tail, 'Dog token must have an animated curly tail');
+    } else if (tType === 'rocket') {
+      assert(token.thrusterFlame, 'Rocket token must have an animated plasma thruster flame');
+    } else if (tType === 'robot') {
+      assert(token.ears, 'Robot token must have animated cyber antennae');
+    }
+  }
+
+  // Verify animation update loop with delta
+  tokenManager.update(0.016);
+  tokenManager.clearTokens();
+  assert.strictEqual(tokenManager.tokens.size, 0, 'clearTokens must empty token map');
+});
+
+test('Business Tour Property Purchase & Multi-Tier Building UX (Property Modal & Inspector Direct Upgrade)', () => {
+  const htmlPath = path.resolve(__dirname, '../index.html');
+  const htmlContent = fs.readFileSync(htmlPath, 'utf8');
+  const cssPath = path.resolve(__dirname, '../src/style.css');
+  const cssContent = fs.readFileSync(cssPath, 'utf8');
+  const mainTsPath = path.resolve(__dirname, '../src/main.ts');
+  const mainTsContent = fs.readFileSync(mainTsPath, 'utf8');
+
+  // 1. Verify HTML Structure (No separate build modal; multi-tier building inside property modal & inspector)
+  assert(!htmlContent.includes('id="btn-open-build"'), 'HTML must not have obsolete #btn-open-build');
+  assert(!htmlContent.includes('id="build-manage-modal"'), 'HTML must not have obsolete #build-manage-modal');
+  assert(htmlContent.includes('id="property-modal"'), 'HTML must have #property-modal');
+  assert(htmlContent.includes('id="prop-build-options-container"'), 'HTML must have #prop-build-options-container inside property modal');
+  assert(htmlContent.includes('id="prop-build-cash-hint"'), 'HTML must have #prop-build-cash-hint');
+  assert(htmlContent.includes('id="prop-build-tier-grid"'), 'HTML must have #prop-build-tier-grid');
+  assert(htmlContent.includes('id="btn-confirm-buy"'), 'HTML must have #btn-confirm-buy');
+  assert(htmlContent.includes('id="inspector-upgrade-container"'), 'HTML must have #inspector-upgrade-container in tile inspector');
+  assert(htmlContent.includes('id="btn-inspector-upgrade"'), 'HTML must have #btn-inspector-upgrade for direct inspector upgrade');
+  assert(htmlContent.includes('id="inspector-upgrade-rent-diff"'), 'HTML must have #inspector-upgrade-rent-diff');
+  assert(htmlContent.includes('🏢 Căn Hộ:'), 'HTML rent grid must display 🏢 Căn Hộ for level 3');
+  assert(htmlContent.includes('🏨 Khách Sạn:'), 'HTML rent grid must display 🏨 Khách Sạn for level 4');
+
+  // 2. Verify CSS Styling
+  assert(!cssContent.includes('.build-modal-box'), 'CSS must not have obsolete .build-modal-box');
+  assert(cssContent.includes('.prop-build-options'), 'CSS must define .prop-build-options');
+  assert(cssContent.includes('.prop-build-tier-grid'), 'CSS must define .prop-build-tier-grid');
+  assert(cssContent.includes('.prop-tier-card'), 'CSS must define .prop-tier-card');
+  assert(cssContent.includes('.prop-tier-card.active'), 'CSS must define active state for .prop-tier-card');
+  assert(cssContent.includes('.prop-tier-card.disabled'), 'CSS must define disabled state for .prop-tier-card');
+  assert(cssContent.includes('.prop-tier-rent'), 'CSS must define .prop-tier-rent');
+  assert(cssContent.includes('.prop-tier-cost'), 'CSS must define .prop-tier-cost');
+  assert(cssContent.includes('.inspector-upgrade-hint'), 'CSS must define .inspector-upgrade-hint');
+
+  // 3. Verify TypeScript Logic (Multi-tier building & direct inspector upgrade without Even-Build)
+  assert(mainTsContent.includes('propBuildOptionsContainer'), 'main.ts must bind propBuildOptionsContainer');
+  assert(mainTsContent.includes('propBuildTierGrid'), 'main.ts must bind propBuildTierGrid');
+  assert(mainTsContent.includes('selectedDeedTargetLevel'), 'main.ts must track selectedDeedTargetLevel');
+  assert(mainTsContent.includes('populatePropertyDeedModal'), 'main.ts must define populatePropertyDeedModal');
+  assert(mainTsContent.includes('getPropertyUpgradeDetails'), 'main.ts must define getPropertyUpgradeDetails helper');
+  assert(mainTsContent.includes('toursCompleted'), 'main.ts must inspect toursCompleted for Business Tour rounds');
+  assert(mainTsContent.includes('Căn Hộ'), 'main.ts must define Căn Hộ for level 3');
+  assert(mainTsContent.includes('Khách Sạn'), 'main.ts must define Khách Sạn for level 4');
+  assert(!mainTsContent.includes('openBuildManageModal'), 'main.ts must not have dead openBuildManageModal');
+  assert(!mainTsContent.includes('renderBuildManageModal'), 'main.ts must not have dead renderBuildManageModal');
+  assert(!mainTsContent.includes('closeBuildManageModal'), 'main.ts must not have dead closeBuildManageModal');
+  assert(mainTsContent.includes("socketClient.emit('game:buy_property', { tileId: action.tileId, targetLevel })"), 'main.ts must emit targetLevel on deed buy/upgrade');
+  assert(mainTsContent.includes("socketClient.emit('game:buy_property', { tileId, targetLevel: prop.level + 1 })"), 'main.ts must emit targetLevel on inspector upgrade');
+});
+
+test('Direct 3D Board Airport Flight Selection UX (Floating Bar & Confirmation Modal)', () => {
+  const htmlPath = path.resolve(__dirname, '../index.html');
+  const htmlContent = fs.readFileSync(htmlPath, 'utf8');
+  const cssPath = path.resolve(__dirname, '../src/style.css');
+  const cssContent = fs.readFileSync(cssPath, 'utf8');
+  const mainTsPath = path.resolve(__dirname, '../src/main.ts');
+  const mainTsContent = fs.readFileSync(mainTsPath, 'utf8');
+
+  // 1. Verify HTML Structure
+  assert(htmlContent.includes('id="airport-floating-bar"'), 'HTML must have #airport-floating-bar');
+  assert(htmlContent.includes('id="btn-airport-floating-go"'), 'HTML must have #btn-airport-floating-go for quick GO flight');
+  assert(htmlContent.includes('id="btn-airport-reopen-list"'), 'HTML must have #btn-airport-reopen-list');
+  assert(htmlContent.includes('id="airport-confirm-modal"'), 'HTML must have #airport-confirm-modal');
+  assert(htmlContent.includes('id="btn-airport-confirm-fly"'), 'HTML must have #btn-airport-confirm-fly');
+  assert(htmlContent.includes('id="btn-airport-confirm-cancel"'), 'HTML must have #btn-airport-confirm-cancel');
+
+  // 2. Verify CSS Styling
+  assert(cssContent.includes('.airport-floating-bar'), 'CSS must define .airport-floating-bar');
+  assert(cssContent.includes('floatDownBar'), 'CSS must define floatDownBar animation');
+
+  // 3. Verify TypeScript Logic
+  assert(mainTsContent.includes('activateAirportBoardSelection'), 'main.ts must define activateAirportBoardSelection');
+  assert(mainTsContent.includes('btnAirportFloatingGo'), 'main.ts must handle btnAirportFloatingGo');
+  assert(!mainTsContent.includes('if (isMe) {\n      showAirportModal();'), 'main.ts must NOT auto-open showAirportModal on entering airport (should activate board selection)');
+  assert(mainTsContent.includes('Chuyến bay qua Khởi Hành: Nhận ngay +200M tiền lương!'), 'main.ts must inform player when airport flight passes GO');
 });
 
 console.log('\n====================================================');

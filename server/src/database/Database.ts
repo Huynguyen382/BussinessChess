@@ -191,7 +191,7 @@ export class DatabaseService {
         email TEXT UNIQUE NOT NULL,
         password_hash TEXT NOT NULL,
         avatar_url TEXT,
-        gold_balance INTEGER DEFAULT 10000,
+        gold_balance INTEGER DEFAULT 0,
         total_matches INTEGER DEFAULT 0,
         total_wins INTEGER DEFAULT 0,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -467,7 +467,7 @@ export class DatabaseService {
     const now = new Date().toISOString();
     const stmt = this.db.prepare(`
       INSERT INTO users (id, username, email, password_hash, avatar_url, gold_balance, total_matches, total_wins, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, 10000, 0, 0, ?, ?)
+      VALUES (?, ?, ?, ?, ?, 0, 0, 0, ?, ?)
     `);
     stmt.run(id, userData.username, userData.email, userData.passwordHash, userData.avatarUrl || null, now, now);
     return this.getUserById(id)!;
@@ -784,6 +784,20 @@ export class DatabaseService {
     } catch {
       return [];
     }
+  }
+
+  public getUnlockedTokens(userId: string | null | undefined): string[] {
+    const defaultTokens = CUSTOMIZATION_CATALOG.tokens.filter(t => t.cost === 0).map(t => t.id);
+    if (!userId) return defaultTokens;
+    const user = this.getUserById(userId);
+    if (!user) return defaultTokens;
+    const unlocked = DatabaseService.parseUnlockedItems(user.unlocked_items);
+    return Array.from(new Set([...defaultTokens, ...unlocked.filter(id => CUSTOMIZATION_CATALOG.tokens.some(t => t.id === id))]));
+  }
+
+  public isTokenUnlocked(userId: string | null | undefined, tokenId: string): boolean {
+    const unlocked = this.getUnlockedTokens(userId);
+    return unlocked.includes(tokenId);
   }
 
   public getUserCustomizations(userId: string) {

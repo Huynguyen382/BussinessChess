@@ -104,7 +104,7 @@ test('User registration validates fields and creates user record', () => {
   assert(res.user, 'Registration must return user DTO');
   assert.strictEqual(res.user.username, testUser.username);
   assert.strictEqual(res.user.email, testUser.email);
-  assert.strictEqual(res.user.goldBalance, 10000, 'New user should receive 10,000 initial gold');
+  assert.strictEqual(res.user.goldBalance, 0, 'New user should receive 0 initial gold');
 
   registeredToken = res.token!;
   registeredUserId = res.user.id;
@@ -597,6 +597,7 @@ test('getUserCustomizations returns catalog with 10 tokens, 5 dice skins, 4 trai
 });
 
 test('customizeProfile unlocks premium 3D token, dice, trail, title with gold and validates bio', () => {
+  dbService.updateUserGold(registeredUserId, 10000);
   const userBefore = dbService.getUserById(registeredUserId)!;
   const startGold = userBefore.gold_balance;
 

@@ -29,16 +29,47 @@ export class BotAI {
           const prop = engine.properties.get(tile.id);
 
           let shouldBuy = false;
+          let targetLevel: number | undefined = undefined;
+
           if (!prop) {
-            // Mua đất nếu số dư sau mua còn ít nhất 200M hoặc có cơ hội gom màu
-            shouldBuy = currentPlayer.balance >= tile.price + 150;
+            if (tile.type === 'PROPERTY') {
+              const houseCost = tile.houseCost || 100;
+              const maxAllowed = engine.getMaxAllowedUpgradeLevel(currentPlayer, undefined, true);
+              for (let lvl = maxAllowed; lvl >= 1; lvl--) {
+                const totalCost = tile.price + lvl * houseCost;
+                if (currentPlayer.balance >= totalCost + 200) {
+                  targetLevel = lvl;
+                  shouldBuy = true;
+                  break;
+                }
+              }
+              if (!shouldBuy && currentPlayer.balance >= tile.price + 150) {
+                targetLevel = 0;
+                shouldBuy = true;
+              }
+            } else if (tile.type === 'RAILROAD' || tile.type === 'UTILITY') {
+              if (currentPlayer.balance >= tile.price + 150) {
+                targetLevel = 0;
+                shouldBuy = true;
+              }
+            }
           } else if (prop.ownerId === currentPlayer.id) {
-            const cost = tile.houseCost || 100;
-            shouldBuy = currentPlayer.balance >= cost + 200 && prop.level < 4;
+            if (tile.type === 'PROPERTY' && prop.level < 4 && !prop.isMortgaged) {
+              const houseCost = tile.houseCost || 100;
+              const maxAllowed = engine.getMaxAllowedUpgradeLevel(currentPlayer, prop, true);
+              for (let lvl = maxAllowed; lvl > prop.level; lvl--) {
+                const cost = (lvl - prop.level) * houseCost;
+                if (currentPlayer.balance >= cost + 200) {
+                  targetLevel = lvl;
+                  shouldBuy = true;
+                  break;
+                }
+              }
+            }
           }
 
           if (shouldBuy) {
-            onAction('BUY_PROPERTY', { tileId: tile.id });
+            onAction('BUY_PROPERTY', { tileId: tile.id, targetLevel });
           } else {
             onAction('SKIP_BUY');
           }
