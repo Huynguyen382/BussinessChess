@@ -1257,6 +1257,10 @@ export class MonopolyEngine {
     if (this.turnState.phase !== 'AUCTION' || !this.auctionState) {
       return { success: false, error: 'Không có phiên đấu giá nào đang diễn ra' };
     }
+    const now = Date.now();
+    if (now >= this.auctionState.endTime) {
+      return { success: false, error: 'Phiên đấu giá đã hết giờ' };
+    }
 
     const player = this.players.find(p => p.id === userId);
     if (!player || player.isBankrupt) return { success: false, error: 'Người chơi không hợp lệ' };
@@ -1281,7 +1285,7 @@ export class MonopolyEngine {
 
     this.auctionState.currentBid = Math.floor(amount);
     this.auctionState.highestBidderId = userId;
-    this.auctionState.endTime = Math.max(this.auctionState.endTime, Date.now() + 5000);
+    this.auctionState.endTime = Math.max(this.auctionState.endTime, now + 5000);
 
     const tile = BOARD_TILES[this.auctionState.tileId];
     this.addLog(`🔨 ${player.username} trả giá ${this.auctionState.currentBid}M cho [${tile?.name}]!`, 'ACTION', player.id, player.username);
@@ -1307,6 +1311,9 @@ export class MonopolyEngine {
     if (this.isGameOver) return { success: false, error: 'Ván chơi đã kết thúc' };
     if (this.turnState.phase !== 'AUCTION' || !this.auctionState) {
       return { success: false, error: 'Không có phiên đấu giá nào đang diễn ra' };
+    }
+    if (Date.now() >= this.auctionState.endTime) {
+      return { success: false, error: 'Phiên đấu giá đã hết giờ' };
     }
 
     const player = this.players.find(p => p.id === userId);
@@ -1912,6 +1919,7 @@ export class MonopolyEngine {
     const trade = this.tradeOffers.get(tradeId);
     if (!trade) return { success: false, error: 'Đề nghị giao dịch không tồn tại' };
     if (trade.receiverId !== userId) return { success: false, error: 'Chỉ đối tác nhận mới có quyền từ chối' };
+    if (trade.status !== 'PENDING') return { success: false, error: 'Đề nghị giao dịch không còn hiệu lực' };
 
     trade.status = 'REJECTED';
     const receiver = this.players.find(p => p.id === userId);
@@ -1923,6 +1931,7 @@ export class MonopolyEngine {
     const trade = this.tradeOffers.get(tradeId);
     if (!trade) return { success: false, error: 'Đề nghị giao dịch không tồn tại' };
     if (trade.senderId !== userId) return { success: false, error: 'Chỉ người gửi mới có quyền hủy đề nghị' };
+    if (trade.status !== 'PENDING') return { success: false, error: 'Đề nghị giao dịch không còn hiệu lực' };
 
     trade.status = 'CANCELLED';
     this.addLog(`Đề nghị giao dịch đã được người gửi hủy bỏ.`, 'INFO');
