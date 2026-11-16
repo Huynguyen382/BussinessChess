@@ -157,8 +157,7 @@ export class DatabaseService {
 
   private initDatabase(customPath?: string) {
     if (!DatabaseSyncClass) {
-      console.warn('[DB] node:sqlite DatabaseSync not available, fallback to in-memory mock');
-      return;
+      throw new Error('[DB] node:sqlite is required. Use Node.js 22.13 or newer with SQLite enabled.');
     }
 
     try {
@@ -175,9 +174,7 @@ export class DatabaseService {
       console.log(`[DB] Connected SQLite database at: ${resolvedPath}`);
       this.runMigrations();
     } catch (err) {
-      console.error('[DB] Failed to initialize file SQLite, falling back to :memory:', err);
-      this.db = new DatabaseSyncClass(':memory:');
-      this.runMigrations();
+      throw new Error('[DB] Failed to initialize SQLite', { cause: err });
     }
   }
 

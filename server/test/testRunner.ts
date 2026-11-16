@@ -21,6 +21,7 @@ for (const file of testFiles) {
   const result = spawnSync('npx', ['tsx', filePath], {
     stdio: 'inherit',
     shell: true,
+    env: { ...process.env, DB_PATH: ':memory:' },
     cwd: join(testDir, '..')
   });
 

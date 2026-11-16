@@ -34,8 +34,11 @@ Dự án trò chơi Cờ Tỷ Phú trực tuyến 3D đa nền tảng (Web & Mob
 ## 🚀 HƯỚNG DẪN KHỞI CHẠY DỰ ÁN
 
 ### Yêu cầu môi trường:
-- Node.js >= 18.x (Đã kiểm thử trên Node v22.18.0)
+- Node.js >= 22.13 với hỗ trợ `node:sqlite` (đã kiểm thử trên Node v22.18.0)
 - npm >= 9.x
+
+Server mặc định lưu tài khoản và tiến trình tại `server/data/business_chess.db`.
+Đặt biến môi trường `DB_PATH` để chọn tệp SQLite khác. Server dừng khởi động nếu không mở được tệp.
 
 ### Cài đặt và chạy đồng thời cả Server và Client:
 ```bash
@@ -83,7 +86,7 @@ BussinessChess/
 │
 ├── server/                     # Máy chủ Game Server Node.js (TypeScript)
 │   ├── src/
-│   │   ├── database/           # PostgreSQL Schema (schema.sql)
+│   │   ├── database/           # Lưu trữ SQLite (Database.ts)
 │   │   ├── game/
 │   │   │   ├── BoardConfig.ts  # Cấu hình 40 ô cờ, bảng giá và nhóm màu
 │   │   │   ├── Cards.ts        # Bộ thẻ Cơ hội & Khí vận
