@@ -775,6 +775,9 @@ async function runAllTests() {
     assert.equal(p1.balance, p1Start - 100);
     assert.equal(p2.balance, p2Start + 100);
     assert.equal(game.tradeOffers.get(tradeId)?.status, 'ACCEPTED');
+    assert.equal(game.rejectTrade(tradeId, p2.id).success, false);
+    assert.equal(game.cancelTrade(tradeId, p1.id).success, false);
+    assert.equal(game.tradeOffers.get(tradeId)?.status, 'ACCEPTED');
   });
 
   await test('rejectTrade() marks trade offer as REJECTED', () => {
@@ -788,6 +791,8 @@ async function runAllTests() {
     const rejRes = game.rejectTrade(tradeId, p2.id);
     assert.equal(rejRes.success, true);
     assert.equal(game.tradeOffers.get(tradeId)?.status, 'REJECTED');
+    assert.equal(game.cancelTrade(tradeId, p1.id).success, false);
+    assert.equal(game.tradeOffers.get(tradeId)?.status, 'REJECTED');
   });
 
   await test('cancelTrade() allows sender to cancel pending trade', () => {
@@ -800,6 +805,8 @@ async function runAllTests() {
 
     const canRes = game.cancelTrade(tradeId, p1.id);
     assert.equal(canRes.success, true);
+    assert.equal(game.tradeOffers.get(tradeId)?.status, 'CANCELLED');
+    assert.equal(game.rejectTrade(tradeId, p2.id).success, false);
     assert.equal(game.tradeOffers.get(tradeId)?.status, 'CANCELLED');
   });
 
@@ -1228,6 +1235,26 @@ async function runAllTests() {
     assert.equal(game.properties.get(1)?.ownerId, p2.id);
     assert.equal(p2.balance, 1500 - 40);
     assert.equal(game.turnState.phase, 'END_TURN');
+  });
+
+  await test('Expired auction preserves the last valid bid until the timer resolves it', () => {
+    const game = createGameWithPlayers(3);
+    const [p1, p2, p3] = game.players;
+    p1.position = 1;
+    game.turnState.phase = 'BUY_PROPERTY';
+
+    assert.equal(game.skipBuyProperty(p1.id).success, true);
+    assert.equal(game.placeAuctionBid(p2.id, 40).success, true);
+    const auction = game.auctionState!;
+    auction.endTime = Date.now() - 1;
+    const expiredAt = auction.endTime;
+
+    assert.equal(game.placeAuctionBid(p3.id, 50).success, false);
+    assert.equal(game.passAuction(p1.id).success, false);
+    assert.equal(auction.endTime, expiredAt);
+    assert.deepEqual(auction.passedPlayerIds, []);
+    assert.equal(game.resolveAuction().winnerId, p2.id);
+    assert.equal(game.properties.get(1)?.ownerId, p2.id);
   });
 
   await test('11.2 Match Timeout: resolveMatchTimeout picks highest netWorth alive player with NET_WORTH winReason', () => {

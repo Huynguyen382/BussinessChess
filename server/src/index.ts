@@ -280,17 +280,22 @@ app.delete('/api/friends/:friendId', authMiddleware, (req: AuthenticatedRequest,
 io.on('connection', (socket: Socket) => {
   console.log(`[Socket] Client connected: ${socket.id}`);
 
+  const getRoomUserId = () => {
+    const token = socket.data.authToken as string | undefined;
+    return token ? AuthService.authenticateToken(token)?.id : undefined;
+  };
+
   // Socket Authentication handshake
   socket.on('auth:authenticate', (data: { token: string }) => {
-    if (data?.token) {
+    if (typeof data?.token === 'string') {
       const user = AuthService.authenticateToken(data.token);
       if (user) {
-        socket.data.user = user;
-        roomManager.setSocketUser(socket.id, user.id);
+        socket.data.authToken = data.token;
         socket.emit('auth:authenticated', { user });
         return;
       }
     }
+    delete socket.data.authToken;
     socket.emit('auth:error', { message: 'Xác thực không thành công' });
   });
 
@@ -320,7 +325,13 @@ io.on('connection', (socket: Socket) => {
 
   socket.on('room:create', (payload) => {
     try {
-      const room = roomManager.createRoom(socket, payload);
+      const solo = payload?.solo === true;
+      const room = roomManager.createRoom(socket, {
+        ...payload,
+        userId: getRoomUserId(),
+        maxPlayers: solo ? 4 : payload?.maxPlayers,
+        isPrivate: solo || payload?.isPrivate
+      });
       socket.emit('room:created', {
         roomCode: room.roomCode,
         name: room.name,
@@ -329,13 +340,25 @@ io.on('connection', (socket: Socket) => {
         players: room.engine?.players || []
       });
       roomManager.broadcastRoomUpdate(room);
+      if (solo) {
+        for (let slot = 1; slot < room.maxPlayers; slot++) {
+          const result = roomManager.addBot(socket);
+          if (!result.success) throw new Error(result.error);
+        }
+        const result = roomManager.startGame(socket);
+        if (!result.success) throw new Error(result.error);
+      }
     } catch (err: any) {
       socket.emit('error:message', { message: err.message });
     }
   });
 
   socket.on('room:join', (payload) => {
-    const res = roomManager.joinRoom(socket, payload);
+    if (typeof payload?.roomCode !== 'string') {
+      socket.emit('error:message', { message: 'Mã phòng không hợp lệ' });
+      return;
+    }
+    const res = roomManager.joinRoom(socket, { ...payload, userId: getRoomUserId() });
     if (res.success && res.room) {
       socket.emit('room:joined', {
         roomCode: res.room.roomCode,

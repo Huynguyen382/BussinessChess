@@ -486,7 +486,7 @@ let selectedAirportTargetId: number | null = null;
 const inputUsername = document.getElementById('input-username') as HTMLInputElement;
 const inputRoomCode = document.getElementById('input-room-code') as HTMLInputElement;
 const btnOpenCreate = document.getElementById('btn-open-create-room')!;
-const btnQuickBotGame = document.getElementById('btn-quick-bot-game')!;
+const btnQuickBotGame = document.getElementById('btn-quick-bot-game') as HTMLButtonElement;
 const btnJoinRoom = document.getElementById('btn-join-room')!;
 const btnRefreshRooms = document.getElementById('btn-refresh-rooms')!;
 const roomListContainer = document.getElementById('room-list-container')!;
@@ -1488,17 +1488,21 @@ function bindUIEvents() {
   });
 
   btnQuickBotGame.addEventListener('click', () => {
+    if (btnQuickBotGame.disabled) return;
+    if (!socketClient.socket.connected) {
+      showToast('Đang kết nối lại với máy chủ. Vui lòng thử lại.');
+      return;
+    }
     const username = inputUsername.value.trim() || (currentUser?.username || 'Đại Gia');
+    btnQuickBotGame.disabled = true;
     socketClient.emit('room:create', {
       name: 'Ván Đấu Cùng AI',
       username,
-      userId: currentUser?.id,
       frame: currentUser?.equippedFrame || 'frame_default',
-      maxPlayers: 4,
       initialCash: 1500,
-      turnTimeout: 20
+      turnTimeout: 20,
+      solo: true
     });
-    (window as any)._autoFillBotsAndStart = true;
   });
 
   btnJoinRoom.addEventListener('click', () => {
@@ -2002,6 +2006,10 @@ function resetMatchAndReturnToLobby() {
 }
 
 function bindSocketEvents() {
+  socketClient.on('disconnect', () => {
+    btnQuickBotGame.disabled = false;
+  });
+
   socketClient.on('connect', () => {
     myUserId = socketClient.socket.id!;
     const token = getAuthToken();
@@ -2025,6 +2033,7 @@ function bindSocketEvents() {
   });
 
   socketClient.on('room:created', (data: any) => {
+    btnQuickBotGame.disabled = false;
     currentRoomCode = data.roomCode;
     isHost = true;
     btnRestoreLobby.style.display = 'none';
@@ -2480,6 +2489,7 @@ function bindSocketEvents() {
   });
 
   socketClient.on('error:message', (data: { message: string }) => {
+    btnQuickBotGame.disabled = false;
     if (elJoinPasswordModal && elJoinPasswordModal.style.display !== 'none') {
       joinPasswordError.textContent = data.message;
       joinPasswordError.style.display = 'block';

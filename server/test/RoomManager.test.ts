@@ -258,6 +258,15 @@ async function runTests() {
     assert.equal(startBroadcast.room, room.roomCode);
     assert.ok(startBroadcast.data.snapshot);
     assert.ok(startBroadcast.data.boardData);
+
+    // A repeated request cannot restart the turn or replace its timer.
+    room.engine!.turnState.phase = 'END_TURN';
+    const turnTimer = room.timerInterval;
+    io.clear();
+    assert.equal(mgr.startGame(sHost as any).success, false);
+    assert.equal(room.engine!.turnState.phase, 'END_TURN');
+    assert.equal(room.timerInterval, turnTimer);
+    assert.equal(io.broadcastedEvents.some(e => e.event === 'game:start'), false);
   });
 
   await test('3.3 handleToggleReady and handleSelectToken update player state, broadcast update and preserve token', () => {

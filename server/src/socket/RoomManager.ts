@@ -33,7 +33,11 @@ export class RoomManager {
     AchievementEngine.init(io);
   }
 
-  public setSocketUser(socketId: string, userId: string) {
+  public setSocketUser(socketId: string, userId?: string) {
+    if (!userId) {
+      this.removeOnlineSocket(socketId);
+      return;
+    }
     const oldUserId = this.socketToUserId.get(socketId);
     if (oldUserId && oldUserId !== userId) {
       this.removeOnlineSocket(socketId);
@@ -126,13 +130,13 @@ export class RoomManager {
 
     this.rooms.set(roomCode, room);
     this.userToRoom.set(socket.id, roomCode);
+    this.setSocketUser(socket.id, payload.userId);
     let userFrame = payload.frame || 'frame_default';
     let customization: PlayerCustomization | undefined;
     const userId = payload.userId || null;
     let preferredToken: TokenType = (payload.token as TokenType) || 'car';
 
     if (userId) {
-      this.setSocketUser(socket.id, userId);
       const user = dbService.getUserById(userId);
       if (user) {
         if (user.equipped_frame) userFrame = user.equipped_frame;
@@ -189,13 +193,13 @@ export class RoomManager {
     }
 
     this.userToRoom.set(socket.id, room.roomCode);
+    this.setSocketUser(socket.id, payload.userId);
     let userFrame = payload.frame || 'frame_default';
     let customization: PlayerCustomization | undefined;
     const userId = payload.userId || null;
     let preferredToken: TokenType = (payload.token as TokenType) || 'car';
 
     if (userId) {
-      this.setSocketUser(socket.id, userId);
       const user = dbService.getUserById(userId);
       if (user) {
         if (user.equipped_frame) userFrame = user.equipped_frame;
@@ -389,6 +393,7 @@ export class RoomManager {
     if (!room || !room.engine) return { success: false, error: 'Phòng không tồn tại' };
 
     if (room.hostId !== socket.id) return { success: false, error: 'Chỉ chủ phòng mới được bắt đầu' };
+    if (room.status !== 'WAITING') return { success: false, error: 'Ván đấu đã bắt đầu' };
     if (room.engine.players.length < 2) return { success: false, error: 'Cần ít nhất 2 người chơi để bắt đầu' };
 
     const unreadyPlayers = room.engine.players.filter(p => !p.isReady);
