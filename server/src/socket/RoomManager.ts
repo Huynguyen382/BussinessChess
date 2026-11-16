@@ -32,8 +32,12 @@ export class RoomManager {
     AchievementEngine.init(io);
   }
 
-  public setSocketUser(socketId: string, userId: string) {
-    this.socketToUserId.set(socketId, userId);
+  private setSocketUser(socketId: string, userId?: string) {
+    if (userId) {
+      this.socketToUserId.set(socketId, userId);
+    } else {
+      this.socketToUserId.delete(socketId);
+    }
   }
 
   public generateRoomCode(): string {
@@ -80,10 +84,10 @@ export class RoomManager {
 
     this.rooms.set(roomCode, room);
     this.userToRoom.set(socket.id, roomCode);
+    this.setSocketUser(socket.id, payload.userId);
     let userFrame = payload.frame || 'frame_default';
     let customization: PlayerCustomization | undefined;
     if (payload.userId) {
-      this.socketToUserId.set(socket.id, payload.userId);
       const user = dbService.getUserById(payload.userId);
       if (user) {
         if (user.equipped_frame) userFrame = user.equipped_frame;
@@ -127,10 +131,10 @@ export class RoomManager {
     }
 
     this.userToRoom.set(socket.id, room.roomCode);
+    this.setSocketUser(socket.id, payload.userId);
     let userFrame = payload.frame || 'frame_default';
     let customization: PlayerCustomization | undefined;
     if (payload.userId) {
-      this.socketToUserId.set(socket.id, payload.userId);
       const user = dbService.getUserById(payload.userId);
       if (user) {
         if (user.equipped_frame) userFrame = user.equipped_frame;
